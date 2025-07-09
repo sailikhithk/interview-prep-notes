@@ -11,3 +11,4 @@ This log tracks daily study sessions and completed notes.
 * [2025-07-06 12:35:32] Completed study session on Distributed Message Queue WAL replication
 * [2025-07-07 15:13:57] Completed study session on JPA Entity Lifecycle and FetchType strategies
 * [2025-07-08 09:27:12] Completed study session on L1/L2/L3 market data in Stock Exchange order book
+* [2025-07-09 12:13:52] Completed study session on Database Sharding routing layers
