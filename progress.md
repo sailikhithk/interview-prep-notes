@@ -28,3 +28,4 @@ This log tracks daily study sessions and completed notes.
 * [2025-07-24 13:42:19] Completed study session on Trie serialization for Autocomplete systems
 * [2025-07-24 10:29:13] Completed study session on Google Maps routing tiles Dijkstra pathfinding
 * [2025-07-25 17:55:00] Completed study session on S3 metadata store and erasure coding
+* [2025-07-28 16:38:03] Completed study session on Red-black tree vs AVL tree balancing
