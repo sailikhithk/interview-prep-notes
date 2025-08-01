@@ -36,3 +36,4 @@ This log tracks daily study sessions and completed notes.
 * [2025-07-30 10:13:54] Completed study session on MapReduce stream aggregating windows
 * [2025-07-31 13:34:03] Completed study session on Geohashing and Quadtree indexes for geospatial lookup
 * [2025-08-01 14:29:46] Completed study session on Google Maps routing tiles Dijkstra pathfinding
+* [2025-08-01 13:57:44] Completed study session on Hotel Reservation optimistic vs pessimistic locking
