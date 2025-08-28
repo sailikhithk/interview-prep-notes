@@ -56,3 +56,4 @@ This log tracks daily study sessions and completed notes.
 * [2025-08-27 16:50:38] Completed study session on Google Maps routing tiles Dijkstra pathfinding
 * [2025-08-27 13:14:07] Completed study session on Consistent Hashing Ring architecture
 * [2025-08-28 16:32:20] Completed study session on Hotel Reservation optimistic vs pessimistic locking
+* [2025-08-28 11:09:54] Completed study session on L1/L2/L3 market data in Stock Exchange order book
