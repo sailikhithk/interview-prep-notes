@@ -58,3 +58,4 @@ This log tracks daily study sessions and completed notes.
 * [2025-08-28 16:32:20] Completed study session on Hotel Reservation optimistic vs pessimistic locking
 * [2025-08-28 11:09:54] Completed study session on L1/L2/L3 market data in Stock Exchange order book
 * [2025-08-28 11:35:39] Completed study session on JPA Entity Lifecycle and FetchType strategies
+* [2025-09-04 18:07:17] Completed study session on Rate Limiter token bucket implementation
