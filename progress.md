@@ -60,3 +60,4 @@ This log tracks daily study sessions and completed notes.
 * [2025-08-28 11:35:39] Completed study session on JPA Entity Lifecycle and FetchType strategies
 * [2025-09-04 18:07:17] Completed study session on Rate Limiter token bucket implementation
 * [2025-09-05 15:15:07] Completed study session on Google Maps routing tiles Dijkstra pathfinding
+* [2025-09-08 17:38:53] Completed study session on Red-black tree vs AVL tree balancing
