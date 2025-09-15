@@ -66,3 +66,4 @@ This log tracks daily study sessions and completed notes.
 * [2025-09-10 15:20:23] Completed study session on Flyway idempotent schema migrations
 * [2025-09-11 12:16:12] Completed study session on Distributed Message Queue WAL replication
 * [2025-09-12 13:13:10] Completed study session on JPA Entity Lifecycle and FetchType strategies
+* [2025-09-15 18:29:59] Completed study session on Red-black tree vs AVL tree balancing
