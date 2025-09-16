@@ -68,3 +68,4 @@ This log tracks daily study sessions and completed notes.
 * [2025-09-12 13:13:10] Completed study session on JPA Entity Lifecycle and FetchType strategies
 * [2025-09-15 18:29:59] Completed study session on Red-black tree vs AVL tree balancing
 * [2025-09-15 17:07:17] Completed study session on MapReduce stream aggregating windows
+* [2025-09-16 14:31:16] Completed study session on Monotonic Deque for Sliding Window Maximum
