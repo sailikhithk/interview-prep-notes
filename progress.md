@@ -80,3 +80,4 @@ This log tracks daily study sessions and completed notes.
 * [2025-09-25 09:03:43] Completed study session on Consistent Hashing Ring architecture
 * [2025-09-26 16:55:56] Completed study session on Spring Transaction Propagation and proxy interception
 * [2025-09-26 17:58:21] Completed study session on Flyway idempotent schema migrations
+* [2025-09-29 14:25:00] Completed study session on Flyway version conflict resolution
