@@ -84,3 +84,4 @@ This log tracks daily study sessions and completed notes.
 * [2025-10-01 17:11:41] Completed study session on L1/L2/L3 market data in Stock Exchange order book
 * [2025-10-02 10:21:59] Completed study session on Hotel Reservation optimistic vs pessimistic locking
 * [2025-10-02 16:04:16] Completed study session on Rate Limiter token bucket implementation
+* [2025-10-06 12:01:52] Completed study session on Database Sharding routing layers
