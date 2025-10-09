@@ -89,3 +89,4 @@ This log tracks daily study sessions and completed notes.
 * [2025-10-07 10:05:22] Completed study session on JPA Entity Lifecycle and FetchType strategies
 * [2025-10-08 18:51:59] Completed study session on MapReduce stream aggregating windows
 * [2025-10-08 11:31:08] Completed study session on MapReduce stream aggregating windows
+* [2025-10-09 13:49:58] Completed study session on Flyway version conflict resolution
