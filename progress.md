@@ -97,3 +97,4 @@ This log tracks daily study sessions and completed notes.
 * [2025-10-21 18:03:46] Completed study session on Distributed Message Queue WAL replication
 * [2025-10-23 15:04:15] Completed study session on Flyway idempotent schema migrations
 * [2025-10-25 18:19:38] Completed study session on L1/L2/L3 market data in Stock Exchange order book
+* [2025-10-25 15:26:26] Completed study session on Spring Transaction Propagation and proxy interception
