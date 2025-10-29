@@ -102,3 +102,4 @@ This log tracks daily study sessions and completed notes.
 * [2025-10-28 09:18:38] Completed study session on Red-black tree vs AVL tree balancing
 * [2025-10-29 14:51:51] Completed study session on L1/L2/L3 market data in Stock Exchange order book
 * [2025-10-29 15:00:57] Completed study session on Flyway version conflict resolution
+* [2025-10-29 18:07:37] Completed study session on JPA Entity Lifecycle and FetchType strategies
