@@ -112,3 +112,4 @@ This log tracks daily study sessions and completed notes.
 * [2025-11-12 11:13:47] Completed study session on MapReduce stream aggregating windows
 * [2025-11-13 14:47:24] Completed study session on L1/L2/L3 market data in Stock Exchange order book
 * [2025-11-14 10:37:15] Completed study session on Database Sharding routing layers
+* [2025-11-17 18:27:23] Completed study session on Rate Limiter token bucket implementation
