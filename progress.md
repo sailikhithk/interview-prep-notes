@@ -122,3 +122,4 @@ This log tracks daily study sessions and completed notes.
 * [2025-11-26 11:45:55] Completed study session on Digital Wallet CQRS event sourcing
 * [2025-11-26 11:47:58] Completed study session on Google Maps routing tiles Dijkstra pathfinding
 * [2025-11-27 09:37:51] Completed study session on Flyway idempotent schema migrations
+* [2025-11-27 13:16:20] Completed study session on Flyway version conflict resolution
