@@ -125,3 +125,4 @@ This log tracks daily study sessions and completed notes.
 * [2025-11-27 13:16:20] Completed study session on Flyway version conflict resolution
 * [2025-11-30 15:44:14] Completed study session on Flyway version conflict resolution
 * [2025-12-01 16:15:47] Completed study session on Hotel Reservation optimistic vs pessimistic locking
+* [2025-12-03 09:51:13] Completed study session on S3 metadata store and erasure coding
