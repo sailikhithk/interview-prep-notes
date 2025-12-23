@@ -147,3 +147,4 @@ This log tracks daily study sessions and completed notes.
 * [2025-12-17 12:14:05] Completed study session on Spring Transaction Propagation and proxy interception
 * [2025-12-22 13:27:53] Completed study session on PostgreSQL master-data audit triggers
 * [2025-12-22 16:56:54] Completed study session on L1/L2/L3 market data in Stock Exchange order book
+* [2025-12-23 13:49:53] Completed study session on Red-black tree vs AVL tree balancing
