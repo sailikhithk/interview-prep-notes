@@ -174,3 +174,4 @@ This log tracks daily study sessions and completed notes.
 * [2026-01-21 17:42:07] Completed study session on S3 metadata store and erasure coding
 * [2026-01-22 14:38:10] Completed study session on Digital Wallet CQRS event sourcing
 * [2026-01-23 09:49:04] Completed study session on JPA Entity Lifecycle and FetchType strategies
+* [2026-01-23 10:56:00] Completed study session on Red-black tree vs AVL tree balancing
