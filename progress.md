@@ -191,3 +191,4 @@ This log tracks daily study sessions and completed notes.
 * [2026-02-26 11:42:00] Completed study session on Distributed Message Queue WAL replication
 * [2026-02-27 13:20:29] Completed study session on Google Maps routing tiles Dijkstra pathfinding
 * [2026-03-02 10:26:59] Completed study session on Spring Transaction Propagation and proxy interception
+* [2026-03-03 11:37:50] Completed study session on Hotel Reservation optimistic vs pessimistic locking
