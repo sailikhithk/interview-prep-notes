@@ -215,3 +215,4 @@ This log tracks daily study sessions and completed notes.
 * [2026-03-23 11:12:00] Completed study session on Consistent Hashing Ring architecture
 * [2026-03-23 13:31:06] Completed study session on Distributed Message Queue WAL replication
 * [2026-03-24 13:53:58] Completed study session on JPA Entity Lifecycle and FetchType strategies
+* [2026-03-24 12:46:26] Completed study session on L1/L2/L3 market data in Stock Exchange order book
