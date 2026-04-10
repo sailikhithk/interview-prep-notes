@@ -232,3 +232,4 @@ This log tracks daily study sessions and completed notes.
 * [2026-04-06 09:50:48] Completed study session on React Jotai atomic state management
 * [2026-04-07 11:25:24] Completed study session on Trie serialization for Autocomplete systems
 * [2026-04-09 15:23:49] Completed study session on Flyway version conflict resolution
+* [2026-04-10 14:17:21] Completed study session on Hotel Reservation optimistic vs pessimistic locking
