@@ -273,3 +273,4 @@ This log tracks daily study sessions and completed notes.
 * [2026-05-14 18:36:23] Completed study session on S3 metadata store and erasure coding
 * [2026-05-15 15:36:35] Completed study session on Flyway version conflict resolution
 * [2026-05-15 17:16:00] Completed study session on Flyway version conflict resolution
+* [2026-05-18 09:03:59] Completed study session on MapReduce stream aggregating windows
