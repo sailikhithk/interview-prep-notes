@@ -275,3 +275,4 @@ This log tracks daily study sessions and completed notes.
 * [2026-05-15 17:16:00] Completed study session on Flyway version conflict resolution
 * [2026-05-18 09:03:59] Completed study session on MapReduce stream aggregating windows
 * [2026-05-18 11:25:18] Completed study session on Rate Limiter token bucket implementation
+* [2026-05-19 12:43:58] Completed study session on L1/L2/L3 market data in Stock Exchange order book
