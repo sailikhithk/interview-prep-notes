@@ -278,3 +278,4 @@ This log tracks daily study sessions and completed notes.
 * [2026-05-19 12:43:58] Completed study session on L1/L2/L3 market data in Stock Exchange order book
 * [2026-05-19 17:04:44] Completed study session on Red-black tree vs AVL tree balancing
 * [2026-05-20 14:55:06] Completed study session on Database Sharding routing layers
+* [2026-05-21 16:59:57] Completed study session on Flyway idempotent schema migrations
