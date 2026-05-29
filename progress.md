@@ -288,3 +288,4 @@ This log tracks daily study sessions and completed notes.
 * [2026-05-28 15:16:26] Completed study session on Flyway version conflict resolution
 * [2026-05-28 11:47:16] Completed study session on S3 metadata store and erasure coding
 * [2026-05-28 12:24:35] Completed study session on L1/L2/L3 market data in Stock Exchange order book
+* [2026-05-29 14:02:50] Completed study session on Monotonic Deque for Sliding Window Maximum
