@@ -289,3 +289,4 @@ This log tracks daily study sessions and completed notes.
 * [2026-05-28 11:47:16] Completed study session on S3 metadata store and erasure coding
 * [2026-05-28 12:24:35] Completed study session on L1/L2/L3 market data in Stock Exchange order book
 * [2026-05-29 14:02:50] Completed study session on Monotonic Deque for Sliding Window Maximum
+* [2026-05-29 15:26:19] Completed study session on Hotel Reservation optimistic vs pessimistic locking
