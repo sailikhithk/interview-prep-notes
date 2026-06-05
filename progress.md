@@ -296,3 +296,4 @@ This log tracks daily study sessions and completed notes.
 * [2026-06-04 15:01:27] Completed study session on Rate Limiter token bucket implementation
 * [2026-06-04 18:44:24] Completed study session on Trie serialization for Autocomplete systems
 * [2026-06-04 12:34:20] Completed study session on Distributed Message Queue WAL replication
+* [2026-06-05 17:43:48] Completed study session on Monotonic Deque for Sliding Window Maximum
