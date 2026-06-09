@@ -299,3 +299,4 @@ This log tracks daily study sessions and completed notes.
 * [2026-06-05 17:43:48] Completed study session on Monotonic Deque for Sliding Window Maximum
 * [2026-06-07 13:55:44] Completed study session on L1/L2/L3 market data in Stock Exchange order book
 * [2026-06-09 12:40:53] Completed study session on S3 metadata store and erasure coding
+* [2026-06-09 13:22:48] Completed study session on Geohashing and Quadtree indexes for geospatial lookup
