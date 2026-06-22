@@ -317,3 +317,4 @@ This log tracks daily study sessions and completed notes.
 * [2026-06-18 18:28:34] Completed study session on Red-black tree vs AVL tree balancing
 * [2026-06-18 09:12:52] Completed study session on Hotel Reservation optimistic vs pessimistic locking
 * [2026-06-19 09:21:36] Completed study session on Database Sharding routing layers
+* [2026-06-22 17:18:09] Completed study session on JPA Entity Lifecycle and FetchType strategies
