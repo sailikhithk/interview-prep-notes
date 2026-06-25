@@ -320,3 +320,4 @@ This log tracks daily study sessions and completed notes.
 * [2026-06-22 17:18:09] Completed study session on JPA Entity Lifecycle and FetchType strategies
 * [2026-06-22 13:28:08] Completed study session on Google Maps routing tiles Dijkstra pathfinding
 * [2026-06-24 12:57:35] Completed study session on Rate Limiter token bucket implementation
+* [2026-06-25 14:22:53] Completed study session on L1/L2/L3 market data in Stock Exchange order book
