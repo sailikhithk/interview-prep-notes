@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10. Regular Expression Matching — Algorithm Study Guide</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        ed: { pink:'#db2777', blue:'#2563eb', teal:'#0d9488', amber:'#d97706', sky:'#0284c7', purple:'#7c3aed', orange:'#ea580c' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+.g { background:linear-gradient(135deg,#f472b6,#a78bfa,#60a5fa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+</style>
+</head>
+<body class="bg-white text-gray-900 min-h-screen">
+
+<!-- HERO -->
+<div class="relative overflow-hidden bg-gray-50 border-b border-gray-200">
+<div class="max-w-4xl mx-auto px-6 py-12">
+  <div class="flex items-center gap-3 mb-4">
+    <span class="text-xs font-bold text-gray-500 tracking-wider">LEETCODE 10</span>
+    <span class="w-1 h-1 rounded-full bg-gray-400"></span>
+    <span class="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded">HARD</span>
+  </div>
+  <h1 class="text-4xl md:text-5xl font-extrabold mb-3 text-gray-900">Regular Expression Matching</h1>
+  <p class="text-gray-600 text-lg mb-6 max-w-2xl">Given an input string <code class="code text-ed-sky">s</code> and a pattern <code class="code text-ed-sky">p</code>, implement regular expression matching with support for <code class="code text-ed-pink">'.'</code> (any single character) and <code class="code text-ed-pink">'*'</code> (zero or more of the preceding element). The match must cover the <strong>entire</strong> input string.</p>
+  <div class="flex flex-wrap gap-2 mb-6">
+    <span class="text-xs bg-purple-50 border border-purple-200 px-3 py-1 rounded-full text-purple-700 font-medium">Dynamic Programming</span>
+    <span class="text-xs bg-blue-50 border border-blue-200 px-3 py-1 rounded-full text-blue-700 font-medium">String</span>
+    <span class="text-xs bg-teal-50 border border-teal-200 px-3 py-1 rounded-full text-teal-700 font-medium">Recursion / Memoization</span>
+  </div>
+  <div class="flex gap-4">
+    <div class="bg-white border border-gray-200 rounded-lg px-4 py-2"><span class="text-xs text-gray-500 block">Time</span><span class="text-sm font-mono font-bold text-emerald-600">O(M&middot;N)</span></div>
+    <div class="bg-white border border-gray-200 rounded-lg px-4 py-2"><span class="text-xs text-gray-500 block">Space</span><span class="text-sm font-mono font-bold text-indigo-600">O(M&middot;N)</span></div>
+  </div>
+</div>
+</div>
+
+<div class="max-w-4xl mx-auto px-6 pb-20 space-y-4 mt-8">
+
+<!-- 1. PROBLEM STATEMENT -->
+<section class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+<div class="px-5 py-4 border-b border-gray-200"><h2 class="text-sm font-bold text-gray-900">1. Problem Statement</h2></div>
+<div class="p-5 space-y-4">
+  <p class="text-sm text-gray-700 leading-relaxed">Given an input string <code class="code text-ed-sky bg-gray-100 px-1 rounded">s</code> and a pattern <code class="code text-ed-sky bg-gray-100 px-1 rounded">p</code>, implement regular expression matching where:</p>
+  <ul class="text-sm text-gray-700 space-y-1 ml-4">
+    <li><code class="code text-ed-pink bg-gray-100 px-1 rounded">'.'</code> matches any single character.</li>
+    <li><code class="code text-ed-pink bg-gray-100 px-1 rounded">'*'</code> matches zero or more of the <em>preceding</em> element.</li>
+  </ul>
+  <p class="text-sm text-gray-500">The matching should cover the <strong>entire</strong> input string (not partial). The <code class="code">'*'</code> always has a valid character or <code class="code">'.'</code> before it.</p>
+  <div class="bg-gray-100/60 rounded-lg p-4">
+    <span class="text-xs font-semibold text-gray-500">Examples:</span>
+    <pre class="code text-sm text-gray-600 mt-1"><span class="text-ed-teal">Input:</span>  s = "aa",   p = "a"     <span class="text-ed-pink">&rarr; false</span>   "a" does not match the whole "aa"
+<span class="text-ed-teal">Input:</span>  s = "aa",   p = "a*"    <span class="text-emerald-600">&rarr; true</span>    '*' repeats 'a' once &rarr; "aa"
+<span class="text-ed-teal">Input:</span>  s = "ab",   p = ".*"    <span class="text-emerald-600">&rarr; true</span>    ".*" = "zero or more of any char"
+<span class="text-ed-teal">Input:</span>  s = "aab",  p = "c*a*b"  <span class="text-emerald-600">&rarr; true</span>   "c*" &rarr; 0 c, "a*" &rarr; 2 a, then "b"
+<span class="text-ed-teal">Input:</span>  s = "mississippi", p = "mis*is*p*."  <span class="text-ed-pink">&rarr; false</span></pre>
+  </div>
+  <div class="text-xs text-gray-500"><span class="font-semibold">Constraints:</span> 1 &le; s.length &le; 20 &middot; 1 &le; p.length &le; 20 &middot; <code class="code">s</code> contains only lowercase letters &middot; <code class="code">p</code> contains lowercase letters, <code class="code">'.'</code>, and <code class="code">'*'</code> &middot; every <code class="code">'*'</code> has a valid preceding element.</div>
+</div>
+</section>
+
+<!-- 2. PATTERN RECOGNITION -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">2. Pattern Recognition</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <div class="rounded-lg bg-ed-pink/5 border border-ed-pink/15 p-4">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="text-xs bg-ed-pink/10 text-ed-pink border border-ed-pink/20 px-2 py-0.5 rounded font-semibold">Pattern</span>
+      <span class="text-sm font-bold text-gray-900">2D Dynamic Programming on Two Strings</span>
+    </div>
+    <p class="text-xs text-gray-600 mb-3 italic">When a decision at each character depends on a choice ("use the star, or skip it") and overlapping subproblems appear, build a grid over the two strings.</p>
+    <div class="space-y-2">
+      <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">How to spot it:</span>
+      <div class="flex gap-2 items-start"><div class="w-1 h-1 rounded-full bg-ed-pink mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">Two sequences (here a string and a pattern) and you ask "does prefix of A match prefix of B?".</p></div>
+      <div class="flex gap-2 items-start"><div class="w-1 h-1 rounded-full bg-ed-pink mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">A token (<code class="code">'*'</code>) creates a <strong>branch</strong>: zero occurrences vs. one-or-more occurrences &mdash; classic "take it or leave it".</p></div>
+      <div class="flex gap-2 items-start"><div class="w-1 h-1 rounded-full bg-ed-pink mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">Naive recursion re-solves the same <code class="code">(i, j)</code> suffix pairs &rarr; overlapping subproblems &rarr; memoize / tabulate.</p></div>
+      <div class="flex gap-2 items-start"><div class="w-1 h-1 rounded-full bg-ed-pink mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">Cousins: Edit Distance (72), Wildcard Matching (44), LCS (1143), Interleaving String (97).</p></div>
+    </div>
+  </div>
+</div>
+</details>
+
+<!-- 3. PATTERN BLUEPRINT -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">3. Pattern Blueprint</span>
+  <span class="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded font-semibold">Template</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <p class="text-xs text-gray-600 mb-3">Generic 5-step template for "match two strings" 2D DP:</p>
+  <div class="rounded-lg bg-gray-50 border border-gray-200 overflow-hidden">
+    <div class="px-4 py-3 space-y-2">
+      <div class="flex gap-3 items-start"><span class="text-xs font-bold text-blue-700 bg-blue-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">1</span><p class="text-xs text-gray-700">Define state: <code class="code bg-gray-200/50 px-1 rounded">dp[i][j]</code> = does <code class="code">s[0..i)</code> match <code class="code">p[0..j)</code>. Dimensions <code class="code">(m+1) &times; (n+1)</code>.</p></div>
+      <div class="flex gap-3 items-start"><span class="text-xs font-bold text-blue-700 bg-blue-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">2</span><p class="text-xs text-gray-700">Base case: <code class="code">dp[0][0] = true</code> (empty matches empty). Seed the first row for patterns like <code class="code">a*b*c*</code> that can match empty.</p></div>
+      <div class="flex gap-3 items-start"><span class="text-xs font-bold text-blue-700 bg-blue-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">3</span><p class="text-xs text-gray-700">Transition (no star): if <code class="code">p[j-1] == s[i-1]</code> or <code class="code">p[j-1] == '.'</code>, inherit <code class="code">dp[i-1][j-1]</code>.</p></div>
+      <div class="flex gap-3 items-start"><span class="text-xs font-bold text-blue-700 bg-blue-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">4</span><p class="text-xs text-gray-700">Transition (star at <code class="code">p[j-1]</code>): <strong>zero</strong> copies &rarr; <code class="code">dp[i][j-2]</code>; <strong>one+</strong> copies &rarr; if <code class="code">p[j-2]</code> matches <code class="code">s[i-1]</code>, OR in <code class="code">dp[i-1][j]</code>.</p></div>
+      <div class="flex gap-3 items-start"><span class="text-xs font-bold text-blue-700 bg-blue-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">5</span><p class="text-xs text-gray-700">Answer: <code class="code">dp[m][n]</code>. Fill the grid row-major; every cell is O(1).</p></div>
+    </div>
+  </div>
+</div>
+</details>
+
+<!-- 4. HOW TO THINK ABOUT IT -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">4. How to Think About It</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <div class="rounded-lg bg-ed-blue/5 border border-gray-300 p-4 space-y-3">
+    <div class="flex gap-3 items-start"><span class="text-xs font-bold bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0">1</span><p class="text-xs text-gray-700">Start from the recursive question: "does <code class="code">s</code> match <code class="code">p</code>?" Peel one pattern token at a time, not one character.</p></div>
+    <div class="flex gap-3 items-start"><span class="text-xs font-bold bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0">2</span><p class="text-xs text-gray-700">The first-char match is <code class="code">firstMatch = i&lt;m and (p[j]==s[i] or p[j]=='.')</code>. <span class="text-ed-teal">This single boolean drives everything.</span></p></div>
+    <div class="flex gap-3 items-start"><span class="text-xs font-bold bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0">3</span><p class="text-xs text-gray-700">If the next pattern char is <code class="code">'*'</code>, you have two universes: <strong>skip</strong> the <code class="code">x*</code> block entirely <code class="code text-ed-teal">(j += 2)</code>, or <strong>consume</strong> one <code class="code">s</code> char if <code class="code">firstMatch</code> and stay on the same star.</p></div>
+    <div class="flex gap-3 items-start"><span class="text-xs font-bold bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0">4</span><p class="text-xs text-gray-700">Else (no star), require <code class="code">firstMatch</code> and advance both by one. <span class="text-ed-teal">&rarr;</span> Recursion has overlapping <code class="code">(i, j)</code> states &rarr; flip it into a bottom-up grid.</p></div>
+  </div>
+</div>
+</details>
+
+<!-- 5. REAL-WORLD ANALOGY -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">5. Real-World Analogy</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <div class="rounded-lg bg-ed-teal/5 border border-ed-teal/15 p-4 space-y-3">
+    <p class="text-xs text-gray-700 leading-relaxed">Think of the pattern as an <strong>airport security checklist</strong> and the string as a <strong>line of passengers</strong>. A normal pattern char is a checkpoint that admits exactly one passenger of a specific type. A <code class="code text-ed-teal">'.'</code> checkpoint admits any one passenger. The tricky one is the <code class="code text-ed-teal">'*'</code> checkpoint &mdash; it is a <strong>flexible lane</strong> that can wave through <em>zero</em> passengers (closed lane) or <em>many</em> passengers of the preceding type, one after another.</p>
+    <p class="text-xs text-gray-700 leading-relaxed">At each flexible lane you make a branching bet: "do I close this lane now and move to the next checkpoint, or do I send one more matching passenger through and keep the lane open?" The DP table is the <strong>master log</strong> recording, for every (passengers-processed, checkpoints-passed) pair, whether a valid arrangement exists &mdash; so you never re-investigate the same situation twice.</p>
+    <p class="text-xs text-gray-600 leading-relaxed"><strong class="text-ed-teal">Mapping:</strong> passengers = <code class="code">s</code> &middot; checklist = <code class="code">p</code> &middot; flexible lane = <code class="code">x*</code> &middot; close the lane = <code class="code">dp[i][j-2]</code> &middot; send one more through = <code class="code">dp[i-1][j]</code>.</p>
+  </div>
+</div>
+</details>
+
+<!-- 6. BUILD YOUR INTUITION -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">6. Build Your Intuition</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <div class="rounded-lg bg-ed-amber/5 border border-ed-amber/15 p-4">
+    <p class="text-xs font-semibold text-ed-amber mb-1">Q: Why does <code class="code">'*'</code> look back two columns (<code class="code">j-2</code>) for the "zero" case?</p>
+    <p class="text-xs text-gray-600">Because <code class="code">x*</code> is a two-character unit. "Zero copies of x" means deleting the whole <code class="code">x*</code> block, so we jump back past both the char and the star &rarr; <code class="code">dp[i][j-2]</code>.</p>
+  </div>
+  <div class="rounded-lg bg-ed-teal/5 border border-ed-teal/15 p-4">
+    <p class="text-xs font-semibold text-ed-teal mb-1">Q: Why does the "one or more" case look at <code class="code">dp[i-1][j]</code> and not <code class="code">dp[i-1][j-2]</code>?</p>
+    <p class="text-xs text-gray-600">Because the star can be reused. After consuming <code class="code">s[i-1]</code> with the star, we still sit on the <em>same</em> star (column <code class="code">j</code>) to maybe consume more. We only drop one string char &rarr; <code class="code">dp[i-1][j]</code>.</p>
+  </div>
+  <div class="rounded-lg bg-ed-amber/5 border border-ed-amber/15 p-4">
+    <p class="text-xs font-semibold text-ed-amber mb-1">Q: Why seed the first row but not the first column?</p>
+    <p class="text-xs text-gray-600">An empty pattern can never match a non-empty string, so the first column (j=0, i&gt;0) is all false. But a non-empty pattern like <code class="code">a*</code> <em>can</em> match the empty string, so row 0 must be computed.</p>
+  </div>
+</div>
+</details>
+
+<!-- 7. HOW IT WORKS (STEP BY STEP) -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">7. How It Works (Step by Step)</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <p class="text-xs text-gray-600 mb-3">Tabulating <code class="code text-ed-sky">s = "aa"</code>, <code class="code text-ed-sky">p = "a*"</code> (grid is 3&times;3):</p>
+  <div class="rounded-lg bg-ed-sky/5 border border-ed-sky/15 overflow-hidden">
+    <div class="px-4 py-3 space-y-2">
+      <div class="flex gap-3 items-start"><span class="text-xs font-bold bg-ed-sky/15 text-ed-sky rounded w-5 h-5 flex items-center justify-center flex-shrink-0">1</span><p class="text-xs text-gray-700"><code class="code">dp[0][0]=T</code> &mdash; empty matches empty.</p></div>
+      <div class="flex gap-3 items-start"><span class="text-xs font-bold bg-ed-sky/15 text-ed-sky rounded w-5 h-5 flex items-center justify-center flex-shrink-0">2</span><p class="text-xs text-gray-700"><code class="code">dp[0][2]</code>: pattern <code class="code">"a*"</code> vs empty &mdash; star takes zero <code class="code">a</code>'s &rarr; <code class="code">dp[0][0]=T</code>. So <code class="code">"a*"</code> matches <code class="code">""</code>.</p></div>
+      <div class="flex gap-3 items-start"><span class="text-xs font-bold bg-ed-sky/15 text-ed-sky rounded w-5 h-5 flex items-center justify-center flex-shrink-0">3</span><p class="text-xs text-gray-700"><code class="code">dp[1][1]</code>: <code class="code">"a"</code> vs <code class="code">"a"</code>, chars equal &rarr; inherit <code class="code">dp[0][0]=T</code>.</p></div>
+      <div class="flex gap-3 items-start"><span class="text-xs font-bold bg-ed-sky/15 text-ed-sky rounded w-5 h-5 flex items-center justify-center flex-shrink-0">4</span><p class="text-xs text-gray-700"><code class="code">dp[1][2]</code>: star &mdash; zero case <code class="code">dp[1][0]=F</code>; one+ case <code class="code">p[0]='a'==s[0]='a'</code> &rarr; <code class="code">dp[0][2]=T</code>. Result T.</p></div>
+      <div class="flex gap-3 items-start"><span class="text-xs font-bold bg-ed-sky/15 text-ed-sky rounded w-5 h-5 flex items-center justify-center flex-shrink-0">5</span><p class="text-xs text-gray-700"><code class="code">dp[2][2]</code>: star one+ case reuses <code class="code">dp[1][2]=T</code> &mdash; second <code class="code">a</code> consumed by the same star. <strong class="text-ed-teal">Answer = dp[2][2] = T.</strong></p></div>
+    </div>
+  </div>
+</div>
+</details>
+
+<!-- 8. DRY RUN TABLE -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">8. Dry Run Table</span>
+  <span class="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded font-semibold">Trace</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <p class="text-xs text-gray-600 mb-3">Full <code class="code">dp</code> grid for <code class="code text-ed-sky">s = "aa"</code> (rows), <code class="code text-ed-sky">p = "a*"</code> (cols). T = match possible.</p>
+  <div class="overflow-x-auto">
+  <table class="text-xs text-center border-collapse w-full">
+    <thead>
+      <tr class="text-gray-500">
+        <th class="border border-gray-200 px-2 py-1 bg-gray-50"></th>
+        <th class="border border-gray-200 px-2 py-1 bg-gray-50">"" (j=0)</th>
+        <th class="border border-gray-200 px-2 py-1 bg-gray-50">a (j=1)</th>
+        <th class="border border-gray-200 px-2 py-1 bg-gray-50">* (j=2)</th>
+      </tr>
+    </thead>
+    <tbody class="code">
+      <tr>
+        <td class="border border-gray-200 px-2 py-1 bg-gray-50 text-gray-500">"" (i=0)</td>
+        <td class="border border-gray-200 px-2 py-1 bg-emerald-50 text-emerald-700 font-bold">T</td>
+        <td class="border border-gray-200 px-2 py-1 bg-rose-50 text-rose-600">F</td>
+        <td class="border border-gray-200 px-2 py-1 bg-emerald-50 text-emerald-700 font-bold">T</td>
+      </tr>
+      <tr>
+        <td class="border border-gray-200 px-2 py-1 bg-gray-50 text-gray-500">a (i=1)</td>
+        <td class="border border-gray-200 px-2 py-1 bg-rose-50 text-rose-600">F</td>
+        <td class="border border-gray-200 px-2 py-1 bg-emerald-50 text-emerald-700 font-bold">T</td>
+        <td class="border border-gray-200 px-2 py-1 bg-emerald-50 text-emerald-700 font-bold">T</td>
+      </tr>
+      <tr>
+        <td class="border border-gray-200 px-2 py-1 bg-gray-50 text-gray-500">aa (i=2)</td>
+        <td class="border border-gray-200 px-2 py-1 bg-rose-50 text-rose-600">F</td>
+        <td class="border border-gray-200 px-2 py-1 bg-rose-50 text-rose-600">F</td>
+        <td class="border border-gray-200 px-2 py-1 bg-emerald-50 text-emerald-700 font-bold ring-2 ring-ed-teal">T</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="text-[11px] text-gray-500 mt-2">Bottom-right cell (ringed) is the answer: <code class="code text-ed-teal">dp[2][2] = T</code> &rarr; <strong>"aa" matches "a*"</strong>.</p>
+</div>
+</details>
+
+<!-- 9. LIVE INTERACTIVE VISUALIZATION -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">9. Live Interactive Visualization</span>
+  <span class="text-xs bg-ed-pink/10 text-ed-pink border border-ed-pink/20 px-2 py-0.5 rounded font-semibold">Interactive</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-5">
+  <div class="flex flex-wrap items-center gap-2">
+    <button id="viz-reset" class="text-xs font-semibold bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 shadow-sm px-3 py-1.5 rounded transition-colors">Reset</button>
+    <button id="viz-prev" class="text-xs font-semibold bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 shadow-sm px-3 py-1.5 rounded transition-colors">&#9664; Prev</button>
+    <button id="viz-next" class="text-xs font-semibold bg-ed-teal/10 hover:bg-ed-teal/20 border border-ed-teal/30 text-ed-teal px-3 py-1.5 rounded transition-colors">Next &#9654;</button>
+    <button id="viz-auto" class="text-xs font-semibold bg-ed-purple/10 hover:bg-ed-purple/20 border border-ed-purple/30 text-ed-purple px-3 py-1.5 rounded transition-colors">Auto Play</button>
+    <span id="viz-step-label" class="text-xs text-gray-500 ml-auto">Step 0 / 9</span>
+  </div>
+
+  <div>
+    <p class="text-xs font-semibold text-gray-500 mb-2">Filling the DP grid &mdash; <code class="code text-ed-sky">s = "aa"</code> (rows), <code class="code text-ed-sky">p = "a*"</code> (cols)</p>
+    <div id="viz-grid" class="inline-block"></div>
+    <div class="flex flex-wrap justify-start gap-3 mt-3">
+      <span class="flex items-center gap-1 text-[10px] text-gray-500"><span class="w-2 h-2 rounded-full bg-sky-500"></span> Current cell</span>
+      <span class="flex items-center gap-1 text-[10px] text-gray-500"><span class="w-2 h-2 rounded-full bg-amber-400"></span> Cells it depends on</span>
+      <span class="flex items-center gap-1 text-[10px] text-gray-500"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> True</span>
+      <span class="flex items-center gap-1 text-[10px] text-gray-500"><span class="w-2 h-2 rounded-full bg-rose-400"></span> False</span>
+      <span class="flex items-center gap-1 text-[10px] text-gray-500"><span class="w-2 h-2 rounded-full bg-gray-200"></span> Not yet filled</span>
+    </div>
+  </div>
+
+  <div id="viz-status" class="bg-gray-100/60 border border-gray-300 rounded-lg p-3 text-xs text-gray-600 leading-relaxed">
+    Press <strong>Next</strong> to fill the table cell by cell.
+  </div>
+
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto">
+    <pre class="code text-xs leading-6 text-gray-500"><span id="code-L0">dp[0][0] = True   # empty matches empty</span>
+<span id="code-L1">for i in range(0, m + 1):</span>
+<span id="code-L2">  for j in range(1, n + 1):</span>
+<span id="code-L3">    if p[j-1] == '*':</span>
+<span id="code-L4">      dp[i][j] = dp[i][j-2]              # zero copies</span>
+<span id="code-L5">      if match(s, p, i, j-1):            # one or more</span>
+<span id="code-L6">        dp[i][j] |= dp[i-1][j]</span>
+<span id="code-L7">    elif match(s, p, i, j):</span>
+<span id="code-L8">      dp[i][j] = dp[i-1][j-1]</span>
+<span id="code-L9">return dp[m][n]</span></pre>
+  </div>
+</div>
+</details>
+
+<!-- 10. COMPLEXITY DEEP DIVE -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">10. Complexity Deep Dive</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+  <div class="rounded-lg bg-gray-50 border border-gray-200 p-4">
+    <p class="text-sm font-bold text-ed-teal mb-1">Time &mdash; O(M&middot;N)</p>
+    <p class="text-xs text-gray-600">There are <code class="code">(m+1)(n+1)</code> states and each cell is computed in O(1) (a constant number of lookups: <code class="code">dp[i][j-2]</code>, <code class="code">dp[i-1][j]</code>, <code class="code">dp[i-1][j-1]</code>). No state is recomputed.</p>
+  </div>
+  <div class="rounded-lg bg-gray-50 border border-gray-200 p-4">
+    <p class="text-sm font-bold text-ed-purple mb-1">Space &mdash; O(M&middot;N) &rarr; O(N)</p>
+    <p class="text-xs text-gray-600">The full grid is O(M&middot;N). Because each row depends only on the current and previous row, you can roll to <strong>two rows</strong> for O(N) space. Memoized top-down recursion is also O(M&middot;N) for the cache plus O(M+N) call stack.</p>
+  </div>
+  <div class="rounded-lg bg-gray-50 border border-gray-200 p-4 sm:col-span-2">
+    <p class="text-sm font-bold text-ed-orange mb-1">Why naive recursion explodes</p>
+    <p class="text-xs text-gray-600">Without memoization, each <code class="code">'*'</code> spawns a branch (skip vs consume), so the call tree can be exponential &mdash; roughly O((m+n) &middot; 2^(m+n/2)) in adversarial cases like <code class="code">s="aaaaaaaaaaaaab"</code>, <code class="code">p="a*a*a*a*..."</code>. The DP table collapses all those repeats into M&middot;N work.</p>
+  </div>
+</div>
+</details>
+
+<!-- 11. FROM BRUTE FORCE TO OPTIMAL -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">11. From Brute Force to Optimal</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+  <div class="rounded-lg bg-red-500/5 border border-red-500/15 p-4">
+    <p class="text-sm font-bold text-red-500 mb-1">Naive &mdash; Pure Recursion</p>
+    <p class="text-xs text-gray-600 mb-2">Recurse on <code class="code">(i, j)</code>, branching on every star. Re-solves the same suffix pairs over and over.</p>
+    <p class="text-xs text-gray-500">Time: <span class="code">exponential</span> &middot; Space: O(M+N) stack</p>
+  </div>
+  <div class="rounded-lg bg-ed-teal/5 border border-ed-teal/15 p-4">
+    <p class="text-sm font-bold text-ed-teal mb-1">Optimal &mdash; Tabulated DP</p>
+    <p class="text-xs text-gray-600 mb-2">Cache every <code class="code">(i, j)</code> in a grid; each computed once. Same recurrence, no repeats.</p>
+    <p class="text-xs text-gray-500">Time: <span class="code">O(M&middot;N)</span> &middot; Space: O(M&middot;N) or O(N)</p>
+  </div>
+  <div class="rounded-lg bg-indigo-50 border border-indigo-200 p-3 sm:col-span-2 text-center">
+    <p class="text-xs text-indigo-700">For 20&times;20 inputs that is <strong>~441 cells</strong> instead of potentially <strong>millions</strong> of recursive calls &mdash; the speedup is the whole point of DP.</p>
+  </div>
+</div>
+</details>
+
+<!-- 12. EDGE CASES & GOTCHAS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">12. Edge Cases &amp; Gotchas</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-2">
+  <div class="rounded-lg bg-ed-orange/5 border border-gray-300 p-3">
+    <p class="text-xs font-semibold text-ed-orange mb-1">Empty string, non-empty pattern</p>
+    <p class="text-xs text-gray-600"><code class="code">s=""</code>, <code class="code">p="a*b*"</code> must return true. The <strong>first-row seeding</strong> handles this; forgetting it is the #1 bug.</p>
+  </div>
+  <div class="rounded-lg bg-ed-orange/5 border border-gray-300 p-3">
+    <p class="text-xs font-semibold text-ed-orange mb-1">Star as the first pattern char</p>
+    <p class="text-xs text-gray-600">The constraints forbid a leading <code class="code">'*'</code> (every star has a preceding element). Still, guard <code class="code">j-2 &ge; 0</code> so you never index negatively.</p>
+  </div>
+  <div class="rounded-lg bg-ed-orange/5 border border-gray-300 p-3">
+    <p class="text-xs font-semibold text-ed-orange mb-1"><code class="code">'.'</code> vs <code class="code">'.*'</code></p>
+    <p class="text-xs text-gray-600"><code class="code">'.'</code> consumes exactly one char; <code class="code">'.*'</code> consumes zero-or-more of <em>any</em> char. Treat <code class="code">'.'</code> as a wildcard inside the <code class="code">match()</code> helper, not as a literal.</p>
+  </div>
+  <div class="rounded-lg bg-ed-orange/5 border border-gray-300 p-3">
+    <p class="text-xs font-semibold text-ed-orange mb-1">Off-by-one in indices</p>
+    <p class="text-xs text-gray-600"><code class="code">dp[i][j]</code> refers to <code class="code">s[i-1]</code> and <code class="code">p[j-1]</code> (1-indexed table over 0-indexed strings). Mixing the two is the second most common bug.</p>
+  </div>
+</div>
+</details>
+
+<!-- 13. FLASHCARDS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">13. Flashcards</span>
+  <span class="text-xs bg-ed-purple/10 text-ed-purple border border-ed-purple/20 px-2 py-0.5 rounded font-semibold">Q&amp;A</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-2">
+  <details class="rounded-lg bg-ed-purple/5 border border-ed-purple/15 p-3"><summary class="text-xs font-semibold text-gray-800">What is the DP state definition?</summary><p class="text-xs text-gray-600 mt-2"><code class="code">dp[i][j]</code> = true iff the first <code class="code">i</code> chars of <code class="code">s</code> match the first <code class="code">j</code> chars of <code class="code">p</code>. Answer is <code class="code">dp[m][n]</code>.</p></details>
+  <details class="rounded-lg bg-ed-purple/5 border border-ed-purple/15 p-3"><summary class="text-xs font-semibold text-gray-800">Star transition in one line?</summary><p class="text-xs text-gray-600 mt-2"><code class="code">dp[i][j] = dp[i][j-2] or (match(i,j-1) and dp[i-1][j])</code>.</p></details>
+  <details class="rounded-lg bg-ed-purple/5 border border-ed-purple/15 p-3"><summary class="text-xs font-semibold text-gray-800">Non-star transition?</summary><p class="text-xs text-gray-600 mt-2">If <code class="code">p[j-1]==s[i-1] or p[j-1]=='.'</code> then <code class="code">dp[i][j]=dp[i-1][j-1]</code>, else false.</p></details>
+  <details class="rounded-lg bg-ed-purple/5 border border-ed-purple/15 p-3"><summary class="text-xs font-semibold text-gray-800">What does <code class="code">match(i,j)</code> mean?</summary><p class="text-xs text-gray-600 mt-2"><code class="code">i&gt;0 and (p[j-1]=='.' or p[j-1]==s[i-1])</code> &mdash; does pattern char <code class="code">j</code> cover string char <code class="code">i</code>.</p></details>
+  <details class="rounded-lg bg-ed-purple/5 border border-ed-purple/15 p-3"><summary class="text-xs font-semibold text-gray-800">Time &amp; space?</summary><p class="text-xs text-gray-600 mt-2">O(M&middot;N) time, O(M&middot;N) space (reducible to O(N) with a rolling row).</p></details>
+</div>
+</details>
+
+<!-- 14. WHERE IT IS USED (REAL WORLD) -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">14. Where It Is Used (Real World)</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+  <div class="rounded-lg bg-amber-100 border border-amber-300 p-3"><p class="text-xs font-semibold text-amber-700 mb-1">grep / ripgrep / awk</p><p class="text-xs text-gray-600">Line matching engines compile patterns into automata; the DP form is the textbook backtracking baseline.</p></div>
+  <div class="rounded-lg bg-rose-100 border border-rose-300 p-3"><p class="text-xs font-semibold text-rose-700 mb-1">Lexers &amp; compilers</p><p class="text-xs text-gray-600">Tokenizers describe tokens as regexes; <code class="code">*</code> is Kleene star, the same "zero or more" operator.</p></div>
+  <div class="rounded-lg bg-indigo-100 border border-indigo-300 p-3"><p class="text-xs font-semibold text-indigo-700 mb-1">Log / SIEM filtering</p><p class="text-xs text-gray-600">Splunk, Datadog, and ELK route and alert on log lines using pattern matchers built on these ideas.</p></div>
+  <div class="rounded-lg bg-gray-100 border border-gray-300 p-3"><p class="text-xs font-semibold text-gray-700 mb-1">Bioinformatics</p><p class="text-xs text-gray-600">Sequence/motif matching against DNA uses the same prefix-DP family (alongside edit distance).</p></div>
+</div>
+</details>
+
+<!-- 15. COMMON MISTAKES -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">15. Common Mistakes</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-2">
+  <div class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">Forgetting to seed row 0 for patterns that match empty (<code class="code">a*</code>, <code class="code">a*b*</code>).</p></div>
+  <div class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">Treating <code class="code">'*'</code> like wildcard-<code class="code">'*'</code> (LeetCode 44) which matches any sequence by itself &mdash; here it modifies the <em>preceding</em> char.</p></div>
+  <div class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">Using <code class="code">dp[i-1][j-2]</code> instead of <code class="code">dp[i-1][j]</code> for the "consume one" case &mdash; you must stay on the same star.</p></div>
+  <div class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">Indexing <code class="code">p[j]</code> / <code class="code">s[i]</code> instead of <code class="code">p[j-1]</code> / <code class="code">s[i-1]</code> in the 1-indexed table.</p></div>
+  <div class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">Returning on the first full-string match in recursion without requiring the pattern to be exhausted too.</p></div>
+</div>
+</details>
+
+<!-- 16. INTERVIEW TIPS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">16. Interview Tips</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-2">
+  <div class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-ed-purple mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">Start with the <strong>top-down recursion</strong> first &mdash; it's easier to derive live. Then say "this has overlapping subproblems" and convert to a table.</p></div>
+  <div class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-ed-purple mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">Write the <code class="code">match(i,j)</code> helper out loud first; it isolates the <code class="code">'.'</code> logic and de-clutters the main recurrence.</p></div>
+  <div class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-ed-purple mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">Explicitly call out the two star branches ("skip the block" vs "consume one and stay") &mdash; interviewers want to hear that insight.</p></div>
+  <div class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-ed-purple mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">Hand-trace <code class="code">s="aa", p="a*"</code> on the whiteboard to prove the empty-row seeding and star-reuse.</p></div>
+</div>
+</details>
+
+<!-- 17. SIMILAR PROBLEMS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">17. Similar Problems to Practice</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-2">
+  <div class="flex items-center justify-between rounded-lg bg-gray-50 border border-gray-200 p-3"><span class="text-xs text-gray-700">44. Wildcard Matching</span><span class="text-xs bg-rose-50 text-rose-600 border border-rose-200 px-2 py-0.5 rounded">Hard</span></div>
+  <div class="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 p-3"><span class="text-xs text-gray-700">72. Edit Distance</span><span class="text-xs bg-rose-50 text-rose-600 border border-rose-200 px-2 py-0.5 rounded">Hard</span></div>
+  <div class="flex items-center justify-between rounded-lg bg-amber-50 border border-amber-200 p-3"><span class="text-xs text-gray-700">1143. Longest Common Subsequence</span><span class="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded">Medium</span></div>
+  <div class="flex items-center justify-between rounded-lg bg-amber-50 border border-amber-200 p-3"><span class="text-xs text-gray-700">97. Interleaving String</span><span class="text-xs bg-rose-50 text-rose-600 border border-rose-200 px-2 py-0.5 rounded">Hard</span></div>
+  <div class="flex items-center justify-between rounded-lg bg-amber-50 border border-amber-200 p-3"><span class="text-xs text-gray-700">115. Distinct Subsequences</span><span class="text-xs bg-rose-50 text-rose-600 border border-rose-200 px-2 py-0.5 rounded">Hard</span></div>
+</div>
+</details>
+
+<!-- 18. RELATED ALGORITHMS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">18. Related Algorithms</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+  <div class="rounded-lg bg-gray-50 border border-gray-200 p-3"><p class="text-xs font-semibold text-gray-700">Thompson NFA construction</p><p class="text-xs text-gray-600">Compile the regex to an NFA and simulate &mdash; O(M&middot;N) worst case, linear in practice.</p></div>
+  <div class="rounded-lg bg-gray-50 border border-gray-200 p-3"><p class="text-xs font-semibold text-gray-700">DFA minimization</p><p class="text-xs text-gray-600">Convert NFA&rarr;DFA for O(N) scanning when the pattern is reused across many strings.</p></div>
+  <div class="rounded-lg bg-gray-50 border border-gray-200 p-3"><p class="text-xs font-semibold text-gray-700">Edit-distance DP</p><p class="text-xs text-gray-600">Same (m+1)&times;(n+1) prefix-grid skeleton with different transitions.</p></div>
+  <div class="rounded-lg bg-gray-50 border border-gray-200 p-3"><p class="text-xs font-semibold text-gray-700">Memoized recursion</p><p class="text-xs text-gray-600">Top-down twin of this table; identical complexity, often easier to write.</p></div>
+</div>
+</details>
+
+<!-- 19. WHERE THIS PATTERN MEETS SYSTEM DESIGN -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">19. Where This Pattern Meets System Design</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <div class="rounded-lg bg-indigo-50 border border-indigo-200 p-4">
+    <p class="text-xs font-semibold text-indigo-700 mb-1">Regex engines as compiled automata</p>
+    <p class="text-xs text-gray-600">In high-throughput systems you don't re-run DP per line. You <strong>compile the pattern once</strong> into an NFA/DFA (Thompson construction, RE2) and stream input through it &mdash; turning O(M&middot;N)-per-match into O(N)-per-line with a shared, cached automaton. The DP table here is the conceptual model the compiled engine optimizes away.</p>
+  </div>
+  <div class="rounded-lg bg-indigo-50 border border-indigo-200 p-4">
+    <p class="text-xs font-semibold text-indigo-700 mb-1">Log routing &amp; alerting pipelines</p>
+    <p class="text-xs text-gray-600">Datadog/Splunk/ELK match millions of log lines/sec against pattern rules. They use RE2-style linear-time engines (no catastrophic backtracking) precisely because the naive recursive form is exponential &mdash; the same explosion Section 10 describes, now a production reliability concern.</p>
+  </div>
+  <div class="rounded-lg bg-indigo-50 border border-indigo-200 p-4">
+    <p class="text-xs font-semibold text-indigo-700 mb-1">ReDoS as a security failure mode</p>
+    <p class="text-xs text-gray-600">An attacker-supplied pattern with nested stars (<code class="code">(a*)*</code>) against a backtracking engine is a denial-of-service vector. System design answer: bound execution with linear-time engines, timeouts, and input-size limits &mdash; a direct application of "know your worst-case complexity."</p>
+  </div>
+</div>
+</details>
+
+<!-- 20. CODE SOLUTIONS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">20. Code Solutions</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-4">
+  <div>
+    <p class="text-xs font-semibold text-ed-sky mb-1">Python &mdash; Bottom-up DP</p>
+    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class Solution:
+    def isMatch(self, s: str, p: str) -&gt; bool:
+        m, n = len(s), len(p)
+        dp = [[False] * (n + 1) for _ in range(m + 1)]
+        dp[0][0] = True
+
+        def match(i, j):  # does p[j-1] cover s[i-1]?
+            return i &gt; 0 and (p[j-1] == '.' or p[j-1] == s[i-1])
+
+        for i in range(m + 1):
+            for j in range(1, n + 1):
+                if p[j-1] == '*':
+                    dp[i][j] = dp[i][j-2]                 # zero copies
+                    if match(i, j-1):                     # one or more
+                        dp[i][j] = dp[i][j] or dp[i-1][j]
+                elif match(i, j):
+                    dp[i][j] = dp[i-1][j-1]
+        return dp[m][n]</pre></div>
+  </div>
+  <div>
+    <p class="text-xs font-semibold text-ed-sky mb-1">Java</p>
+    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class Solution {
+    public boolean isMatch(String s, String p) {
+        int m = s.length(), n = p.length();
+        boolean[][] dp = new boolean[m + 1][n + 1];
+        dp[0][0] = true;
+        for (int i = 0; i &lt;= m; i++) {
+            for (int j = 1; j &lt;= n; j++) {
+                if (p.charAt(j - 1) == '*') {
+                    dp[i][j] = dp[i][j - 2];                       // zero copies
+                    if (match(s, p, i, j - 1))                     // one or more
+                        dp[i][j] = dp[i][j] || dp[i - 1][j];
+                } else if (match(s, p, i, j)) {
+                    dp[i][j] = dp[i - 1][j - 1];
+                }
+            }
+        }
+        return dp[m][n];
+    }
+    private boolean match(String s, String p, int i, int j) {
+        return i &gt; 0 &amp;&amp; (p.charAt(j - 1) == '.' || p.charAt(j - 1) == s.charAt(i - 1));
+    }
+}</pre></div>
+  </div>
+  <div>
+    <p class="text-xs font-semibold text-ed-sky mb-1">C++</p>
+    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class Solution {
+public:
+    bool isMatch(string s, string p) {
+        int m = s.size(), n = p.size();
+        vector&lt;vector&lt;bool&gt;&gt; dp(m + 1, vector&lt;bool&gt;(n + 1, false));
+        dp[0][0] = true;
+        auto match = [&amp;](int i, int j) {
+            return i &gt; 0 &amp;&amp; (p[j - 1] == '.' || p[j - 1] == s[i - 1]);
+        };
+        for (int i = 0; i &lt;= m; ++i)
+            for (int j = 1; j &lt;= n; ++j) {
+                if (p[j - 1] == '*') {
+                    dp[i][j] = dp[i][j - 2];
+                    if (match(i, j - 1)) dp[i][j] = dp[i][j] || dp[i - 1][j];
+                } else if (match(i, j)) {
+                    dp[i][j] = dp[i - 1][j - 1];
+                }
+            }
+        return dp[m][n];
+    }
+};</pre></div>
+  </div>
+  <div>
+    <p class="text-xs font-semibold text-ed-sky mb-1">TypeScript &mdash; Top-down memoized</p>
+    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">function isMatch(s: string, p: string): boolean {
+  const m = s.length, n = p.length;
+  const memo = new Map&lt;string, boolean&gt;();
+  const dp = (i: number, j: number): boolean =&gt; {
+    if (j === n) return i === m;
+    const key = i + ',' + j;
+    if (memo.has(key)) return memo.get(key)!;
+    const first = i &lt; m &amp;&amp; (p[j] === s[i] || p[j] === '.');
+    let ans: boolean;
+    if (j + 1 &lt; n &amp;&amp; p[j + 1] === '*') {
+      ans = dp(i, j + 2) || (first &amp;&amp; dp(i + 1, j));   // skip block | consume one
+    } else {
+      ans = first &amp;&amp; dp(i + 1, j + 1);
+    }
+    memo.set(key, ans);
+    return ans;
+  };
+  return dp(0, 0);
+}</pre></div>
+  </div>
+</div>
+</details>
+
+<!-- 21. FOLLOW-UP QUESTIONS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">21. Follow-Up Questions</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <div class="rounded-lg bg-white border border-indigo-200 overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-indigo-100 bg-indigo-50/60"><span class="text-xs font-semibold text-indigo-700">Reduce space to O(N)?</span></div>
+    <div class="px-4 py-3"><p class="text-xs text-gray-600">Each row depends only on the current row (for <code class="code">j-2</code>) and the previous row (for <code class="code">i-1</code>). Keep two 1-D arrays <code class="code">prev</code> and <code class="code">cur</code> and swap them each iteration &rarr; O(N) space.</p></div>
+  </div>
+  <div class="rounded-lg bg-white border border-indigo-200 overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-indigo-100 bg-indigo-50/60"><span class="text-xs font-semibold text-indigo-700">How does this differ from Wildcard Matching (44)?</span></div>
+    <div class="px-4 py-3"><p class="text-xs text-gray-600">In LC44, <code class="code">'*'</code> stands alone and matches any sequence; <code class="code">'?'</code> matches one char. Here <code class="code">'*'</code> modifies the preceding token. The grids look similar but the star transition differs.</p></div>
+  </div>
+  <div class="rounded-lg bg-white border border-indigo-200 overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-indigo-100 bg-indigo-50/60"><span class="text-xs font-semibold text-indigo-700">Support <code class="code">'+'</code> (one or more) and <code class="code">'?'</code> (optional)?</span></div>
+    <div class="px-4 py-3"><p class="text-xs text-gray-600">Compile <code class="code">x+</code> to <code class="code">xx*</code> and <code class="code">x?</code> to a zero-or-one branch (<code class="code">dp[i][j-1]</code> or matched <code class="code">dp[i-1][j-1]</code>), or generalize to an NFA simulation.</p></div>
+  </div>
+  <div class="rounded-lg bg-white border border-indigo-200 overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-indigo-100 bg-indigo-50/60"><span class="text-xs font-semibold text-indigo-700">Match many strings against one pattern fast?</span></div>
+    <div class="px-4 py-3"><p class="text-xs text-gray-600">Compile the pattern once into a DFA; then each string is scanned in O(len) with no per-string DP. This is the production strategy (RE2).</p></div>
+  </div>
+</div>
+</details>
+
+<!-- 22. QUICK REFERENCE -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">22. Quick Reference</span>
+  <span class="text-xs bg-gray-100 text-gray-700 border border-gray-300 px-2 py-0.5 rounded font-semibold">One-Pager</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+    <div class="rounded-lg bg-teal-50 border border-teal-200 p-2.5 text-center"><span class="text-[10px] text-teal-600 uppercase font-semibold block mb-1">Time</span><span class="text-sm font-mono font-bold text-teal-700">O(M&middot;N)</span></div>
+    <div class="rounded-lg bg-purple-50 border border-purple-200 p-2.5 text-center"><span class="text-[10px] text-purple-600 uppercase font-semibold block mb-1">Space</span><span class="text-sm font-mono font-bold text-purple-700">O(M&middot;N)</span></div>
+    <div class="rounded-lg bg-blue-50 border border-blue-200 p-2.5 text-center"><span class="text-[10px] text-blue-600 uppercase font-semibold block mb-1">Pattern</span><span class="text-sm font-bold text-blue-700">2D DP</span></div>
+    <div class="rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-center"><span class="text-[10px] text-amber-600 uppercase font-semibold block mb-1">Key Op</span><span class="text-sm font-bold text-amber-700">Star branch</span></div>
+  </div>
+  <div class="rounded-lg bg-emerald-50 border border-emerald-200 p-3">
+    <p class="text-xs font-semibold text-emerald-700 mb-1.5">When to Use</p>
+    <p class="text-xs text-gray-700">Two strings / prefix-matching &middot; A token creates take-it-or-leave-it branches &middot; Overlapping subproblems in recursion</p>
+  </div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3">
+    <p class="text-xs font-semibold text-rose-700 mb-1.5">When NOT to Use</p>
+    <p class="text-xs text-gray-700">One string only &middot; Greedy suffices &middot; Pattern reused across millions of inputs (compile to DFA instead)</p>
+  </div>
+  <div class="rounded-lg bg-sky-50 border border-sky-200 p-3">
+    <p class="text-xs font-semibold text-sky-700 mb-1.5">Core Code Shape</p>
+    <pre class="code text-[10px] text-gray-600 leading-5">dp[0][0] = True
+for i in range(m+1):
+  for j in range(1, n+1):
+    if p[j-1] == '*':
+      dp[i][j] = dp[i][j-2]
+      if match(i, j-1): dp[i][j] |= dp[i-1][j]
+    elif match(i, j):
+      dp[i][j] = dp[i-1][j-1]
+return dp[m][n]</pre>
+  </div>
+</div>
+</details>
+
+<!-- FOOTER -->
+<div class="text-center pt-8 pb-4 border-t border-gray-100">
+  <p class="text-xs text-gray-500">Generated for algorithm study &middot; Regular Expression Matching (LeetCode 10)</p>
+</div>
+
+</div>
+
+<script>
+(function() {
+  // dp grid for s="aa", p="a*"  -> 3 rows (i=0..2) x 3 cols (j=0..2)
+  // cell value codes: null=unfilled, true, false
+  const rowsLabel = ['""', 'a', 'aa'];
+  const colsLabel = ['""', 'a', '*'];
+  const steps = [
+    { fill: null, val: null, deps: [], line: null,
+      msg: 'Grid is (m+1)&times;(n+1) = 3&times;3. Rows = prefixes of <strong>s="aa"</strong>, cols = prefixes of <strong>p="a*"</strong>. Press <strong>Next</strong>.' },
+    { fill: [0,0], val: true, deps: [], line: 0,
+      msg: '<strong>dp[0][0] = True</strong> &mdash; empty string matches empty pattern. Base case.' },
+    { fill: [0,1], val: false, deps: [[0,0]], line: 7,
+      msg: '<strong>dp[0][1]</strong>: pattern "a" vs "". p[0]=\'a\' is not \'*\', and i=0 (no string char to match) &rarr; <strong>False</strong>.' },
+    { fill: [0,2], val: true, deps: [[0,0]], line: 4,
+      msg: '<strong>dp[0][2]</strong>: p[1]=\'*\'. Zero-copies case looks at dp[0][0]=T. So "a*" matches "" &rarr; <strong>True</strong>.' },
+    { fill: [1,0], val: false, deps: [], line: 2,
+      msg: '<strong>dp[1][0]</strong>: string "a" vs empty pattern. No pattern left to match &rarr; <strong>False</strong> (first column is always F for i&gt;0).' },
+    { fill: [1,1], val: true, deps: [[0,0]], line: 8,
+      msg: '<strong>dp[1][1]</strong>: p[0]=\'a\' == s[0]=\'a\', no star. Inherit diagonal dp[0][0]=T &rarr; <strong>True</strong>.' },
+    { fill: [1,2], val: true, deps: [[1,0],[0,2]], line: 6,
+      msg: '<strong>dp[1][2]</strong>: p[1]=\'*\'. Zero case dp[1][0]=F. One+ case: p[0]=\'a\' matches s[0]=\'a\' &rarr; OR in dp[0][2]=T &rarr; <strong>True</strong>.' },
+    { fill: [2,0], val: false, deps: [], line: 2,
+      msg: '<strong>dp[2][0]</strong>: "aa" vs empty pattern &rarr; <strong>False</strong>.' },
+    { fill: [2,1], val: false, deps: [[1,0]], line: 8,
+      msg: '<strong>dp[2][1]</strong>: p[0]=\'a\' == s[1]=\'a\', no star. Inherit diagonal dp[1][0]=F &rarr; <strong>False</strong>.' },
+    { fill: [2,2], val: true, deps: [[2,0],[1,2]], line: 6,
+      msg: '<strong>dp[2][2]</strong>: p[1]=\'*\'. Zero case dp[2][0]=F. One+ case: \'a\' matches s[1]=\'a\' &rarr; OR in dp[1][2]=T &rarr; <strong>True</strong>. <span class="text-ed-teal font-semibold">Answer = True: "aa" matches "a*".</span>' }
+  ];
+
+  let step = 0;
+  let autoTimer = null;
+
+  const els = {
+    grid: document.getElementById('viz-grid'),
+    status: document.getElementById('viz-status'),
+    label: document.getElementById('viz-step-label'),
+    next: document.getElementById('viz-next'),
+    prev: document.getElementById('viz-prev'),
+    reset: document.getElementById('viz-reset'),
+    auto: document.getElementById('viz-auto')
+  };
+
+  function computeState(uptoStep) {
+    // grid[i][j] = null | true | false based on steps applied up to uptoStep
+    const grid = [[null,null,null],[null,null,null],[null,null,null]];
+    for (let k = 1; k <= uptoStep; k++) {
+      const f = steps[k].fill;
+      if (f) grid[f[0]][f[1]] = steps[k].val;
+    }
+    return grid;
+  }
+
+  function render() {
+    const s = steps[step];
+    const grid = computeState(step);
+    const cur = s.fill;
+    const deps = s.deps || [];
+
+    function isDep(i, j) { return deps.some(d => d[0] === i && d[1] === j); }
+
+    let html = '<table class="border-collapse code text-xs"><thead><tr>';
+    html += '<th class="w-12 h-9"></th>';
+    for (let j = 0; j < 3; j++) {
+      html += '<th class="w-14 h-9 text-gray-500 font-semibold border border-gray-200 bg-gray-50">' + colsLabel[j] + '<div class="text-[9px] text-gray-400">j=' + j + '</div></th>';
+    }
+    html += '</tr></thead><tbody>';
+    for (let i = 0; i < 3; i++) {
+      html += '<tr>';
+      html += '<th class="w-12 h-12 text-gray-500 font-semibold border border-gray-200 bg-gray-50">' + rowsLabel[i] + '<div class="text-[9px] text-gray-400">i=' + i + '</div></th>';
+      for (let j = 0; j < 3; j++) {
+        const v = grid[i][j];
+        let cls = 'w-14 h-12 text-center border align-middle transition-all duration-300 ';
+        let content = '';
+        const isCur = cur && cur[0] === i && cur[1] === j;
+        if (isCur) {
+          cls += 'bg-sky-100 border-sky-500 ring-2 ring-sky-400 font-bold ';
+          content = v === true ? '<span class="text-emerald-600">T</span>' : (v === false ? '<span class="text-rose-500">F</span>' : '');
+        } else if (isDep(i, j)) {
+          cls += 'bg-amber-100 border-amber-400 ';
+          content = v === true ? '<span class="text-emerald-600 font-bold">T</span>' : (v === false ? '<span class="text-rose-500 font-bold">F</span>' : '<span class="text-gray-300">&middot;</span>');
+        } else if (v === true) {
+          cls += 'bg-emerald-50 border-gray-200 text-emerald-600 font-bold ';
+          content = 'T';
+        } else if (v === false) {
+          cls += 'bg-rose-50 border-gray-200 text-rose-500 ';
+          content = 'F';
+        } else {
+          cls += 'bg-gray-100 border-gray-200 text-gray-300 ';
+          content = '&middot;';
+        }
+        html += '<td class="' + cls + '">' + content + '</td>';
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table>';
+    els.grid.innerHTML = html;
+
+    els.status.innerHTML = s.msg;
+
+    for (let n = 0; n <= 9; n++) {
+      const line = document.getElementById('code-L' + n);
+      if (line) {
+        if (s.line === n) {
+          line.className = 'block bg-ed-teal/10 text-ed-teal border-l-2 border-ed-teal pl-2 -ml-2';
+        } else {
+          line.className = 'block text-gray-500';
+        }
+      }
+    }
+
+    els.label.textContent = 'Step ' + step + ' / ' + (steps.length - 1);
+    els.prev.style.opacity = step <= 0 ? '0.4' : '1';
+    els.next.style.opacity = step >= steps.length - 1 ? '0.4' : '1';
+  }
+
+  function setStep(n) {
+    step = Math.max(0, Math.min(steps.length - 1, n));
+    render();
+  }
+
+  function toggleAuto() {
+    if (autoTimer) {
+      clearInterval(autoTimer);
+      autoTimer = null;
+      els.auto.textContent = 'Auto Play';
+    } else {
+      els.auto.textContent = 'Pause';
+      if (step >= steps.length - 1) setStep(0);
+      autoTimer = setInterval(function() {
+        if (step >= steps.length - 1) { toggleAuto(); return; }
+        setStep(step + 1);
+      }, 1600);
+    }
+  }
+
+  els.next.addEventListener('click', function() { setStep(step + 1); });
+  els.prev.addEventListener('click', function() { setStep(step - 1); });
+  els.reset.addEventListener('click', function() { if (autoTimer) toggleAuto(); setStep(0); });
+  els.auto.addEventListener('click', toggleAuto);
+
+  render();
+})();
+</script>
+
+</body>
+</html>

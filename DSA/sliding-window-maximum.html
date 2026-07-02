@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>239. Sliding Window Maximum — Algorithm Study Guide</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        ed: { pink:'#db2777', blue:'#2563eb', teal:'#0d9488', amber:'#d97706', sky:'#0284c7', purple:'#7c3aed', orange:'#ea580c' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+.g { background:linear-gradient(135deg,#f472b6,#a78bfa,#60a5fa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hg { background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(167,139,250,0.15) 0%,transparent 100%); }
+</style>
+</head>
+<body class="bg-white text-gray-900 min-h-screen">
+
+<!-- HERO -->
+<div class="relative overflow-hidden bg-gray-50 border-b border-gray-200">
+<div class="max-w-4xl mx-auto px-6 py-12">
+  <div class="flex items-center gap-3 mb-4">
+    <span class="text-xs font-bold text-gray-500 tracking-wider">LEETCODE 239</span>
+    <span class="w-1 h-1 rounded-full bg-gray-400"></span>
+    <span class="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded">HARD</span>
+  </div>
+  <h1 class="text-4xl md:text-5xl font-extrabold mb-3 text-gray-900">Sliding Window Maximum</h1>
+  <p class="text-gray-600 text-lg mb-6 max-w-2xl">Given an array of integers and a sliding window of size k, return the maximum element inside the window at each position as it moves from left to right.</p>
+  <div class="flex flex-wrap gap-2 mb-6">
+    <span class="text-xs bg-blue-50 border border-blue-200 px-3 py-1 rounded-full text-blue-700 font-medium">Array</span>
+    <span class="text-xs bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-full text-indigo-700 font-medium">Sliding Window</span>
+    <span class="text-xs bg-teal-50 border border-teal-200 px-3 py-1 rounded-full text-teal-700 font-medium">Monotonic Deque</span>
+  </div>
+  <div class="flex gap-4">
+    <div class="bg-white border border-gray-200 rounded-lg px-4 py-2"><span class="text-xs text-gray-500 block">Time</span><span class="text-sm font-mono font-bold text-emerald-600">O(N)</span></div>
+    <div class="bg-white border border-gray-200 rounded-lg px-4 py-2"><span class="text-xs text-gray-500 block">Space</span><span class="text-sm font-mono font-bold text-indigo-600">O(K)</span></div>
+  </div>
+</div>
+</div>
+
+<div class="max-w-4xl mx-auto px-6 pb-20 space-y-4 mt-8">
+
+<!-- 1. PROBLEM STATEMENT -->
+<section class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+<div class="px-5 py-4 border-b border-gray-200"><h2 class="text-sm font-bold text-gray-900">1. Problem Statement</h2></div>
+<div class="p-5 space-y-4">
+  <p class="text-sm text-gray-700 leading-relaxed">You are given an array of integers <code class="code text-ed-sky bg-gray-100 px-1 rounded">nums</code>, there is a sliding window of size <code class="code text-ed-sky bg-gray-100 px-1 rounded">k</code> which is moving from the very left of the array to the very right. You can only see the <code class="code text-ed-sky bg-gray-100 px-1 rounded">k</code> numbers in the window. Each time the sliding window moves right by one position.</p>
+  <p class="text-sm text-gray-500">Return <em>the max sliding window</em>.</p>
+  <div class="bg-gray-100/60 rounded-lg p-4">
+    <span class="text-xs font-semibold text-gray-500">Example 1:</span>
+    <pre class="code text-sm text-gray-600 mt-1"><span class="text-ed-teal">Input:</span> nums = [1,3,-1,-3,5,3,6,7], k = 3
+<span class="text-ed-teal">Output:</span> [3,3,5,5,6,7]
+<span class="text-gray-500">Explanation:</span> 
+Window position                Max
+------------------------      -----
+[1  3  -1] -3  5  3  6  7       3
+ 1 [3  -1  -3] 5  3  6  7       3
+ 1  3 [-1  -3  5] 3  6  7       5
+ 1  3  -1 [-3  5  3] 6  7       5
+ 1  3  -1  -3 [5  3  6] 7       6
+ 1  3  -1  -3  5 [3  6  7]      7</pre>
+  </div>
+  <div class="text-xs text-gray-500"><span class="font-semibold">Constraints:</span> 1 &le; nums.length &le; 10<sup>5</sup> &middot; 1 &le; k &le; nums.length &middot; -10<sup>4</sup> &le; nums[i] &le; 10<sup>4</sup></div>
+</div>
+</section>
+
+<!-- 2. PATTERN RECOGNITION -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">2. Pattern Recognition</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <div class="rounded-lg bg-ed-pink/5 border border-ed-pink/15 p-4">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="text-xs bg-ed-pink/10 text-ed-pink border border-ed-pink/20 px-2 py-0.5 rounded font-semibold">Pattern</span>
+      <span class="text-sm font-bold text-gray-900">Monotonic Deque + Sliding Window</span>
+    </div>
+    <p class="text-xs text-gray-600 mb-3 italic">When you need to keep track of extreme statistics (min/max) within a dynamically shifting range, and scanning the range repeatedly is too slow.</p>
+    <div class="space-y-2">
+      <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">How to spot it:</span>
+      <div class="flex gap-2 items-start"><div class="w-1 h-1 rounded-full bg-ed-pink mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">The problem involves a sliding window range of width <strong>k</strong>.</p></div>
+      <div class="flex gap-2 items-start"><div class="w-1 h-1 rounded-full bg-ed-pink mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">You need to perform extreme value lookups (min or max) in O(1) time at each window shift.</p></div>
+      <div class="flex gap-2 items-start"><div class="w-1 h-1 rounded-full bg-ed-pink mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">New elements render older, smaller/larger elements obsolete (obsolescence invariant).</p></div>
+    </div>
+  </div>
+</div>
+</details>
+
+<!-- 3. PATTERN BLUEPRINT -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">3. Pattern Blueprint</span>
+  <span class="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded font-semibold">Template</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <p class="text-xs text-gray-600 mb-3">Use this blueprint for any sliding window extreme lookup problem:</p>
+  <div class="rounded-lg bg-gray-50 border border-gray-200 overflow-hidden">
+    <div class="px-4 py-3 space-y-2">
+      <div class="flex gap-3 items-start"><span class="text-xs font-bold text-blue-700 bg-blue-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">1</span><p class="text-xs text-gray-700">Initialize a double-ended queue (deque) to store indices.</p></div>
+      <div class="flex gap-3 items-start"><span class="text-xs font-bold text-blue-700 bg-blue-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">2</span><p class="text-xs text-gray-700">Evict out-of-bounds indices from the front of the deque: <code class="code bg-gray-200/50 px-1 rounded">i - deque[0] >= k</code>.</p></div>
+      <div class="flex gap-3 items-start"><span class="text-xs font-bold text-blue-700 bg-blue-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">3</span><p class="text-xs text-gray-700">Pop indices from the back of the deque while the current element is larger than (or smaller than, for minimums) the elements represented by the back indices.</p></div>
+      <div class="flex gap-3 items-start"><span class="text-xs font-bold text-blue-700 bg-blue-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">4</span><p class="text-xs text-gray-700">Append the current index <code class="code">i</code> to the back of the deque.</p></div>
+      <div class="flex gap-3 items-start"><span class="text-xs font-bold text-blue-700 bg-blue-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">5</span><p class="text-xs text-gray-700">Once the window reaches size <code class="code">k</code>, the element at the index stored in <code class="code">deque[0]</code> is the extreme value.</p></div>
+    </div>
+  </div>
+</div>
+</details>
+
+<!-- 4. HOW TO THINK ABOUT IT -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">4. How to Think About It</span>
+  <span class="text-xs bg-ed-blue/10 text-ed-blue border border-ed-blue/20 px-2 py-0.5 rounded font-semibold">Key Section</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <div class="rounded-lg border border-gray-300 overflow-hidden">
+    <div class="bg-ed-blue/5 px-4 py-3 border-b border-gray-300/50">
+      <div class="flex items-start gap-3">
+        <div class="w-6 h-6 rounded-full bg-ed-blue/15 flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-xs font-bold text-ed-blue">1</span></div>
+        <p class="text-sm font-semibold text-gray-900 italic">"A naive loop checks k elements at each of the N window shifts. That's O(N * K). Can we avoid looking backwards?"</p>
+      </div>
+    </div>
+    <div class="px-4 py-3 space-y-2 bg-gray-100/40">
+      <p class="text-xs text-gray-600 leading-relaxed">As the window shifts, only one element enters and one element leaves. We shouldn't scan the whole window again. We need a way to maintain the maximum candidate incrementally.</p>
+      <p class="text-xs text-ed-teal font-medium">&rarr; Transform: Instead of recalculating, maintain a running list of maximum candidates.</p>
+    </div>
+  </div>
+  <div class="rounded-lg border border-gray-300 overflow-hidden">
+    <div class="bg-ed-blue/5 px-4 py-3 border-b border-gray-300/50">
+      <div class="flex items-start gap-3">
+        <div class="w-6 h-6 rounded-full bg-ed-blue/15 flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-xs font-bold text-ed-blue">2</span></div>
+        <p class="text-sm font-semibold text-gray-900 italic">"If a new element is larger than an older element inside the window, does that older element matter anymore?"</p>
+      </div>
+    </div>
+    <div class="px-4 py-3 space-y-2 bg-gray-100/40">
+      <p class="text-xs text-gray-600 leading-relaxed">No. Because the new element is larger AND it will stay in the sliding window longer than the older, smaller element. The older, smaller element can NEVER be the maximum in any future window. We can prune it immediately.</p>
+      <p class="text-xs text-ed-teal font-medium">&rarr; Evict smaller elements from our tracking structures when a larger element joins.</p>
+    </div>
+  </div>
+  <div class="rounded-lg border border-gray-300 overflow-hidden">
+    <div class="bg-ed-blue/5 px-4 py-3 border-b border-gray-300/50">
+      <div class="flex items-start gap-3">
+        <div class="w-6 h-6 rounded-full bg-ed-blue/15 flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-xs font-bold text-ed-blue">3</span></div>
+        <p class="text-sm font-semibold text-gray-900 italic">"We need to access the max element at the front, and prune obsolete elements from the back. What data structure supports this?"</p>
+      </div>
+    </div>
+    <div class="px-4 py-3 space-y-2 bg-gray-100/40">
+      <p class="text-xs text-gray-600 leading-relaxed">A Double-Ended Queue (Deque). By keeping indices in the deque, we can easily check if the front element is out-of-bounds, while popping smaller values from the back to maintain a monotonic descending order.</p>
+      <p class="text-xs text-ed-teal font-medium">&rarr; Result: Amortized O(1) operations per element, yielding O(N) total time.</p>
+    </div>
+  </div>
+</div>
+</details>
+
+<!-- 5. REAL-WORLD ANALOGY -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">5. Real-World Analogy</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <div class="rounded-lg bg-ed-teal/5 border border-ed-teal/15 p-4">
+    <p class="text-sm font-semibold text-ed-teal mb-2">The Career Promotion Ladder</p>
+    <p class="text-xs text-gray-600 leading-relaxed mb-2">Imagine a sliding window as a company's promotion window representing the last <strong>k</strong> years of hires. We want to know who the most qualified person (highest value) is at any time.</p>
+    <p class="text-xs text-gray-600 leading-relaxed mb-2">When a highly qualified newcomer (larger value) joins the company, anyone who joined before them (older indices) but has less qualifications (smaller values) is immediately overshadowed. They will never be promoted over the newcomer. Thus, the manager prunes them from the promotion queue.</p>
+    <p class="text-xs text-gray-600 leading-relaxed">Additionally, employees who reach retirement limits (indices exceeding the sliding window bounds) are removed from the front of the queue. The top candidate eligible for promotion is always at the front of the queue.</p>
+    <p class="text-xs text-gray-500 mt-3 italic">The Deque stores index candidates in strictly decreasing order of qualifications.</p>
+  </div>
+</div>
+</details>
+
+<!-- 6. BUILD YOUR INTUITION -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">6. Build Your Intuition</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <div class="rounded-lg bg-ed-amber/5 border border-ed-amber/15 p-4">
+    <p class="text-xs text-gray-600 leading-relaxed italic">"Why does sorting or priority queues fail to reach linear O(N) time?"</p>
+  </div>
+  <div class="rounded-lg bg-ed-teal/5 border border-ed-teal/15 p-4">
+    <p class="text-xs text-gray-900 leading-relaxed font-medium">A Priority Queue (Heap) would take O(log K) to push and pop elements on each shift, leading to O(N log K). We avoid this log factor by recognizing the "monotonic obsolescence" invariant—meaning we can discard intermediate values immediately without sorting them, because they are guaranteed never to matter.</p>
+  </div>
+</div>
+</details>
+
+<!-- 7. HOW IT WORKS (STEP BY STEP) -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">7. How It Works (Step by Step)</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <p class="text-xs text-gray-500 mb-3">Example: <code class="code">nums = [1, 3, -1]</code>, <code class="code">k = 3</code></p>
+  <div class="space-y-2">
+    <div class="flex gap-3 items-start"><div class="w-5 h-5 rounded-full bg-ed-sky/15 flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-xs font-bold text-ed-sky">1</span></div><p class="text-xs text-gray-600">Initialize empty deque: <code class="code text-ed-sky">[]</code></p></div>
+    <div class="flex gap-3 items-start"><div class="w-5 h-5 rounded-full bg-ed-sky/15 flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-xs font-bold text-ed-sky">2</span></div><p class="text-xs text-gray-600">Process <code class="code text-ed-sky">i=0, x=1</code>. Deque empty. Store index <code class="code text-ed-sky">[0]</code>.</p></div>
+    <div class="flex gap-3 items-start"><div class="w-5 h-5 rounded-full bg-ed-sky/15 flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-xs font-bold text-ed-sky">3</span></div><p class="text-xs text-gray-600">Process <code class="code text-ed-sky">i=1, x=3</code>. Since 3 >= nums[0] (1), pop index 0. Store index <code class="code text-ed-sky">[1]</code>.</p></div>
+    <div class="flex gap-3 items-start"><div class="w-5 h-5 rounded-full bg-ed-sky/15 flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-xs font-bold text-ed-sky">4</span></div><p class="text-xs text-gray-600">Process <code class="code text-ed-sky">i=2, x=-1</code>. Since -1 < nums[1] (3), append index 2. Deque: <code class="code text-ed-sky">[1, 2]</code>. Output deq[0] element = <span class="text-emerald-600 font-bold">3</span>.</p></div>
+  </div>
+</div>
+</details>
+
+<!-- 8. DRY RUN TABLE -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">8. Dry Run Table</span>
+  <span class="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded font-semibold">Trace</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <p class="text-xs text-gray-600 mb-3">A trace of variables at each index iteration. This represents what you should write down during a physical interview.</p>
+  <div class="overflow-x-auto">
+    <table class="w-full text-xs border border-gray-200 rounded-lg overflow-hidden">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-3 py-2 text-left text-gray-500 font-semibold border-b border-gray-200">Iteration</th>
+          <th class="px-3 py-2 text-left text-gray-500 font-semibold border-b border-gray-200">Index i</th>
+          <th class="px-3 py-2 text-left text-gray-500 font-semibold border-b border-gray-200">Value nums[i]</th>
+          <th class="px-3 py-2 text-left text-gray-500 font-semibold border-b border-gray-200">Deque State (indices)</th>
+          <th class="px-3 py-2 text-left text-gray-500 font-semibold border-b border-gray-200">Out of bounds check</th>
+          <th class="px-3 py-2 text-left text-gray-500 font-semibold border-b border-gray-200">Action Taken</th>
+          <th class="px-3 py-2 text-left text-gray-500 font-semibold border-b border-gray-200">Result</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-b border-gray-100"><td class="px-3 py-2 text-gray-600">Init</td><td class="px-3 py-2 text-gray-600">—</td><td class="px-3 py-2 text-gray-600">—</td><td class="px-3 py-2 text-gray-600 font-mono">[]</td><td class="px-3 py-2 text-gray-600">—</td><td class="px-3 py-2 text-gray-600">Create empty deque</td><td class="px-3 py-2 text-gray-600">[]</td></tr>
+        <tr class="border-b border-gray-100 bg-gray-50/50"><td class="px-3 py-2 text-gray-600">1</td><td class="px-3 py-2 text-gray-600 font-mono">0</td><td class="px-3 py-2 text-gray-600 font-mono">1</td><td class="px-3 py-2 text-gray-600 font-mono">[0]</td><td class="px-3 py-2 text-gray-600">—</td><td class="px-3 py-2 text-gray-600">Push 0</td><td class="px-3 py-2 text-gray-600">[]</td></tr>
+        <tr class="border-b border-gray-100"><td class="px-3 py-2 text-gray-600">2</td><td class="px-3 py-2 text-gray-600 font-mono">1</td><td class="px-3 py-2 text-gray-600 font-mono">3</td><td class="px-3 py-2 text-gray-600 font-mono">[1]</td><td class="px-3 py-2 text-gray-600">—</td><td class="px-3 py-2 text-gray-600">Pop 0, Push 1</td><td class="px-3 py-2 text-gray-600">[]</td></tr>
+        <tr class="border-b border-gray-100 bg-gray-50/50"><td class="px-3 py-2 text-gray-600">3</td><td class="px-3 py-2 text-gray-600 font-mono">2</td><td class="px-3 py-2 text-gray-600 font-mono">-1</td><td class="px-3 py-2 text-gray-600 font-mono">[1, 2]</td><td class="px-3 py-2 text-gray-600">2 - 1 &lt; 3 (No)</td><td class="px-3 py-2 text-gray-600">Push 2, Output nums[1]</td><td class="px-3 py-2 text-gray-600">[3]</td></tr>
+        <tr class="border-b border-gray-100"><td class="px-3 py-2 text-gray-600">4</td><td class="px-3 py-2 text-gray-600 font-mono">3</td><td class="px-3 py-2 text-gray-600 font-mono">-3</td><td class="px-3 py-2 text-gray-600 font-mono">[1, 2, 3]</td><td class="px-3 py-2 text-gray-600">3 - 1 &lt; 3 (No)</td><td class="px-3 py-2 text-gray-600">Push 3, Output nums[1]</td><td class="px-3 py-2 text-gray-600">[3, 3]</td></tr>
+        <tr class="border-b border-gray-100 bg-gray-50/50"><td class="px-3 py-2 text-gray-600">5</td><td class="px-3 py-2 text-gray-600 font-mono">4</td><td class="px-3 py-2 text-gray-600 font-mono">5</td><td class="px-3 py-2 text-gray-600 font-mono">[4]</td><td class="px-3 py-2 text-red-600">4 - 1 &ge; 3 (Yes)</td><td class="px-3 py-2 text-gray-600">Pop front (1), Pop back (3, 2), Push 4, Output nums[4]</td><td class="px-3 py-2 text-gray-600">[3, 3, 5]</td></tr>
+        <tr class="border-b border-gray-100"><td class="px-3 py-2 text-gray-600">6</td><td class="px-3 py-2 text-gray-600 font-mono">5</td><td class="px-3 py-2 text-gray-600 font-mono">3</td><td class="px-3 py-2 text-gray-600 font-mono">[4, 5]</td><td class="px-3 py-2 text-gray-600">5 - 4 &lt; 3 (No)</td><td class="px-3 py-2 text-gray-600">Push 5, Output nums[4]</td><td class="px-3 py-2 text-gray-600">[3, 3, 5, 5]</td></tr>
+        <tr class="border-b border-gray-100 bg-gray-50/50"><td class="px-3 py-2 text-gray-600">7</td><td class="px-3 py-2 text-gray-600 font-mono">6</td><td class="px-3 py-2 text-gray-600 font-mono">6</td><td class="px-3 py-2 text-gray-600 font-mono">[6]</td><td class="px-3 py-2 text-gray-600">6 - 4 &lt; 3 (No)</td><td class="px-3 py-2 text-gray-600">Pop back (5, 4), Push 6, Output nums[6]</td><td class="px-3 py-2 text-gray-600">[3, 3, 5, 5, 6]</td></tr>
+        <tr><td class="px-3 py-2 text-gray-600">8</td><td class="px-3 py-2 text-gray-600 font-mono">7</td><td class="px-3 py-2 text-gray-600 font-mono">7</td><td class="px-3 py-2 text-gray-600 font-mono">[7]</td><td class="px-3 py-2 text-gray-600">7 - 6 &lt; 3 (No)</td><td class="px-3 py-2 text-gray-600">Pop back (6), Push 7, Output nums[7]</td><td class="px-3 py-2 text-gray-600">[3, 3, 5, 5, 6, 7]</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</details>
+
+<!-- 9. LIVE INTERACTIVE VISUALIZATION -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">9. Live Interactive Visualization</span>
+  <span class="text-xs bg-ed-pink/10 text-ed-pink border border-ed-pink/20 px-2 py-0.5 rounded font-semibold">Interactive</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-5">
+  <div class="flex flex-wrap items-center gap-2">
+    <button id="viz-reset" class="text-xs font-semibold bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 shadow-sm px-3 py-1.5 rounded transition-colors">Reset</button>
+    <button id="viz-prev" class="text-xs font-semibold bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 shadow-sm px-3 py-1.5 rounded transition-colors">&#9664; Prev</button>
+    <button id="viz-next" class="text-xs font-semibold bg-ed-teal/10 hover:bg-ed-teal/20 border border-ed-teal/30 text-ed-teal px-3 py-1.5 rounded transition-colors">Next &#9654;</button>
+    <button id="viz-auto" class="text-xs font-semibold bg-ed-purple/10 hover:bg-ed-purple/20 border border-ed-purple/30 text-ed-purple px-3 py-1.5 rounded transition-colors">Auto Play</button>
+    <span id="viz-step-label" class="text-xs text-gray-500 ml-auto">Step 0 / 8</span>
+  </div>
+
+  <div>
+    <p class="text-xs font-semibold text-gray-500 mb-2">Input Array <code class="code text-ed-sky">nums</code> &amp; Sliding Window (k = 3)</p>
+    <div id="viz-array" class="flex gap-2 justify-between"></div>
+  </div>
+
+  <div>
+    <p class="text-xs font-semibold text-gray-500 mb-2">Value Histogram State</p>
+    <div id="viz-bars" class="flex items-end gap-2 h-40 bg-gray-50 border border-gray-200 rounded-lg p-4"></div>
+    <div class="flex justify-center gap-2 mt-2">
+      <span class="flex items-center gap-1 text-[10px] text-gray-500"><span class="w-2 h-2 rounded-full bg-sky-500"></span> Active Index</span>
+      <span class="flex items-center gap-1 text-[10px] text-gray-500"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> Sliding Window Boundary</span>
+      <span class="flex items-center gap-1 text-[10px] text-gray-500"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Deque Invariant Element</span>
+      <span class="flex items-center gap-1 text-[10px] text-gray-500"><span class="w-2 h-2 rounded-full bg-gray-300"></span> Out of Window</span>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div class="bg-gray-100/60 border border-gray-300 rounded-lg p-3">
+      <span class="text-xs text-gray-500 block mb-1">Double-Ended Queue (Indices)</span>
+      <div id="viz-deque" class="flex gap-2 min-h-[2rem] items-center"></div>
+    </div>
+    <div class="bg-gray-100/60 border border-gray-300 rounded-lg p-3">
+      <span class="text-xs text-gray-500 block mb-1">Result Array</span>
+      <div id="viz-result" class="flex gap-2 min-h-[2rem] items-center text-emerald-600 font-bold"></div>
+    </div>
+  </div>
+
+  <div id="viz-status" class="bg-gray-100/60 border border-gray-300 rounded-lg p-3 text-xs text-gray-600 leading-relaxed">
+    Press <strong>Next</strong> to start the sliding window simulation.
+  </div>
+
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto">
+    <pre class="code text-xs leading-6 text-gray-500"><span id="code-L0">for i, x in enumerate(nums):</span>
+<span id="code-L1">    if deq and deq[0] < i - k + 1:</span>
+<span id="code-L2">        deq.popleft()</span>
+<span id="code-L3">    while deq and nums[deq[-1]] <= x:</span>
+<span id="code-L4">        deq.pop()</span>
+<span id="code-L5">    deq.append(i)</span>
+<span id="code-L6">    if i >= k - 1:</span>
+<span id="code-L7">        result.append(nums[deq[0]])</span></pre>
+  </div>
+</div>
+</details>
+
+<script>
+(function() {
+  const steps = [
+    { i: null, deq: [], res: [], line: null, msg: "Ready. Walk through <strong>nums = [1, 3, -1, -3, 5, 3, 6, 7]</strong>, <strong>k = 3</strong>." },
+    { i: 0, deq: [0], res: [], line: 5, msg: "Process <strong>i = 0</strong>, nums[0] = 1. Deque empty, append index 0." },
+    { i: 1, deq: [1], res: [], line: 4, msg: "Process <strong>i = 1</strong>, nums[1] = 3. Since nums[1] >= nums[0] (3 >= 1), pop index 0 from back. Append index 1." },
+    { i: 2, deq: [1, 2], res: [3], line: 7, msg: "Process <strong>i = 2</strong>, nums[2] = -1. Since -1 < 3, append index 2. Window boundary met, output deq[0] element = 3." },
+    { i: 3, deq: [1, 2, 3], res: [3, 3], line: 7, msg: "Process <strong>i = 3</strong>, nums[3] = -3. Append index 3. Output deq[0] element = 3." },
+    { i: 4, deq: [4], res: [3, 3, 5], line: 7, msg: "Process <strong>i = 4</strong>, nums[4] = 5. Index 1 has aged out, popped from front. Since 5 >= -3 and -1, pop indices 3 and 2. Append index 4. Output deq[0] element = 5." },
+    { i: 5, deq: [4, 5], res: [3, 3, 5, 5], line: 7, msg: "Process <strong>i = 5</strong>, nums[5] = 3. Since 3 < 5, append index 5. Output deq[0] element = 5." },
+    { i: 6, deq: [6], res: [3, 3, 5, 5, 6], line: 7, msg: "Process <strong>i = 6</strong>, nums[6] = 6. Pop index 5 (3) and index 4 (5) because 6 is larger. Append index 6. Output deq[0] element = 6." },
+    { i: 7, deq: [7], res: [3, 3, 5, 5, 6, 7], line: 7, msg: "Process <strong>i = 7</strong>, nums[7] = 7. Pop index 6 (6) because 7 is larger. Append index 7. Output deq[0] element = 7." }
+  ];
+
+  let step = 0;
+  let autoTimer = null;
+
+  const els = {
+    array: document.getElementById('viz-array'),
+    deque: document.getElementById('viz-deque'),
+    result: document.getElementById('viz-result'),
+    status: document.getElementById('viz-status'),
+    label: document.getElementById('viz-step-label'),
+    next: document.getElementById('viz-next'),
+    prev: document.getElementById('viz-prev'),
+    reset: document.getElementById('viz-reset'),
+    auto: document.getElementById('viz-auto'),
+    bars: document.getElementById('viz-bars')
+  };
+
+  const nums = [1, 3, -1, -3, 5, 3, 6, 7];
+  const k = 3;
+
+  function render() {
+    const s = steps[step];
+
+    els.array.innerHTML = nums.map((v, idx) => {
+      let classes = "flex-1 text-center rounded-lg border p-2 transition-all duration-300 ";
+      const inWindow = s.i !== null && idx <= s.i && idx > s.i - k;
+      
+      if (idx === s.i) {
+        classes += "bg-sky-50 border-sky-400 text-sky-600 ring-1 ring-sky-400/50 font-bold";
+      } else if (inWindow) {
+        classes += "bg-indigo-50/50 border-indigo-300 text-indigo-700";
+      } else {
+        classes += "bg-white border-gray-200 text-gray-500";
+      }
+
+      return '<div class="' + classes + '">' +
+        '<div class="text-[10px] text-gray-400 font-mono">' + idx + '</div>' +
+        '<div class="text-sm font-bold">' + v + '</div>' +
+      '</div>';
+    }).join('');
+
+    const maxVal = Math.max(...nums);
+    els.bars.innerHTML = nums.map((v, idx) => {
+      let barColor = 'bg-gray-300';
+      if (s.i !== null) {
+        const inWindow = idx <= s.i && idx > s.i - k;
+        if (idx === s.i) barColor = 'bg-sky-500';
+        else if (s.deq.includes(idx)) barColor = 'bg-emerald-500';
+        else if (inWindow) barColor = 'bg-indigo-400';
+      }
+      const heightPct = Math.max(10, ((v + 4) / (maxVal + 4)) * 100);
+      return '<div class="flex-1 flex flex-col items-center justify-end h-full gap-1">' +
+        '<span class="text-[10px] font-mono font-bold text-gray-600">' + v + '</span>' +
+        '<div class="w-full rounded-t-md transition-all duration-500 ' + barColor + '" style="height:' + heightPct + '%"></div>' +
+        '<span class="text-[10px] text-gray-500">' + idx + '</span>' +
+      '</div>';
+    }).join('');
+
+    if (s.deq.length === 0) {
+      els.deque.innerHTML = '<span class="text-xs text-gray-600 italic">empty</span>';
+    } else {
+      els.deque.innerHTML = s.deq.map(d => 
+        '<div class="bg-white border border-gray-300 rounded px-2 py-1 text-xs font-mono shadow-sm">' +
+          '<span class="text-gray-400">[' + d + ']:</span><span class="font-bold text-gray-800">' + nums[d] + '</span>' +
+        '</div>'
+      ).join('');
+    }
+
+    if (s.res.length === 0) {
+      els.result.innerHTML = '<span class="text-xs text-gray-600 italic">empty</span>';
+    } else {
+      els.result.innerHTML = s.res.map(r =>
+        '<div class="w-7 h-7 flex items-center justify-center border border-emerald-200 bg-emerald-50 rounded text-xs font-bold">' + r + '</div>'
+      ).join('');
+    }
+
+    els.status.innerHTML = s.msg;
+
+    [0,1,2,3,4,5,6,7].forEach(n => {
+      const line = document.getElementById('code-L' + n);
+      if (line) {
+        if (s.line === n) {
+          line.className = 'block bg-ed-teal/10 text-ed-teal border-l-2 border-ed-teal pl-2 -ml-2';
+        } else {
+          line.className = 'block text-gray-500';
+        }
+      }
+    });
+
+    els.label.textContent = 'Step ' + step + ' / ' + (steps.length - 1);
+    els.prev.disabled = step <= 0;
+    els.next.disabled = step >= steps.length - 1;
+    els.prev.style.opacity = step <= 0 ? '0.4' : '1';
+    els.next.style.opacity = step >= steps.length - 1 ? '0.4' : '1';
+  }
+
+  function setStep(n) {
+    step = Math.max(0, Math.min(steps.length - 1, n));
+    render();
+  }
+
+  function toggleAuto() {
+    if (autoTimer) {
+      clearInterval(autoTimer);
+      autoTimer = null;
+      els.auto.textContent = 'Auto Play';
+      els.auto.classList.remove('bg-ed-purple/20');
+      els.auto.classList.add('bg-ed-purple/10');
+    } else {
+      els.auto.textContent = 'Pause';
+      els.auto.classList.remove('bg-ed-purple/10');
+      els.auto.classList.add('bg-ed-purple/20');
+      if (step >= steps.length - 1) setStep(0);
+      autoTimer = setInterval(function() {
+        if (step >= steps.length - 1) { toggleAuto(); return; }
+        setStep(step + 1);
+      }, 1500);
+    }
+  }
+
+  els.next.addEventListener('click', function() { setStep(step + 1); });
+  els.prev.addEventListener('click', function() { setStep(step - 1); });
+  els.reset.addEventListener('click', function() { if (autoTimer) toggleAuto(); setStep(0); });
+  els.auto.addEventListener('click', toggleAuto);
+
+  render();
+})();
+</script>
+
+<!-- 10. COMPLEXITY DEEP DIVE -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">10. Complexity Deep Dive</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div class="rounded-lg bg-gray-100/60 border border-gray-300 p-4">
+      <div class="flex items-center gap-2 mb-2"><span class="text-xs font-semibold text-gray-500 uppercase">Time Complexity</span><span class="text-sm font-mono font-bold text-ed-teal">O(N)</span></div>
+      <p class="text-xs text-gray-600 leading-relaxed">Each index element is appended to the deque exactly once and popped from the deque at most once. The amortized complexity per operation is strictly O(1).</p>
+    </div>
+    <div class="rounded-lg bg-gray-100/60 border border-gray-300 p-4">
+      <div class="flex items-center gap-2 mb-2"><span class="text-xs font-semibold text-gray-500 uppercase">Space Complexity</span><span class="text-sm font-mono font-bold text-ed-purple">O(K)</span></div>
+      <p class="text-xs text-gray-600 leading-relaxed">The double-ended queue stores at most k index elements, since indices that have shifted outside of the active sliding window bounds are immediately evicted.</p>
+    </div>
+  </div>
+</div>
+</details>
+
+<!-- 11. FROM BRUTE FORCE TO OPTIMAL -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">11. From Brute Force to Optimal</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <div class="rounded-lg bg-red-500/5 border border-red-500/15 p-4">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="text-xs bg-red-500/10 text-red-500 border border-red-500/20 px-2 py-0.5 rounded font-semibold">Naive</span>
+      <span class="text-xs font-mono font-bold text-red-500">O(N * K)</span>
+    </div>
+    <p class="text-xs text-gray-600 leading-relaxed">Scan the entire sliding window of size k at each index position to extract the maximum element.</p>
+  </div>
+  <div class="flex items-center justify-center"><div class="flex items-center gap-1 px-3 py-1 rounded-full bg-ed-purple/10"><span class="text-xs font-semibold text-ed-purple">Optimize</span></div></div>
+  <div class="rounded-lg bg-ed-teal/5 border border-ed-teal/15 p-4">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="text-xs bg-ed-teal/10 text-ed-teal border border-ed-teal/20 px-2 py-0.5 rounded font-semibold">Optimal</span>
+      <span class="text-xs font-mono font-bold text-ed-teal">O(N)</span>
+    </div>
+    <p class="text-xs text-gray-600 leading-relaxed">Maintain a running monotonic descending deque of maximum candidates. Evict indices out-of-bounds at the head and smaller elements at the tail.</p>
+  </div>
+  <div class="rounded-lg bg-gray-100/60 p-3">
+    <p class="text-xs text-gray-500 font-semibold mb-1">Concrete speedup metric:</p>
+    <p class="text-xs text-gray-500 leading-relaxed">With N = 100,000 and K = 10,000, naive requires 1 Billion checks. Monotonic Deque does it in ~200,000 operations, resulting in a <strong>5,000x speedup</strong>.</p>
+  </div>
+</div>
+</details>
+
+<!-- 12. EDGE CASES & GOTCHAS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">12. Edge Cases &amp; Gotchas</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-2.5">
+  <div class="rounded-lg border border-gray-300 overflow-hidden">
+    <div class="bg-ed-orange/5 px-3 py-2 border-b border-gray-300/50"><p class="text-xs font-semibold text-gray-900">Window size k = 1</p></div>
+    <div class="px-3 py-2 space-y-1 bg-gray-100/40">
+      <p class="text-xs text-gray-500"><span class="text-ed-teal font-medium">Handle:</span> Output is a copy of input array. Correctly processed immediately at index 0.</p>
+    </div>
+  </div>
+  <div class="rounded-lg border border-gray-300 overflow-hidden">
+    <div class="bg-ed-orange/5 px-3 py-2 border-b border-gray-300/50"><p class="text-xs font-semibold text-gray-900">Strictly increasing array (e.g. [1, 2, 3, 4])</p></div>
+    <div class="px-3 py-2 space-y-1 bg-gray-100/40">
+      <p class="text-xs text-gray-500"><span class="text-ed-teal font-medium">Handle:</span> Deque size stays at 1 because every incoming larger element pops all tail elements.</p>
+    </div>
+  </div>
+  <div class="rounded-lg border border-gray-300 overflow-hidden">
+    <div class="bg-ed-orange/5 px-3 py-2 border-b border-gray-300/50"><p class="text-xs font-semibold text-gray-900">Strictly decreasing array (e.g. [4, 3, 2, 1])</p></div>
+    <div class="px-3 py-2 space-y-1 bg-gray-100/40">
+      <p class="text-xs text-gray-500"><span class="text-ed-teal font-medium">Handle:</span> No tail pops take place; deque grows to size k before front evictions occur.</p>
+    </div>
+  </div>
+</div>
+</details>
+
+<!-- 13. FLASHCARDS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">13. Flashcards</span>
+  <span class="text-xs bg-ed-purple/10 text-ed-purple border border-ed-purple/20 px-2 py-0.5 rounded font-semibold">5 cards</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <details class="rounded-lg border border-gray-300 overflow-hidden">
+    <summary class="bg-ed-purple/5 px-4 py-3 cursor-pointer select-none"><span class="text-xs font-semibold text-gray-600">Q: Why use indices in the deque instead of values?</span></summary>
+    <div class="px-4 py-3 bg-gray-100/40"><p class="text-xs text-gray-600">Indices allow us to perform out-of-bounds checks to evict elements that have aged out of the sliding window range. If we stored values, we wouldn't know when they expired.</p></div>
+  </details>
+  <details class="rounded-lg border border-gray-300 overflow-hidden">
+    <summary class="bg-ed-purple/5 px-4 py-3 cursor-pointer select-none"><span class="text-xs font-semibold text-gray-600">Q: What is the monotonic property maintained here?</span></summary>
+    <div class="px-4 py-3 bg-gray-100/40"><p class="text-xs text-gray-600">Monotonic descending order: the element at the head of the deque is always the largest candidate, followed by progressively smaller candidates.</p></div>
+  </details>
+  <details class="rounded-lg border border-gray-300 overflow-hidden">
+    <summary class="bg-ed-purple/5 px-4 py-3 cursor-pointer select-none"><span class="text-xs font-semibold text-gray-600">Q: What is the worst-case space complexity of the deque?</span></summary>
+    <div class="px-4 py-3 bg-gray-100/40"><p class="text-xs text-gray-600">O(K) where k is the size of the sliding window. This occurs in a strictly decreasing array where no tail pops happen.</p></div>
+  </details>
+  <details class="rounded-lg border border-gray-300 overflow-hidden">
+    <summary class="bg-ed-purple/5 px-4 py-3 cursor-pointer select-none"><span class="text-xs font-semibold text-gray-600">Q: Can this be solved with a Heap?</span></summary>
+    <div class="px-4 py-3 bg-gray-100/40"><p class="text-xs text-gray-600">Yes, a Max-Heap storing (value, index) pairs works in O(N log N) by discarding expired heap root entries on shifts. The deque optimizes this to O(N) linear time.</p></div>
+  </details>
+  <details class="rounded-lg border border-gray-300 overflow-hidden">
+    <summary class="bg-ed-purple/5 px-4 py-3 cursor-pointer select-none"><span class="text-xs font-semibold text-gray-600">Q: What is the crossover threshold where naive beats deque?</span></summary>
+    <div class="px-4 py-3 bg-gray-100/40"><p class="text-xs text-gray-600">For window sizes k &le; 4, the overhead of heap allocations and double-ended node pointer adjustments in the deque makes brute-force loops faster due to stack cache locality.</p></div>
+  </details>
+</div>
+</details>
+
+<!-- 14. WHERE IT IS USED (REAL WORLD) -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">14. Where It Is Used (Real World)</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-2.5">
+  <div class="rounded-lg bg-gray-100/60 p-3 space-y-1">
+    <span class="text-xs bg-amber-100 border border-amber-300 px-2 py-0.5 rounded text-amber-700">Financial Systems</span>
+    <p class="text-xs text-gray-600">High-frequency trading: tracking the peak/maximum stock bid value in a moving 1-minute transaction window.</p>
+  </div>
+  <div class="rounded-lg bg-gray-100/60 p-3 space-y-1">
+    <span class="text-xs bg-rose-100 border border-rose-300 px-2 py-0.5 rounded text-rose-700">Video Streaming</span>
+    <p class="text-xs text-gray-600">Adaptive bitrate streaming: evaluating peak network packet latency in a sliding window to switch video quality profiles.</p>
+  </div>
+</div>
+</details>
+
+<!-- 15. COMMON MISTAKES -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">15. Common Mistakes</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-2">
+  <div class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">Evicting from the front using value boundaries instead of index age bounds (<code class="code">deq[0] < i - k + 1</code>).</p></div>
+  <div class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">Using standard array shift operations (<code class="code">shift()</code>) in JavaScript inside loops, creating hidden O(N) costs leading to quadratic O(N&sup2;) execution.</p></div>
+  <div class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">Forgetting to start adding elements to the result array only after the loop index reaches <code class="code">k - 1</code>.</p></div>
+</div>
+</details>
+
+<!-- 16. INTERVIEW TIPS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">16. Interview Tips</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-2">
+  <div class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-ed-purple mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">State brute force O(N * K) first. It sets a baseline and highlights your understanding of why scaling is required.</p></div>
+  <div class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-ed-purple mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">Explicitly walk through your monotonic deque variables during dry-runs; do not skip iterations.</p></div>
+  <div class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-ed-purple mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-600">If asked to optimize memory, highlight the O(K) space cost and detail cache location tradeoffs.</p></div>
+</div>
+</details>
+
+<!-- 17. SIMILAR PROBLEMS TO PRACTICE -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">17. Similar Problems to Practice</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-2">
+  <div class="rounded-lg bg-gray-100/60 px-3 py-2.5">
+    <div class="flex items-center gap-2 mb-1"><span class="text-xs font-semibold text-gray-900">Sliding Window Median</span><span class="text-xs text-rose-600 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0 rounded">Hard</span></div>
+    <p class="text-xs text-gray-600">Requires maintaining two heaps or balanced BST inside a sliding window.</p>
+  </div>
+  <div class="rounded-lg bg-gray-100/60 px-3 py-2.5">
+    <div class="flex items-center gap-2 mb-1"><span class="text-xs font-semibold text-gray-900">Longest Continuous Subarray With Absolute Diff Less Than or Equal to Limit</span><span class="text-xs text-amber-600 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0 rounded">Medium</span></div>
+    <p class="text-xs text-gray-600">Uses two monotonic deques (min and max) to track range limits dynamically.</p>
+  </div>
+</div>
+</details>
+
+<!-- 18. RELATED ALGORITHMS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">18. Related Algorithms</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <div class="flex flex-wrap gap-2">
+    <div class="rounded-lg bg-gray-100/60 px-3 py-2"><p class="text-xs font-semibold text-gray-900">Double-Ended Queue (Deque)</p><p class="text-xs text-gray-500">Supports O(1) front/back insertions and evictions.</p></div>
+    <div class="rounded-lg bg-gray-100/60 px-3 py-2"><p class="text-xs font-semibold text-gray-900">Monotonic Stack</p><p class="text-xs text-gray-500">Used for next greater element query patterns.</p></div>
+    <div class="rounded-lg bg-gray-100/60 px-3 py-2"><p class="text-xs font-semibold text-gray-900">Sliding Window</p><p class="text-xs text-gray-500">Moving range pattern over array datasets.</p></div>
+  </div>
+</div>
+</details>
+
+<!-- 19. WHERE THIS PATTERN MEETS SYSTEM DESIGN -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">19. Where This Pattern Meets System Design</span>
+  <span class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded font-semibold">Architecture</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <div class="rounded-lg bg-gray-100/60 p-3 space-y-1">
+    <span class="text-xs bg-indigo-100 border border-indigo-300 px-2 py-0.5 rounded text-indigo-700 font-medium">API Gateways: Rate Limiters</span>
+    <p class="text-xs text-gray-600">The sliding window log rate limiting algorithm matches the front eviction logic, popping timestamp records that age out of the sliding rate-limit range.</p>
+  </div>
+  <div class="rounded-lg bg-gray-100/60 p-3 space-y-1">
+    <span class="text-xs bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-amber-700 font-medium">Stream Processing Engines</span>
+    <p class="text-xs text-gray-600">Apache Flink streams apply monotonic window aggregates to compute peak metrics over dynamic rolling hourly blocks without maintaining complete sorted arrays in memory.</p>
+  </div>
+</div>
+</details>
+
+<!-- 20. CODE SOLUTIONS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">20. Code Solutions</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-4">
+  <div><span class="text-xs font-semibold text-ed-sky mb-1 block">Python</span>
+  <pre class="code text-xs bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto text-gray-600"><span class="text-purple-700">class</span> <span class="text-amber-700">Solution</span>:
+    <span class="text-purple-700">def</span> <span class="text-blue-700">maxSlidingWindow</span>(self, nums: List[<span class="text-amber-700">int</span>], k: <span class="text-amber-700">int</span>) -> List[<span class="text-amber-700">int</span>]:
+        deq = deque()
+        result = []
+        <span class="text-purple-700">for</span> i, x <span class="text-purple-700">in</span> <span class="text-blue-700">enumerate</span>(nums):
+            <span class="text-purple-700">if</span> deq <span class="text-purple-700">and</span> deq[0] &lt; i - k + <span class="text-blue-700">1</span>:
+                deq.popleft()
+            <span class="text-purple-700">while</span> deq <span class="text-purple-700">and</span> nums[deq[-1]] &lt;= x:
+                deq.pop()
+            deq.append(i)
+            <span class="text-purple-700">if</span> i &ge; k - <span class="text-blue-700">1</span>:
+                result.append(nums[deq[0]])
+        <span class="text-purple-700">return</span> result</pre>
+  </div>
+  <div><span class="text-xs font-semibold text-ed-sky mb-1 block">Java</span>
+  <pre class="code text-xs bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto text-gray-600"><span class="text-purple-700">class</span> <span class="text-amber-700">Solution</span> {
+    <span class="text-purple-700">public</span> <span class="text-amber-700">int</span>[] maxSlidingWindow(<span class="text-amber-700">int</span>[] nums, <span class="text-amber-700">int</span> k) {
+        Deque&lt;Integer&gt; deq = <span class="text-purple-700">new</span> ArrayDeque&lt;&gt;();
+        <span class="text-amber-700">int</span>[] result = <span class="text-purple-700">new</span> <span class="text-amber-700">int</span>[nums.length - k + <span class="text-blue-700">1</span>];
+        <span class="text-amber-700">int</span> idx = <span class="text-blue-700">0</span>;
+        <span class="text-purple-700">for</span> (<span class="text-amber-700">int</span> i = <span class="text-blue-700">0</span>; i &lt; nums.length; i++) {
+            <span class="text-purple-700">if</span> (!deq.isEmpty() &amp;&amp; deq.peekFirst() &lt; i - k + <span class="text-blue-700">1</span>) {
+                deq.pollFirst();
+            }
+            <span class="text-purple-700">while</span> (!deq.isEmpty() &amp;&amp; nums[deq.peekLast()] &lt;= nums[i]) {
+                deq.pollLast();
+            }
+            deq.offerLast(i);
+            <span class="text-purple-700">if</span> (i &ge; k - <span class="text-blue-700">1</span>) {
+                result[idx++] = nums[deq.peekFirst()];
+            }
+        }
+        <span class="text-purple-700">return</span> result;
+    }
+}</pre>
+  </div>
+  <div><span class="text-xs font-semibold text-ed-sky mb-1 block">C++</span>
+  <pre class="code text-xs bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto text-gray-600"><span class="text-purple-700">class</span> <span class="text-amber-700">Solution</span> {
+<span class="text-purple-700">public</span>:
+    vector&lt;<span class="text-amber-700">int</span>&gt; maxSlidingWindow(vector&lt;<span class="text-amber-700">int</span>&gt;&amp; nums, <span class="text-amber-700">int</span> k) {
+        deque&lt;<span class="text-amber-700">int</span>&gt; deq;
+        vector&lt;<span class="text-amber-700">int</span>&gt; result;
+        <span class="text-purple-700">for</span> (<span class="text-amber-700">int</span> i = <span class="text-blue-700">0</span>; i &lt; nums.size(); i++) {
+            <span class="text-purple-700">if</span> (!deq.empty() &amp;&amp; deq.front() &lt; i - k + <span class="text-blue-700">1</span>) {
+                deq.pop_front();
+            }
+            <span class="text-purple-700">while</span> (!deq.empty() &amp;&amp; nums[deq.back()] &lt;= nums[i]) {
+                deq.pop_back();
+            }
+            deq.push_back(i);
+            <span class="text-purple-700">if</span> (i &ge; k - <span class="text-blue-700">1</span>) {
+                result.push_back(nums[deq.front()]);
+            }
+        }
+        <span class="text-purple-700">return</span> result;
+    }
+};</pre>
+  </div>
+  <div><span class="text-xs font-semibold text-ed-sky mb-1 block">TypeScript</span>
+  <pre class="code text-xs bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto text-gray-600"><span class="text-purple-700">function</span> <span class="text-blue-700">maxSlidingWindow</span>(nums: <span class="text-amber-700">number</span>[], k: <span class="text-amber-700">number</span>): <span class="text-amber-700">number</span>[] {
+    <span class="text-purple-700">const</span> deq: <span class="text-amber-700">number</span>[] = [];
+    <span class="text-purple-700">const</span> result: <span class="text-amber-700">number</span>[] = [];
+    <span class="text-purple-700">for</span> (<span class="text-purple-700">let</span> i = <span class="text-blue-700">0</span>; i &lt; nums.length; i++) {
+        <span class="text-purple-700">if</span> (deq.length &gt; <span class="text-blue-700">0</span> &amp;&amp; deq[<span class="text-blue-700">0</span>] &lt; i - k + <span class="text-blue-700">1</span>) {
+            deq.shift();
+        }
+        <span class="text-purple-700">while</span> (deq.length &gt; <span class="text-blue-700">0</span> &amp;&amp; nums[deq[deq.length - <span class="text-blue-700">1</span>]] &lt;= nums[i]) {
+            deq.pop();
+        }
+        deq.push(i);
+        <span class="text-purple-700">if</span> (i &ge; k - <span class="text-blue-700">1</span>) {
+            result.push(nums[deq[<span class="text-blue-700">0</span>]]);
+        }
+    }
+    <span class="text-purple-700">return</span> result;
+}</pre>
+  </div>
+</div>
+</details>
+
+<!-- 21. FOLLOW-UP QUESTIONS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">21. Follow-Up Questions</span>
+  <span class="text-xs bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded font-semibold">Senior Interviews</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <div class="rounded-lg bg-white border border-indigo-200 overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-indigo-100 bg-indigo-50/60"><span class="text-xs font-semibold text-indigo-700">What if the input size N is infinite?</span></div>
+    <div class="px-4 py-3"><p class="text-xs text-gray-600">The monotonic deque operates as an event-driven stream aggregator. Since it only stores indices within the active window length <code class="code">k</code>, the space complexity remains bounded at O(K) even over infinite input streams, processing each element in O(1) time.</p></div>
+  </div>
+  <div class="rounded-lg bg-white border border-indigo-200 overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-indigo-100 bg-indigo-50/60"><span class="text-xs font-semibold text-indigo-700">What if we cannot fit the window of size k in memory?</span></div>
+    <div class="px-4 py-3"><p class="text-xs text-gray-600">If <code class="code">k</code> is extremely large (e.g. trillions of elements), partition the array into block segments on disk. Run a local monotonic deque on each segment, and consolidate segment boundary max outputs sequentially using a disk-backed merge protocol.</p></div>
+  </div>
+</div>
+</details>
+
+<!-- 22. QUICK REFERENCE -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">22. Quick Reference</span>
+  <span class="text-xs bg-gray-100 text-gray-700 border border-gray-300 px-2 py-0.5 rounded font-semibold">One-Pager</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+    <div class="rounded-lg bg-teal-50 border border-teal-200 p-2.5 text-center">
+      <span class="text-[10px] text-teal-600 uppercase font-semibold block mb-1">Time</span>
+      <span class="text-sm font-mono font-bold text-teal-700">O(N)</span>
+    </div>
+    <div class="rounded-lg bg-purple-50 border border-purple-200 p-2.5 text-center">
+      <span class="text-[10px] text-purple-600 uppercase font-semibold block mb-1">Space</span>
+      <span class="text-sm font-mono font-bold text-purple-700">O(K)</span>
+    </div>
+    <div class="rounded-lg bg-blue-50 border border-blue-200 p-2.5 text-center">
+      <span class="text-[10px] text-blue-600 uppercase font-semibold block mb-1">Pattern</span>
+      <span class="text-sm font-bold text-blue-700">Deque</span>
+    </div>
+    <div class="rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-center">
+      <span class="text-[10px] text-amber-600 uppercase font-semibold block mb-1">Key Op</span>
+      <span class="text-sm font-bold text-amber-700">Eviction</span>
+    </div>
+  </div>
+  <div class="rounded-lg bg-emerald-50 border border-emerald-200 p-3">
+    <p class="text-xs font-semibold text-emerald-700 mb-1.5">When to Use</p>
+    <p class="text-xs text-gray-700">Sliding window range &middot; Dynamic rolling range &middot; Extreme value extraction (min/max) &middot; Obsolescence behavior</p>
+  </div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3">
+    <p class="text-xs font-semibold text-rose-700 mb-1.5">When NOT to Use</p>
+    <p class="text-xs text-gray-700">No sliding range &middot; Simple index tracking &middot; Extremely small window values (k &le; 4)</p>
+  </div>
+  <div class="rounded-lg bg-sky-50 border border-sky-200 p-3">
+    <p class="text-xs font-semibold text-sky-700 mb-1.5">Core Code Shape</p>
+    <pre class="code text-[10px] text-gray-600 leading-5">for i, x in enumerate(nums):
+    if deq and deq[0] < i - k + 1:
+        deq.popleft()
+    while deq and nums[deq[-1]] <= x:
+        deq.pop()
+    deq.append(i)
+    if i >= k - 1:
+        result.append(nums[deq[0]])</pre>
+  </div>
+</div>
+</details>
+
+<!-- FOOTER -->
+<div class="text-center pt-8 pb-4 border-t border-gray-100">
+  <p class="text-xs text-gray-500">Generated for algorithm study &middot; Sliding Window Maximum (LeetCode 239)</p>
+</div>
+
+</div>
+</body>
+</html>

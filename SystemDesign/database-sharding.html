@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: Database Sharding Architecture — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax for LaTeX Math Formatting -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        ed: { pink:'#db2777', blue:'#2563eb', teal:'#0d9488', amber:'#d97706', sky:'#0284c7', purple:'#7c3aed', orange:'#ea580c' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+.g { background:linear-gradient(135deg,#ea580c,#d97706,#2563eb); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hg { background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(234,88,12,0.06) 0%,transparent 100%); }
+</style>
+</head>
+<body class="bg-white text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Glow Backdrop -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] bg-gradient-to-b from-orange-500/5 via-amber-500/2 to-transparent blur-3xl pointer-events-none"></div>
+
+<!-- HERO -->
+<div class="relative overflow-hidden border-b border-gray-200 bg-gray-50 hg">
+<div class="max-w-4xl mx-auto px-6 py-12">
+  <div class="flex items-center gap-3 mb-4">
+    <span class="text-xs font-bold text-gray-500 tracking-wider">SYSTEM DESIGN</span>
+    <span class="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+    <span class="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded">SCALE: 100K WRITE QPS</span>
+  </div>
+  <h1 class="text-4xl md:text-5xl font-black tracking-tight mb-4"><span class="g">Database Sharding Architecture</span></h1>
+  <p class="text-gray-600 text-lg mb-6 max-w-2xl leading-relaxed">Design a horizontally partitioned database storage and lookup coordinator layer to handle extreme transaction throughput and multi-petabyte datasets dynamically.</p>
+  <div class="flex flex-wrap gap-2 mb-6">
+    <span class="text-xs bg-orange-50 border border-orange-200 px-3 py-1 rounded-full text-orange-700 font-medium">Horizontal Partitioning</span>
+    <span class="text-xs bg-amber-50 border border-amber-200 px-3 py-1 rounded-full text-amber-700 font-medium">Vitess Coordinator</span>
+    <span class="text-xs bg-teal-50 border border-teal-200 px-3 py-1 rounded-full text-teal-700 font-medium">Cross-Shard Query Routing</span>
+  </div>
+  <div class="flex gap-4">
+    <div class="bg-white border border-gray-200 rounded-lg px-4 py-2"><span class="text-xs text-gray-500 block">Daily Ingestion</span><span class="text-sm font-mono font-bold text-emerald-600">~4.32 TB/day</span></div>
+    <div class="bg-white border border-gray-200 rounded-lg px-4 py-2"><span class="text-xs text-gray-500 block">Write SLA</span><span class="text-sm font-mono font-bold text-indigo-600">99.999%</span></div>
+  </div>
+</div>
+</div>
+
+<div class="max-w-4xl mx-auto px-6 pb-20 space-y-6 mt-8 relative z-10">
+
+<!-- 1. REAL-WORLD REFERENCE & CASE STUDY -->
+<section class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+<div class="px-5 py-4 border-b border-gray-200 bg-gray-50/50"><h2 class="text-sm font-bold text-gray-900 uppercase tracking-wider">1. Real-World Reference &amp; Case Study</h2></div>
+<div class="p-6">
+  <div class="rounded-lg bg-ed-purple/5 border border-ed-purple/15 p-5 text-gray-800">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="bg-ed-purple/10 text-ed-purple border border-ed-purple/20 px-2.5 py-0.5 rounded font-bold text-xs uppercase">Production Anchor: YouTube's Vitess scaling</span>
+    </div>
+    <p class="text-xs text-gray-600 leading-relaxed mb-3">
+      YouTube created <strong>Vitess</strong> to scale their backend MySQL database infrastructure horizontally. Faced with massive read/write scale requests, they wrapped thousands of MySQL instances with Vitess routing proxies. By managing shard maps inside etcd, Vitess allowed YouTube to divide database shards live, reducing hardware costs and eliminating cross-shard transaction bottlenecks.
+    </p>
+    
+    <!-- Vitess Architecture Diagram -->
+    <div class="my-4 bg-white border border-purple-100 rounded-xl p-4">
+      <span class="text-xs font-semibold text-purple-700 block mb-2">YouTube Vitess Sharded MySQL Routing Architecture</span>
+      <div class="mermaid flex justify-center py-2">
+        graph TD
+          Client[Client Application] -->|1. gRPC/SQL Query| VTGate[VTGate Proxy]
+          
+          subgraph Coordination Tier
+              Lockservice[(etcd Topology Store)] -.->|2. Sync Keyspace Map| VTGate
+              VTCtld[VTCtld Admin Console] -->|Manage Shard Splitting| Lockservice
+          end
+          
+          subgraph Shard 1 [Keyspace Range: 0x00 - 0x80]
+              VTGate -->|3a. Route Query| VTTablet1[VTTablet 1]
+              VTTablet1 -->|Local DB connection| MySQL1[MySQL Shard 1 Master]
+              MySQL1 -->|Asynchronous Replication| MySQL1_Repl[MySQL Shard 1 Replica]
+          end
+
+          subgraph Shard 2 [Keyspace Range: 0x80 - 0xFF]
+              VTGate -->|3b. Route Query| VTTablet2[VTTablet 2]
+              VTTablet2 -->|Local DB connection| MySQL2[MySQL Shard 2 Master]
+              MySQL2 -->|Asynchronous Replication| MySQL2_Repl[MySQL Shard 2 Replica]
+          end
+
+          style VTGate fill:#eff6ff,stroke:#2563eb,stroke-width:2px;
+          style Lockservice fill:#faf5ff,stroke:#7c3aed,stroke-width:1.5px;
+          style VTTablet1 fill:#f0fdf4,stroke:#16a34a,stroke-width:1.5px;
+          style VTTablet2 fill:#f0fdf4,stroke:#16a34a,stroke-width:1.5px;
+          style MySQL1 fill:#fff7ed,stroke:#ea580c,stroke-width:2px;
+          style MySQL2 fill:#fff7ed,stroke:#ea580c,stroke-width:2px;
+          style VTCtld fill:#f3f4f6,stroke:#4b5563,stroke-width:1.5px;
+      </div>
+      <!-- Legend -->
+      <div class="mt-4 pt-3 border-t border-purple-100/60 flex flex-wrap justify-center gap-6 text-[10px] font-semibold text-gray-500">
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-blue-100 border border-blue-400 inline-block"></span> VTGate (Stateless Routing Proxy)</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-purple-100 border border-purple-400 inline-block"></span> etcd / Lockservice (Metadata store)</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-emerald-100 border border-emerald-400 inline-block"></span> VTTablet (Local Agent daemon)</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-orange-100 border border-orange-400 inline-block"></span> MySQL Master Shards</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-gray-50 border border-gray-300 inline-block"></span> VTCtld Console / Admin Tools</span>
+      </div>
+    </div>
+    
+    <div class="text-xs text-gray-550 border-t border-purple-100/40 pt-3">
+      <strong>Relatability:</strong> When you read a user's comments on YouTube, Vitess routes the query to a single specific database shard containing that user's history instead of hitting all servers, avoiding costly distributed joins.
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- 2. REQUIREMENTS & SCOPE CLARIFICATION -->
+<section class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+<div class="px-5 py-4 border-b border-gray-200 bg-gray-50/50"><h2 class="text-sm font-bold text-gray-900 uppercase tracking-wider">2. Requirements &amp; Scope Clarification</h2></div>
+<div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+  <div class="bg-blue-50/40 border border-blue-100 rounded-lg p-4">
+    <h3 class="text-xs font-bold text-blue-700 uppercase tracking-wider mb-3 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span>Functional</h3>
+    <ul class="text-xs text-gray-700 space-y-2.5 list-none">
+      <li class="flex items-start gap-2"><span class="w-1 h-1 rounded-full bg-blue-600 mt-1.5 flex-shrink-0"></span><span><strong>Horizontal Partitioning:</strong> Shard high-volume tables across independent database engines.</span></li>
+      <li class="flex items-start gap-2"><span class="w-1 h-1 rounded-full bg-blue-600 mt-1.5 flex-shrink-0"></span><span><strong>Transparent Routing:</strong> Match incoming writes to target shards based on the partition key.</span></li>
+      <li class="flex items-start gap-2"><span class="w-1 h-1 rounded-full bg-blue-600 mt-1.5 flex-shrink-0"></span><span><strong>Live Migration:</strong> Split and move shard ranges online when storage capacities exceed bounds.</span></li>
+    </ul>
+  </div>
+  <div class="bg-indigo-50/40 border border-indigo-100 rounded-lg p-4">
+    <h3 class="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-3 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>Non-Functional</h3>
+    <ul class="text-xs text-gray-700 space-y-2.5 list-none">
+      <li class="flex items-start gap-2"><span class="w-1 h-1 rounded-full bg-indigo-600 mt-1.5 flex-shrink-0"></span><span><strong>Extreme Scalability:</strong> Scaling write throughput linearly up to 100K+ QPS.</span></li>
+      <li class="flex items-start gap-2"><span class="w-1 h-1 rounded-full bg-indigo-600 mt-1.5 flex-shrink-0"></span><span><strong>High Availability:</strong> Primary-replica replication setups per shard with rapid failovers.</span></li>
+      <li class="flex items-start gap-2"><span class="w-1 h-1 rounded-full bg-indigo-600 mt-1.5 flex-shrink-0"></span><span><strong>Low overhead:</strong> Query lookup proxies must execute routing calculations in under 2ms.</span></li>
+    </ul>
+  </div>
+  <div class="bg-gray-50 border border-gray-100 rounded-lg p-4 text-gray-500">
+    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>Out of Scope</h3>
+    <ul class="text-xs space-y-2.5 list-none italic">
+      <li class="flex items-start gap-2"><span class="w-1 h-1 rounded-full bg-gray-450 mt-1.5 flex-shrink-0"></span><span>Custom database kernel modifications or disk controller buffer tuning.</span></li>
+      <li class="flex items-start gap-2"><span class="w-1 h-1 rounded-full bg-gray-450 mt-1.5 flex-shrink-0"></span><span>Replicating global locks across the entire cluster natively (AP-favored).</span></li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<!-- 3. SCALE & CAPACITY ESTIMATION (BACK-OF-THE-ENVELOPE) -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">3. Scale &amp; Capacity Estimation (Back-of-the-Envelope)</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-6">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div class="rounded-lg bg-ed-amber/5 border border-ed-amber/15 p-5">
+      <span class="text-xs font-bold text-ed-amber uppercase tracking-wider">Storage Capacity Ingestion Rate</span>
+      <div class="my-3 text-sm text-gray-700 leading-relaxed font-mono">
+        100,000 writes/sec with average size of 500 bytes:
+        $$ Ingestion\_Rate = 100,000 \times 500\text{ bytes} = 50\text{ MB/s} $$
+        $$ Ingestion\_Daily = 50\text{ MB/s} \times 86,400\text{s} \approx 4.32\text{ TB/day} $$
+      </div>
+    </div>
+    <div class="rounded-lg bg-ed-teal/5 border border-ed-teal/15 p-5">
+      <span class="text-xs font-bold text-ed-teal uppercase tracking-wider">5-Year Storage Size</span>
+      <div class="my-3 text-sm text-gray-700 leading-relaxed font-mono">
+        Compiling storage requirements over 5 years:
+        $$ Storage_{5Y} = 4.32\text{ TB/day} \times 365 \times 5 \approx 7.884\text{ PB} $$
+        Assuming physical limits of 10 TB storage per node:
+        $$ Shards_{Count} = \frac{7,884\text{ TB}}{10\text{ TB}} \approx 789\text{ Shard Databases} $$
+      </div>
+    </div>
+  </div>
+
+  <div class="rounded-lg bg-ed-teal/5 border border-ed-teal/15 p-5">
+    <span class="text-xs font-bold text-ed-teal uppercase tracking-wider block mb-3">Index Cache RAM Sizing</span>
+    <p class="text-xs text-gray-600 mb-3 leading-relaxed">Caching the primary index segments of the user orders table (10% of overall data size):</p>
+    <div class="text-sm text-gray-700 leading-relaxed font-mono">
+      $$ Index\_Storage = 7.884\text{ PB} \times 0.05 = 394\text{ TB} $$
+      $$ Caching\_Index = 394\text{ TB} \times 0.10 \approx 39.4\text{ TB of RAM} $$
+      Using Redis cluster hosting 128 GB memory instances:
+      $$ Cache\_Nodes = \frac{39.4\text{ TB}}{128\text{ GB}} \approx 308\text{ Cache Nodes} $$
+    </div>
+  </div>
+</div>
+</details>
+
+<!-- 4. HIGH-LEVEL DESIGN (HLD DIAGRAM) -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">4. High-Level Design (HLD Diagram)</span>
+  <span class="text-xs bg-indigo-50 border border-indigo-250 text-indigo-700 px-2 py-0.5 rounded font-semibold">HLD</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-4">
+  <div class="bg-indigo-50/20 border border-indigo-100 rounded-xl p-4">
+    <div class="mermaid flex justify-center py-4">
+      graph TD
+        Client[Client App] -->|1. SQL Write| ALB[Application Load Balancer]
+        ALB -->|2. Route Query| VP[Vitess Proxy Coordinator]
+        
+        subgraph Shard Directory Configuration
+            etcd[(etcd Shard Map)] -.->|3. Watch Range Updates| VP
+        end
+
+        subgraph Distributed Storage Nodes
+            VP -->|Key Range: user_000 to user_299| ShardA_Master[Shard A Master Database]
+            VP -->|Key Range: user_300 to user_599| ShardB_Master[Shard B Master Database]
+            
+            ShardA_Master -->|Asynchronous Replication| ShardA_Replica[Shard A Read Replica]
+            ShardB_Master -->|Asynchronous Replication| ShardB_Replica[Shard B Read Replica]
+        end
+
+        style VP fill:#eff6ff,stroke:#2563eb,stroke-width:2px;
+        style etcd fill:#faf5ff,stroke:#7c3aed,stroke-width:1px;
+        style ShardA_Master fill:#fff7ed,stroke:#ea580c,stroke-width:2px;
+        style ShardB_Master fill:#fff7ed,stroke:#ea580c,stroke-width:2px;
+        style ShardA_Replica fill:#f9fafb,stroke:#9ca3af,stroke-dasharray: 5 5;
+        style ShardB_Replica fill:#f9fafb,stroke:#9ca3af,stroke-dasharray: 5 5;
+    </div>
+    
+    <!-- Legend -->
+    <div class="mt-4 pt-3 border-t border-indigo-100/60 flex flex-wrap justify-center gap-6 text-[11px] font-semibold text-gray-500">
+      <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-blue-100 border border-blue-400 inline-block"></span> Proxy Router / Coordinator</span>
+      <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-purple-100 border border-purple-400 inline-block"></span> etcd Directory Metadata</span>
+      <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-orange-100 border border-orange-400 inline-block"></span> Primary Database Shards (Writes)</span>
+      <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-gray-100 border border-gray-400 inline-block"></span> Read Replicas (Reads/Backup)</span>
+    </div>
+  </div>
+  <p class="text-xs text-gray-500 italic text-center">Figure 1: High-Level architecture showing application proxy query routing using Vitess and etcd.</p>
+</div>
+</details>
+
+<!-- 5. READ & WRITE DATA FLOW TRACES -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">5. Read &amp; Write Data Flow Traces</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-4 text-xs text-gray-750">
+  <div class="bg-blue-50/30 border border-blue-100 rounded-lg p-4">
+    <strong class="text-blue-700 font-bold block mb-2">Read Path Flow (Blue Path)</strong>
+    <ol class="list-decimal pl-4 space-y-2">
+      <li>Client sends <code>SELECT * FROM orders WHERE user_id = 'user_82739'</code> query.</li>
+      <li>Proxy intercepts request and queries its local memory TreeMap cache to determine target shard.</li>
+      <li>Proxy resolves destination to Shard Node 03 master (or replica for eventual consistency).</li>
+      <li>Proxy connects, fetches matching rows, and returns array to Client application.</li>
+    </ol>
+  </div>
+  <div class="bg-orange-50/30 border border-orange-100 rounded-lg p-4">
+    <strong class="text-orange-700 font-bold block mb-2">Write Path Flow (Orange Path)</strong>
+    <ol class="list-decimal pl-4 space-y-2">
+      <li>Client issues a SQL Insert payload.</li>
+      <li>Proxy routes request to Shard Node 03 (Master) based on sharding key <code>user_id</code> hash range.</li>
+      <li>Shard Node 03 commits transaction.</li>
+      <li>Shard Node 03 triggers background asynchronous log replication to replicas.</li>
+    </ol>
+  </div>
+</div>
+</details>
+
+<!-- 6. SYSTEM CORE ENTITIES & DATABASE SCHEMA -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">6. System Core Entities &amp; Database Schema</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-6">
+  <div class="overflow-x-auto border border-gray-200 rounded-lg">
+    <table class="w-full text-xs">
+      <thead class="bg-indigo-50 border-b border-indigo-100 text-indigo-900">
+        <tr>
+          <th class="px-4 py-3 text-left font-semibold">Table: orders</th>
+          <th class="px-4 py-3 text-left font-semibold">Data Type</th>
+          <th class="px-4 py-3 text-left font-semibold">Constraints</th>
+          <th class="px-4 py-3 text-left font-semibold">Description</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-150">
+        <tr class="bg-white"><td class="px-4 py-3 text-gray-900 font-mono">order_id</td><td class="px-4 py-3 text-gray-600 font-mono">VARCHAR(64)</td><td class="px-4 py-3 text-indigo-700 font-semibold">PRIMARY KEY</td><td class="px-4 py-3 text-gray-600">Unique order system identifier</td></tr>
+        <tr class="bg-gray-50/50"><td class="px-4 py-3 text-gray-900 font-mono">user_id</td><td class="px-4 py-3 text-gray-600 font-mono">VARCHAR(64)</td><td class="px-4 py-3 text-gray-600 font-semibold">SHARD KEY / INDEX</td><td class="px-4 py-3 text-gray-600">Identifies owner (sharding partition key)</td></tr>
+        <tr class="bg-white"><td class="px-4 py-3 text-gray-900 font-mono">amount</td><td class="px-4 py-3 text-gray-600 font-mono">DECIMAL(12,2)</td><td class="px-4 py-3 text-gray-600 font-medium">NOT NULL</td><td class="px-4 py-3 text-gray-600">Total charge transaction amount</td></tr>
+        <tr class="bg-gray-50/50"><td class="px-4 py-3 text-gray-900 font-mono">status</td><td class="px-4 py-3 text-gray-600 font-mono">VARCHAR(16)</td><td class="px-4 py-3 text-gray-600">NOT NULL</td><td class="px-4 py-3 text-gray-600">PENDING, COMPLETED, CANCELLED</td></tr>
+        <tr class="bg-white"><td class="px-4 py-3 text-gray-900 font-mono">created_at</td><td class="px-4 py-3 text-gray-600 font-mono">TIMESTAMP</td><td class="px-4 py-3 text-gray-600 font-medium">NOT NULL</td><td class="px-4 py-3 text-gray-600">Creation date partition boundary</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</details>
+
+<!-- 7. API DESIGN & DATA CONTRACT -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">7. API Design &amp; Data Contract</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-6">
+  <div class="bg-indigo-50 border border-indigo-150 p-5 rounded-xl">
+    <span class="text-xs font-bold text-indigo-700 uppercase tracking-wider block mb-3 flex items-center gap-2">
+      <span class="bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded font-bold">POST</span> /shards/nodes
+    </span>
+    <pre class="code text-xs text-gray-800 bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto">
+{
+  "shard_id": "shard-03",
+  "host": "db-shard-3.local",
+  "port": 5432,
+  "range_start": "M",
+  "range_end": "R",
+  "type": "RANGE"
+}</pre>
+  </div>
+  <div class="bg-indigo-50 border border-indigo-150 p-5 rounded-xl">
+    <span class="text-xs font-bold text-indigo-700 uppercase tracking-wider block mb-3 flex items-center gap-2">
+      <span class="bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded font-bold">GET</span> /shards/route?key=user_82739
+    </span>
+    <pre class="code text-xs text-gray-800 bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto">
+{
+  "key": "user_82739",
+  "hash_value": "0x8F3C2A",
+  "target_shard": {
+    "shard_id": "shard-03",
+    "host": "db-shard-3.local",
+    "port": 5432
+  }
+}</pre>
+  </div>
+</div>
+</details>
+
+<!-- 8. DISTRIBUTED COORDINATION & STATE MANAGEMENT -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">8. Distributed Coordination &amp; State Management</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 text-xs text-gray-700 leading-relaxed">
+  To implement horizontal sharding transparently, Vitess uses an etcd cluster as the global Lockserver/Metadata registry. API routing maps and shard ranges are managed inside etcd. When a shard splits, updates sync to proxy memories asynchronously, protecting continuous execution.
+</div>
+</details>
+
+<!-- 9. DETAILED PARTITIONING & DATABASE SCALING (SHARDING) -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">9. Detailed Partitioning &amp; Database Scaling (Sharding)</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 text-xs text-gray-700 leading-relaxed">
+  By selecting a high-cardinality shard key (like <code>user_id</code>), we distribute records across multiple databases uniformly, ensuring SQL read and write execution scales horizontally.
+</div>
+</details>
+
+<!-- 10. CONSISTENT HASHING & RING MECHANICS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">10. Consistent Hashing &amp; Ring Mechanics</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 text-xs text-gray-700 leading-relaxed">
+  Consistent hashing mapping is utilized to assign data keys dynamically to available shard database nodes, ensuring range expansions or removals require minimal row relocation.
+</div>
+</details>
+
+<!-- 11. CACHING TOPOLOGY & INVALIDATION STRATEGY -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">11. Caching Topology &amp; Invalidation Strategy</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-4">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="rounded-lg bg-indigo-50 border border-indigo-200 p-5 text-indigo-900">
+      <span class="text-xs font-bold text-indigo-700 uppercase tracking-wider block mb-2">Metadata Routing Cache</span>
+      <p class="text-xs text-gray-700 leading-relaxed">
+        <strong>Local Proxy Caching:</strong> Routing proxies cache the entire shard range directory mapping locally in RAM. This ensures key routing analysis requires zero network hops to etcd configuration directories. Watchers invalidate routing entries instantly on resharding swaps.
+      </p>
+    </div>
+    <div class="rounded-lg bg-indigo-50 border border-indigo-200 p-5 text-indigo-900">
+      <span class="text-xs font-bold text-purple-700 uppercase tracking-wider block mb-2">Data Cache Placement</span>
+      <p class="text-xs text-gray-700 leading-relaxed">
+        <strong>Cache-Aside Redis:</strong> Placed directly in front of each physical master database shard to handle read spikes. Redis nodes are partitioned using modular hashing based on the same key structure, keeping cache nodes localized to shards.
+      </p>
+    </div>
+  </div>
+</div>
+</details>
+
+<!-- 12. ASYNCHRONOUS PROCESSING & MESSAGE QUEUES -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">12. Asynchronous Processing &amp; Message Queues</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 text-xs text-gray-700 leading-relaxed bg-orange-50/10 border border-orange-100 rounded-xl m-6">
+  Event-driven pipelines decouple write tasks. For example, during shard splitting, updates trigger Kafka messaging topics where background sync workers verify row checksum integrity before promoting target split nodes.
+</div>
+</details>
+
+<!-- 13. LOW-LEVEL COMPONENT DESIGN (LLD SEQUENCE & CODE) -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">13. Low-Level Component Design (LLD Sequence &amp; Code)</span>
+  <span class="text-xs bg-ed-sky/10 border border-ed-sky/20 text-ed-sky px-2 py-0.5 rounded font-semibold">LLD Sequence</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-6">
+  <div class="mermaid py-4 flex justify-center bg-ed-sky/5 border border-ed-sky/15 rounded-xl">
+    sequenceDiagram
+      autonumber
+      actor Client as Application Service
+      participant VP as Vitess Shard Coordinator
+      participant Map as Shard Map Cache (RAM)
+      participant DB as Shard Node 03 (db-shard-3.local)
+
+      Client->>VP: SELECT * FROM orders WHERE user_id = 'user_82739'
+      VP->>Map: getShardNode('user_82739')
+      Note over Map: Hash('user_82739') -> 0x8F3C2A<br/>0x8F3C2A mapped to Shard Node 03 (user_300 to user_599)
+      Map-->>VP: Return Target Shard Node 03 Details
+      VP->>DB: Forward SELECT * FROM orders WHERE user_id = 'user_82739'
+      DB-->>VP: Return Query Results (Row Data payload)
+      VP-->>Client: Return Results to App
+  </div>
+
+  <span class="text-xs font-bold text-gray-500 uppercase tracking-wider block">Distributed Snowflake ID Generator (Java Implementation)</span>
+  <pre class="code text-xs text-gray-800 bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto">
+<span class="text-indigo-700 font-semibold">public class</span> <span class="text-purple-700">SnowflakeIdGenerator</span> {
+    <span class="text-indigo-700 font-semibold">private final long</span> workerId;
+    <span class="text-indigo-700 font-semibold">private long</span> sequence = 0L;
+    <span class="text-indigo-700 font-semibold">private long</span> lastTimestamp = -1L;
+
+    <span class="text-indigo-700 font-semibold">public</span> <span class="text-purple-700">SnowflakeIdGenerator</span>(<span class="text-indigo-700 font-semibold">long</span> workerId) {
+        <span class="text-indigo-700 font-semibold">this</span>.workerId = workerId;
+    }
+
+    <span class="text-indigo-700 font-semibold">public synchronized long</span> <span class="text-purple-700">nextId</span>() {
+        <span class="text-indigo-700 font-semibold">long</span> timestamp = System.currentTimeMillis();
+        <span class="text-indigo-700 font-semibold">if</span> (timestamp == lastTimestamp) {
+            sequence = (sequence + 1) & 4095;
+            <span class="text-indigo-700 font-semibold">if</span> (sequence == 0) {
+                timestamp = waitNextMillis(lastTimestamp);
+            }
+        } <span class="text-indigo-700 font-semibold">else</span> {
+            sequence = 0L;
+        }
+        lastTimestamp = timestamp;
+        <span class="text-indigo-700 font-semibold">return</span> ((timestamp - 1577836800000L) &lt;&lt; 22) | (workerId &lt;&lt; 12) | sequence;
+    }
+
+    <span class="text-indigo-700 font-semibold">private long</span> <span class="text-purple-700">waitNextMillis</span>(<span class="text-indigo-700 font-semibold">long</span> lastTimestamp) {
+        <span class="text-indigo-700 font-semibold">long</span> timestamp = System.currentTimeMillis();
+        <span class="text-indigo-700 font-semibold">while</span> (timestamp &lt;= lastTimestamp) {
+            timestamp = System.currentTimeMillis();
+        }
+        <span class="text-indigo-700 font-semibold">return</span> timestamp;
+    }
+}</pre>
+
+  <span class="text-xs font-bold text-gray-500 uppercase tracking-wider block">Distributed Snowflake ID Generator (Python Implementation)</span>
+  <pre class="code text-xs text-gray-800 bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto">
+<span class="text-indigo-750 font-semibold">import</span> time
+<span class="text-indigo-750 font-semibold">import</span> threading
+
+<span class="text-indigo-750 font-semibold">class</span> <span class="text-purple-750">SnowflakeIdGenerator</span>:
+    <span class="text-indigo-750 font-semibold">def</span> <span class="text-purple-750">__init__</span>(self, worker_id: int):
+        self.worker_id = worker_id & 1023
+        self.sequence = 0
+        self.last_timestamp = -1
+        self.lock = threading.Lock()
+
+    <span class="text-indigo-750 font-semibold">def</span> <span class="text-purple-750">next_id</span>(self) -> int:
+        <span class="text-indigo-750 font-semibold">with</span> self.lock:
+            timestamp = int(time.time() * 1000)
+            <span class="text-indigo-750 font-semibold">if</span> timestamp &lt; self.last_timestamp:
+                <span class="text-indigo-750 font-semibold">raise</span> Exception(<span class="text-teal-700">"Clock moved backwards. Refusing to generate id."</span>)
+            
+            <span class="text-indigo-750 font-semibold">if</span> timestamp == self.last_timestamp:
+                self.sequence = (self.sequence + 1) & 4095
+                <span class="text-indigo-750 font-semibold">if</span> self.sequence == 0:
+                    timestamp = self._wait_next_millis(self.last_timestamp)
+            <span class="text-indigo-750 font-semibold">else</span>:
+                self.sequence = 0
+                
+            self.last_timestamp = timestamp
+            epoch_offset = 1577836800000
+            <span class="text-indigo-750 font-semibold">return</span> ((timestamp - epoch_offset) &lt;&lt; 22) | (self.worker_id &lt;&lt; 12) | self.sequence
+
+    <span class="text-indigo-750 font-semibold">def</span> <span class="text-purple-750">_wait_next_millis</span>(self, last_timestamp: int) -> int:
+        timestamp = int(time.time() * 1000)
+        <span class="text-indigo-750 font-semibold">while</span> timestamp &lt;= last_timestamp:
+            timestamp = int(time.time() * 1000)
+        <span class="text-indigo-750 font-semibold">return</span> timestamp</pre>
+</div>
+</details>
+
+<!-- 14. RESILIENCY & FAILURE MITIGATIONS (SCENARIO CARDS) -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">14. Resiliency &amp; Failure Mitigations (Scenario Cards)</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-4">
+  <div class="rounded-lg bg-red-50 border border-red-200 p-5 text-gray-800">
+    <p class="text-xs font-bold text-red-700 uppercase tracking-wider mb-2">Scenario 1: Single Shard Outage</p>
+    <p class="text-xs text-gray-700 leading-relaxed mb-2"><strong>Impact:</strong> If Shard Node 03 crashes, 1/N of the overall users experience total write and read failures, causing cascading errors across user dashboards.</p>
+    <p class="text-xs text-gray-550 font-medium"><strong>Mitigation:</strong> Deploy automated primary-replica failovers. The sharding proxy redirects read traffic immediately to replicas and blocks writes while replica promotes to master via consensus elections.</p>
+  </div>
+  <div class="rounded-lg bg-ed-orange/5 border border-ed-orange/15 p-5 text-gray-800">
+    <p class="text-xs font-bold text-ed-orange uppercase tracking-wider mb-2">Scenario 2: Shard Key Hotspotting (Viral User Event)</p>
+    <p class="text-xs text-gray-700 leading-relaxed mb-2"><strong>Impact:</strong> A viral user gets millions of concurrent writes, flooding a single physical shard node with traffic, saturating disk IOPS, and locking threads.</p>
+    <p class="text-xs text-gray-550 font-medium"><strong>Mitigation:</strong> Create dynamic sub-shards for high-traffic keys. Append random suffixes (e.g. `viral_user#1`, `viral_user#2`) to partition keys dynamically to spread load across multiple nodes, combined with application-level write-buffering.</p>
+  </div>
+</div>
+</details>
+
+<!-- 15. SECURITY, AUTH & DATA PROTECTION -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">15. Security, Auth &amp; Data Protection</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 text-xs text-gray-700 space-y-2 leading-relaxed">
+  All sharded database node communication is secured via mTLS. App proxy levels enforce rate limits using Token Bucket algorithms to protect shards from DDoS attacks.
+</div>
+</details>
+
+<!-- 16. OBSERVABILITY, MONITORING & ALERTING -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">16. Observability, Monitoring &amp; Alerting</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 text-xs text-gray-700 leading-relaxed space-y-2">
+  <p>Proxy metrics exposed for Prometheus monitoring:</p>
+  <ul class="list-disc pl-4 space-y-1">
+    <li><code>sharded_query_duration_seconds</code>: Monitors query execution speed across individual nodes.</li>
+    <li><code>shard_split_duration_seconds</code>: Monitors progress of background dynamic splits.</li>
+  </ul>
+</div>
+</details>
+
+<!-- 17. TECHNICAL TRADE-OFF & CAP MATRIX -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">17. Technical Trade-Off &amp; CAP Matrix</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6">
+  <div class="overflow-x-auto border border-gray-250 rounded-lg">
+    <table class="w-full text-xs">
+      <thead class="bg-amber-50 text-amber-900 border-b border-amber-200 font-semibold">
+        <tr>
+          <th class="px-4 py-3 text-left">Decision Made</th>
+          <th class="px-4 py-3 text-left">Alternative</th>
+          <th class="px-4 py-3 text-left">Pros</th>
+          <th class="px-4 py-3 text-left">Cons</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-150">
+        <tr class="bg-white"><td class="px-4 py-3 text-gray-900 font-semibold">Hash-Based Sharding</td><td class="px-4 py-3 text-gray-600">Range-Based Sharding</td><td class="px-4 py-3 text-gray-600">Uniform distribution of keys across shards. No range hot spots.</td><td class="px-4 py-3 text-gray-600">Range queries (e.g. fetch last 50 orders) must scan all shards.</td></tr>
+        <tr class="bg-gray-50/50"><td class="px-4 py-3 text-gray-900 font-semibold">Proxy-Based Routing (Vitess)</td><td class="px-4 py-3 text-gray-600">Client-Side Custom Routing Library</td><td class="px-4 py-3 text-gray-600">Decouples application code from topology. Language independent.</td><td class="px-4 py-3 text-gray-600">Extra network hop through proxy.</td></tr>
+        <tr class="bg-white"><td class="px-4 py-3 text-gray-900 font-semibold">AP Consistency (Multi-Shard)</td><td class="px-4 py-3 text-gray-600">CP Consistency (Distributed Locks)</td><td class="px-4 py-3 text-gray-600">Max availability and throughput. No coordinate lock delays.</td><td class="px-4 py-3 text-gray-600 font-medium">Cross-shard queries might read temporary inconsistent states.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</details>
+
+<!-- 18. THE INTERVIEW PITCH SCRIPT -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">18. The Interview Pitch Script</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-6">
+  <div class="bg-ed-purple/5 border border-ed-purple/10 rounded-xl p-5">
+    <blockquote class="border-l-4 border-purple-400 pl-4 py-1 italic text-gray-700 text-xs leading-relaxed">
+      "To scale database writes linearly to 100K QPS and handle multi-petabyte storage requirements, single node databases or replica configurations fail. I design a Database Sharding Architecture using Vitess proxy routing. Tables like orders are horizontally partitioned based on `user_id` as the sharding key. The Vitess routing proxy evaluates incoming queries, checks local TreeMap directories, and forwards commands directly to target shards."
+    </blockquote>
+  </div>
+</div>
+</details>
+
+<!-- 19. HANDLING INTERVIEWER PUSHBACKS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">19. Handling Interviewer Pushbacks</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-6">
+  <div class="bg-ed-purple/5 border border-ed-purple/10 rounded-xl p-5">
+    <span class="bg-ed-purple/10 text-ed-purple border border-ed-purple/20 px-2 py-0.5 rounded font-semibold text-xs inline-block mb-3">Handling Cross-Shard Query Pushbacks:</span>
+    <blockquote class="border-l-4 border-purple-400 pl-4 py-1 italic text-gray-700 text-xs leading-relaxed">
+      "If the interviewer asks how I handle query joins across shards (e.g. listing orders from all users in a specific region), I explain that cross-shard joins are extremely expensive. I propose three mitigations: first, denormalizing geography data into the orders table so queries stay single-shard; second, duplicating lookup metadata across all shards; and third, falling back to proxy-level scatter-gather parallel queries only for low-frequency admin requests."
+    </blockquote>
+  </div>
+</div>
+</details>
+
+<!-- 20. ADVANCED CONCEPT ACCORDIONS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">20. Advanced Concept Accordions</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-4">
+  <details class="rounded-lg border border-indigo-200 overflow-hidden bg-indigo-50/20">
+    <summary class="bg-indigo-50/60 px-4 py-3 cursor-pointer select-none border-b border-indigo-200 text-indigo-950 font-bold flex justify-between items-center text-xs">
+      <span>Q: How do you generate unique, sequential IDs across multiple shards without a single bottleneck?</span>
+      <span class="text-indigo-400 group-open:rotate-180 transition-transform">&#9662;</span>
+    </summary>
+    <div class="px-4 py-3 bg-white border-t border-indigo-100 text-xs text-gray-700 leading-relaxed">
+      <p>We avoid database auto-increment fields since shards do not coordinate. Instead, we use Snowflake-style distributed ID generators. These create a 64-bit integer composed of a timestamp prefix, machine node identifier, and a local sequence number. This guarantees globally unique, time-sortable keys generated locally on application nodes in O(1) time.</p>
+    </div>
+  </details>
+  <details class="rounded-lg border border-indigo-200 overflow-hidden bg-indigo-50/20">
+    <summary class="bg-indigo-50/60 px-4 py-3 cursor-pointer select-none border-b border-indigo-200 text-indigo-950 font-bold flex justify-between items-center text-xs">
+      <span>Q: How do you handle cross-shard transactions?</span>
+      <span class="text-indigo-400 group-open:rotate-180 transition-transform">&#9662;</span>
+    </summary>
+    <div class="px-4 py-3 bg-white border-t border-indigo-100 text-xs text-gray-700 leading-relaxed">
+      <p>We avoid standard Two-Phase Commit (2PC) protocols because they block threads and create bottlenecks under high traffic. Instead, we design transactions around the Saga Pattern. Sagas break transactions into local shard tasks executed sequentially. If one shard task fails, compensating transactions are triggered backwards to roll back the previous states, favoring eventual consistency (AP) over strict immediate consistency (CP).</p>
+    </div>
+  </details>
+  <details class="rounded-lg border border-indigo-200 overflow-hidden bg-indigo-50/20">
+    <summary class="bg-indigo-50/60 px-4 py-3 cursor-pointer select-none border-b border-indigo-200 text-indigo-950 font-bold flex justify-between items-center text-xs">
+      <span>Q: What is the difference between vertical sharding and horizontal sharding?</span>
+      <span class="text-indigo-400 group-open:rotate-180 transition-transform">&#9662;</span>
+    </summary>
+    <div class="px-4 py-3 bg-white border-t border-indigo-100 text-xs text-gray-700 leading-relaxed">
+      <p>Vertical sharding splits columns of a table into separate databases (e.g. separating user login details from profile images to optimize disk access). Horizontal sharding splits rows of the same table across separate instances based on range or hash criteria. This study workbook targets horizontal sharding.</p>
+    </div>
+  </details>
+  <details class="rounded-lg border border-indigo-200 overflow-hidden bg-indigo-50/20">
+    <summary class="bg-indigo-50/60 px-4 py-3 cursor-pointer select-none border-b border-indigo-200 text-indigo-950 font-bold flex justify-between items-center text-xs">
+      <span>Q: What is directory-based sharding and what are its performance trade-offs?</span>
+      <span class="text-indigo-400 group-open:rotate-180 transition-transform">&#9662;</span>
+    </summary>
+    <div class="px-4 py-3 bg-white border-t border-indigo-100 text-xs text-gray-700 leading-relaxed">
+      <p>Directory sharding uses an external lookup database (e.g. Redis or etcd) to map shard keys to physical shard nodes individually. It provides absolute mapping flexibility, but introduces a query hop to resolve coordinates, making lookup cache maintenance and availability critical path bottlenecks.</p>
+    </div>
+  </details>
+  <details class="rounded-lg border border-indigo-200 overflow-hidden bg-indigo-50/20">
+    <summary class="bg-indigo-50/60 px-4 py-3 cursor-pointer select-none border-b border-indigo-200 text-indigo-950 font-bold flex justify-between items-center text-xs">
+      <span>Q: How do Vitess and Citus differ in their sharding execution?</span>
+      <span class="text-indigo-400 group-open:rotate-180 transition-transform">&#9662;</span>
+    </summary>
+    <div class="px-4 py-3 bg-white border-t border-indigo-100 text-xs text-gray-700 leading-relaxed">
+      <p>Vitess functions as a proxy coordinator tier in front of standard MySQL database instances, routing SQL query trees transparently. Citus is a PostgreSQL extension that integrates sharding directly inside the database engines, using Postgres query planners to distribute tables and coordinate maps locally.</p>
+    </div>
+  </details>
+</div>
+</details>
+
+</div>
+
+<!-- FOOTER -->
+<div class="text-center pt-8 pb-12 border-t border-gray-200 bg-gray-50 relative z-10">
+  <p class="text-xs text-gray-500">System Design Study Workbook &middot; Database Sharding Architecture (100K Write QPS)</p>
+</div>
+
+</body>
+</html>

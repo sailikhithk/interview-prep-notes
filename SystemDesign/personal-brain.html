@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Personal Brain — System Design &amp; DSA Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({startOnLoad:true,theme:'neutral',themeVariables:{background:'#ffffff',primaryColor:'#f3f4f6',primaryTextColor:'#1f2937',lineColor:'#2563eb',primaryBorderColor:'#e5e7eb'}});
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script>
+tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif'],mono:['JetBrains Mono','monospace']},colors:{ed:{pink:'#db2777',blue:'#2563eb',teal:'#0d9488',amber:'#d97706',sky:'#0284c7',purple:'#7c3aed',orange:'#ea580c'}}}}}
+</script>
+<style>
+body{font-family:'Inter',sans-serif;}
+.code{font-family:'JetBrains Mono',monospace;}
+details>summary{list-style:none;cursor:pointer;}
+details>summary::-webkit-details-marker{display:none;}
+.g{background:linear-gradient(135deg,#db2777,#7c3aed,#2563eb);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hg{background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(37,99,235,0.06) 0%,transparent 100%);}
+.tab-btn.active{border-bottom:2px solid #2563eb;color:#2563eb;font-weight:700;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+</style>
+</head>
+<body class="bg-white text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-80 bg-gradient-to-b from-purple-500/5 via-blue-500/3 to-transparent blur-3xl pointer-events-none"></div>
+
+<!-- HERO -->
+<div class="relative overflow-hidden border-b border-gray-200 bg-gray-50 hg">
+<div class="max-w-5xl mx-auto px-6 py-12">
+  <div class="flex items-center gap-3 mb-4">
+    <span class="text-xs font-bold text-gray-500 tracking-wider">PERSONAL BRAIN</span>
+    <span class="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+    <span class="text-xs font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2.5 py-0.5 rounded">SYSTEM DESIGN + DSA</span>
+    <span class="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+    <span class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded">LOCAL-ONLY · 207 NOTES</span>
+  </div>
+  <h1 class="text-4xl md:text-5xl font-black tracking-tight mb-4"><span class="g">Personal Brain Architecture</span></h1>
+  <p class="text-gray-600 text-lg mb-6 max-w-2xl leading-relaxed">A self-learning knowledge OS: 3 vaults, 22 MCP tools, Hebbian neural graph, 3-layer retrieval, 100+ context-routing hooks — all local, zero cloud costs.</p>
+  <div class="flex flex-wrap gap-2 mb-6">
+    <span class="text-xs bg-purple-50 border border-purple-200 px-3 py-1 rounded-full text-purple-700 font-medium">Knowledge Graph (BFS)</span>
+    <span class="text-xs bg-blue-50 border border-blue-200 px-3 py-1 rounded-full text-blue-700 font-medium">Hebbian Learning</span>
+    <span class="text-xs bg-teal-50 border border-teal-200 px-3 py-1 rounded-full text-teal-700 font-medium">KNN Similarity</span>
+    <span class="text-xs bg-rose-50 border border-rose-200 px-3 py-1 rounded-full text-rose-700 font-medium">Exponential Decay</span>
+    <span class="text-xs bg-amber-50 border border-amber-200 px-3 py-1 rounded-full text-amber-700 font-medium">FastMCP (22 tools)</span>
+  </div>
+  <div class="flex gap-4 flex-wrap">
+    <div class="bg-white border border-gray-200 rounded-lg px-4 py-2"><span class="text-xs text-gray-500 block">MCP Tools</span><span class="text-sm font-mono font-bold text-purple-600">22</span></div>
+    <div class="bg-white border border-gray-200 rounded-lg px-4 py-2"><span class="text-xs text-gray-500 block">Graph Query</span><span class="text-sm font-mono font-bold text-blue-600">O(V+E)</span></div>
+    <div class="bg-white border border-gray-200 rounded-lg px-4 py-2"><span class="text-xs text-gray-500 block">Hook Routes</span><span class="text-sm font-mono font-bold text-teal-600">100+</span></div>
+    <div class="bg-white border border-gray-200 rounded-lg px-4 py-2"><span class="text-xs text-gray-500 block">Vault Notes</span><span class="text-sm font-mono font-bold text-emerald-600">~207 md</span></div>
+  </div>
+</div>
+</div>
+
+<!-- Tabs -->
+<div class="max-w-5xl mx-auto px-6 mt-6">
+  <div class="flex gap-6 border-b border-gray-200 mb-8">
+    <button class="tab-btn active pb-3 text-sm tracking-wide" onclick="showTab('sysdesign',this)">System Design</button>
+    <button class="tab-btn pb-3 text-sm tracking-wide text-gray-500" onclick="showTab('dsa',this)">DSA Algorithms</button>
+  </div>
+</div>
+
+<!-- SYSTEM DESIGN TAB -->
+<div id="tab-sysdesign" class="tab-content active max-w-5xl mx-auto px-6 pb-20 space-y-6 relative z-10">
+
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">1. Real-World Reference &amp; Production Topology</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <div class="rounded-lg bg-purple-50/40 border border-purple-100 p-4 space-y-3">
+    <div class="flex items-center gap-2">
+      <span class="text-xs bg-purple-100 text-purple-700 border border-purple-200 px-2 py-0.5 rounded font-semibold">Production Reference</span>
+      <span class="text-sm font-bold text-gray-900">Obsidian + FastMCP Personal Brain v2.0</span>
+    </div>
+    <p class="text-xs text-gray-600 leading-relaxed">Mirrors how <strong>Notion AI</strong> and <strong>Mem.ai</strong> work — Markdown vault as storage, local REST API for programmatic access, graph index for semantic navigation. Unlike those, 100% local, zero-cost, self-learning via Hebbian plasticity.</p>
+    <div class="mermaid mt-2">
+flowchart TD
+    A["AI Tools (Claude, Windsurf, Cursor, Gemini)"]
+    B["MCP Client\nmcp_config.json"]
+    C["brain-mcp-server.py\nFastMCP 22 tools"]
+    D["Obsidian REST API\n:27124 HTTPS"]
+    E["personal-brain Vault\n~207 notes"]
+    F["Neural Graph Scripts\nbrain-scripts/ 9 modules"]
+    G["Indexes\ngraph, knn, synaptic, concept"]
+
+    A --> B --> C --> D --> E
+    C --> F --> G --> C
+    </div>
+    <div class="flex gap-2 flex-wrap mt-1 text-xs">
+      <span class="bg-purple-50 border border-purple-200 px-2 py-0.5 rounded text-purple-700">Purple = MCP</span>
+      <span class="bg-blue-50 border border-blue-200 px-2 py-0.5 rounded text-blue-700">Blue = Vault</span>
+      <span class="bg-teal-50 border border-teal-200 px-2 py-0.5 rounded text-teal-700">Teal = Neural</span>
+    </div>
+  </div>
+</div>
+</details>
+
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">2. Requirements &amp; Scope</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 grid md:grid-cols-2 gap-4">
+  <div class="rounded-lg border border-gray-200 p-4">
+    <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Functional</span>
+    <ul class="mt-2 space-y-1">
+      <li class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-700">Search, read, write, append notes via 22 MCP tools</p></li>
+      <li class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-700">Knowledge graph BFS traversal (wikilink graph)</p></li>
+      <li class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-700">Hebbian connection strengthening on access</p></li>
+      <li class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-700">Context routing: 100+ YAML hook routes matched per prompt</p></li>
+      <li class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-700">Session reflection + auto connection update (personal-brain exclusive)</p></li>
+    </ul>
+  </div>
+  <div class="rounded-lg border border-gray-200 p-4 space-y-3">
+    <div>
+      <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Non-Functional</span>
+      <ul class="mt-2 space-y-1">
+        <li class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-teal-400 mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-700">100% local — zero cloud, zero API cost, zero data exposure</p></li>
+        <li class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-teal-400 mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-700">BFS graph cap: 200 files, &lt;1s build</p></li>
+        <li class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-teal-400 mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-700">MCP tool latency: &lt;200ms p95</p></li>
+        <li class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-teal-400 mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-700">Auth: HTTPS bearer token (Obsidian REST plugin)</p></li>
+      </ul>
+    </div>
+    <div class="pt-2 border-t border-gray-100">
+      <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Out of Scope</span>
+      <ul class="mt-1 space-y-1">
+        <li class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-gray-300 mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-500">Multi-user / shared vault</p></li>
+        <li class="flex gap-2 items-start"><div class="w-1.5 h-1.5 rounded-full bg-gray-300 mt-1.5 flex-shrink-0"></div><p class="text-xs text-gray-500">Cloud sync (local-only by design)</p></li>
+      </ul>
+    </div>
+  </div>
+</div>
+</details>
+
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">3. Three-Brain Topology</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 overflow-x-auto">
+  <table class="w-full text-xs border-collapse">
+    <thead><tr class="bg-gray-50 border-b border-gray-200">
+      <th class="text-left py-2 px-3 font-semibold text-gray-600">Brain</th>
+      <th class="text-left py-2 px-3 font-semibold text-gray-600">Vault</th>
+      <th class="text-left py-2 px-3 font-semibold text-gray-600">Port</th>
+      <th class="text-left py-2 px-3 font-semibold text-gray-600">MCP Tools</th>
+      <th class="text-left py-2 px-3 font-semibold text-gray-600">Self-Learning</th>
+      <th class="text-left py-2 px-3 font-semibold text-gray-600">Notes</th>
+    </tr></thead>
+    <tbody class="divide-y divide-gray-100">
+      <tr><td class="py-2 px-3 font-bold text-purple-700">personal-brain</td><td class="py-2 px-3 font-mono text-gray-600">~/personal-brain</td><td class="py-2 px-3 font-mono font-bold text-blue-600">27124</td><td class="py-2 px-3 font-bold text-purple-600">22</td><td class="py-2 px-3"><span class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded font-bold">9 modules</span></td><td class="py-2 px-3 text-gray-500">~207 notes, NOT in git</td></tr>
+      <tr><td class="py-2 px-3 font-bold text-blue-700">work-brain</td><td class="py-2 px-3 font-mono text-gray-600">DMS docs/.agent/brain</td><td class="py-2 px-3 font-mono font-bold text-blue-600">27125</td><td class="py-2 px-3 font-bold text-blue-600">20</td><td class="py-2 px-3"><span class="bg-gray-50 text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded">No</span></td><td class="py-2 px-3 text-gray-500">~29 notes, in git</td></tr>
+      <tr><td class="py-2 px-3 font-bold text-teal-700">ig-brain</td><td class="py-2 px-3 font-mono text-gray-600">~/.../ig-brain</td><td class="py-2 px-3 font-mono text-gray-400">—</td><td class="py-2 px-3 font-bold text-teal-600">~15</td><td class="py-2 px-3"><span class="bg-gray-50 text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded">No</span></td><td class="py-2 px-3 text-gray-500">~29 notes, filesystem mode</td></tr>
+    </tbody>
+  </table>
+</div>
+</details>
+
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">4. High-Level Design (HLD)</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <div class="rounded-lg bg-indigo-50/20 border border-indigo-100 p-4">
+    <div class="mermaid">
+flowchart LR
+    subgraph Tools["AI Tools"]
+        C1["Claude"] 
+        C2["Windsurf"]
+        C3["Gemini"]
+    end
+    subgraph MCP["MCP Layer"]
+        M1["brain-mcp-server\n22 tools"]
+        M2["Context Router\n100+ YAML hooks"]
+        M3["Context Gatherer\nagentic-infra-context-gatherer.py"]
+    end
+    subgraph Storage["Storage"]
+        S1["Obsidian Vault\n~207 notes"]
+        S2["REST API :27124"]
+    end
+    subgraph Neural["Neural Graph"]
+        N1["wikilink DiGraph\nnx.DiGraph"]
+        N2["synaptic_weights.json"]
+        N3["knn_graph.json"]
+    end
+
+    Tools --> MCP
+    M2 --> M3 --> M1
+    M1 --> S2 --> S1
+    M1 --> N1 --> N2 --> N3
+    </div>
+    <div class="flex gap-2 flex-wrap mt-3 text-xs">
+      <span class="bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded text-indigo-700">Indigo = AI</span>
+      <span class="bg-blue-50 border border-blue-200 px-2 py-0.5 rounded text-blue-700">Blue = MCP</span>
+      <span class="bg-teal-50 border border-teal-200 px-2 py-0.5 rounded text-teal-700">Teal = Storage</span>
+      <span class="bg-purple-50 border border-purple-200 px-2 py-0.5 rounded text-purple-700">Purple = Neural graph</span>
+    </div>
+  </div>
+</div>
+</details>
+
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">5. Read &amp; Write Flows</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 grid md:grid-cols-2 gap-4">
+  <div>
+    <span class="text-xs font-bold text-teal-700 uppercase tracking-wider">Read Flow</span>
+    <div class="mermaid mt-2 text-xs">
+sequenceDiagram
+    participant AI
+    participant Router as Context Router
+    participant MCP
+    participant Graph as wikilink Graph
+    participant API as Obsidian REST
+
+    AI->>Router: user prompt
+    Router->>Router: regex match 100+ YAML
+    Router->>AI: inject context bundle
+    AI->>MCP: search("DSA system design")
+    MCP->>Graph: BFS traversal
+    MCP->>API: GET /search/?query=...
+    API->>MCP: matching notes
+    MCP->>AI: ranked results
+    </div>
+  </div>
+  <div>
+    <span class="text-xs font-bold text-blue-700 uppercase tracking-wider">Write Flow (Hebbian)</span>
+    <div class="mermaid mt-2 text-xs">
+sequenceDiagram
+    participant AI
+    participant MCP
+    participant SigT as Signal Tracker
+    participant ConnT as Connection Tracker
+    participant Vault
+
+    AI->>MCP: capture(content, folder)
+    MCP->>Vault: PUT /vault/90-inbox/...
+    MCP->>SigT: track_signal(WRITE, note)
+    SigT->>ConnT: strengthen(src, tgt)
+    ConnT->>ConnT: weight += 0.1 Hebbian
+    ConnT->>Vault: synaptic_weights.json
+    </div>
+  </div>
+</div>
+</details>
+
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">6. MCP Tool Surface (22 tools)</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <div class="grid md:grid-cols-3 gap-3">
+    <div class="rounded-lg bg-blue-50/40 border border-blue-100 p-3">
+      <span class="text-xs font-bold text-blue-700 uppercase tracking-wider">CRUD</span>
+      <ul class="mt-2 space-y-1 text-xs text-gray-700 code"><li>search</li><li>read_note</li><li>write_note</li><li>append_note</li><li>delete_note</li><li>active_note</li></ul>
+    </div>
+    <div class="rounded-lg bg-purple-50/40 border border-purple-100 p-3">
+      <span class="text-xs font-bold text-purple-700 uppercase tracking-wider">Graph</span>
+      <ul class="mt-2 space-y-1 text-xs text-gray-700 code"><li>graph_overview</li><li>find_connections</li><li>knowledge_gaps</li><li>topic_clusters</li><li>traverse</li><li>invalidate_graph_cache</li></ul>
+    </div>
+    <div class="rounded-lg bg-teal-50/40 border border-teal-100 p-3">
+      <span class="text-xs font-bold text-teal-700 uppercase tracking-wider">Brain / AI</span>
+      <ul class="mt-2 space-y-1 text-xs text-gray-700 code"><li>capture</li><li>recall</li><li>vault_stats</li><li>classify_signal</li><li>semantic_search</li><li>brain_standup</li><li>brain_dump</li><li class="text-purple-700 font-bold">reflect_session ★</li><li class="text-purple-700 font-bold">auto_update_connections ★</li></ul>
+      <p class="text-xs text-purple-600 mt-1 italic">★ personal-brain exclusive</p>
+    </div>
+  </div>
+</div>
+</details>
+
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">7. Trade-offs &amp; Known Gaps</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 overflow-x-auto">
+  <table class="w-full text-xs border-collapse">
+    <thead><tr class="bg-gray-50 border-b border-gray-200">
+      <th class="text-left py-2 px-3 font-semibold text-gray-600">Decision</th><th class="text-left py-2 px-3 font-semibold text-gray-600">Benefit</th><th class="text-left py-2 px-3 font-semibold text-gray-600">Cost</th><th class="text-left py-2 px-3 font-semibold text-gray-600">Fix</th>
+    </tr></thead>
+    <tbody class="divide-y divide-gray-100">
+      <tr><td class="py-2 px-3 font-medium">Local-only</td><td class="py-2 px-3 text-emerald-700">Privacy, $0</td><td class="py-2 px-3 text-rose-700">No cross-device sync</td><td class="py-2 px-3 text-gray-500">Git backup vault</td></tr>
+      <tr><td class="py-2 px-3 font-medium">200-file BFS cap</td><td class="py-2 px-3 text-emerald-700">Fast queries</td><td class="py-2 px-3 text-rose-700">May miss 7 of 207 notes</td><td class="py-2 px-3 text-gray-500">BRAIN_GRAPH_MAX_FILES env var</td></tr>
+      <tr><td class="py-2 px-3 font-medium">Obsidian REST dep</td><td class="py-2 px-3 text-emerald-700">Rich API, live vault</td><td class="py-2 px-3 text-rose-700">Obsidian must be running</td><td class="py-2 px-3 text-gray-500">ig-brain filesystem mode</td></tr>
+      <tr><td class="py-2 px-3 font-medium">Self-learning manual</td><td class="py-2 px-3 text-emerald-700">No runaway plasticity</td><td class="py-2 px-3 text-rose-700">Must call explicitly</td><td class="py-2 px-3 text-gray-500">launchd plist, daily cron</td></tr>
+      <tr><td class="py-2 px-3 font-medium">Vault not in git</td><td class="py-2 px-3 text-emerald-700">Simple, no conflicts</td><td class="py-2 px-3 text-rose-700">207 files at risk</td><td class="py-2 px-3 text-gray-500">git init + daily commit</td></tr>
+    </tbody>
+  </table>
+</div>
+</details>
+
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">8. Interview Verbal Walkthrough</span>
+  <span class="text-xs bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded font-semibold">Script</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <div class="rounded-lg bg-gray-50 border border-gray-200 p-4 space-y-3 text-xs text-gray-700 leading-relaxed">
+    <p><strong>"The problem: how do you give 4+ AI tools a shared, evolving knowledge context without cloud costs or privacy leaks?"</strong></p>
+    <p>"Solution: a local Obsidian vault served over HTTPS via REST API, wrapped in a FastMCP server exposing 22 tools. AI tools connect via standard MCP protocol — same way they'd connect to any tool."</p>
+    <p>"For retrieval I use 3 layers: direct text search (L1), a keyword-concept index (L2), and a BFS wikilink graph traversal (L3). Results are merged, deduped, and ranked by a weighted score of synaptic weight + recency + direct match."</p>
+    <p>"Self-learning mimics Hebbian plasticity: every note access strengthens that connection. Unused connections decay 1%/day exponentially. Below 0.1 weight they're pruned. The graph gets denser around what you actually use."</p>
+    <p><strong>"Main tradeoff: local-only means no cross-device sync. Main risk: vault not in git means 207 notes could be lost. Both are fixable."</strong></p>
+  </div>
+</div>
+</details>
+
+</div>
+
+<!-- DSA TAB -->
+<div id="tab-dsa" class="tab-content max-w-5xl mx-auto px-6 pb-20 space-y-4 relative z-10">
+
+<section class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+<div class="px-5 py-4 border-b border-gray-200"><h2 class="text-sm font-bold text-gray-900">1. What DSA Powers the Personal Brain?</h2></div>
+<div class="p-5 space-y-4">
+  <p class="text-sm text-gray-700 leading-relaxed">The personal brain uses <strong>6 core DSA concepts</strong>, each mapped to a real module in <code class="code text-ed-sky bg-gray-100 px-1 rounded">brain-scripts/</code>.</p>
+  <div class="bg-gray-100/60 rounded-lg p-4">
+    <span class="text-xs font-semibold text-gray-500">DSA → Module Mapping:</span>
+    <pre class="code text-sm text-gray-600 mt-2 overflow-x-auto">
+<span class="text-teal-600">Graph BFS/DFS</span>       → _build_graph() + traverse MCP tool
+<span class="text-purple-600">Hebbian Learning</span>    → connection_tracker.strengthen_connection()
+<span class="text-blue-600">Exponential Decay</span>   → connection_tracker.decay_connections()
+<span class="text-pink-600">KNN + Cosine Sim</span>    → obsidian_mind_integration.update_knn_graph()
+<span class="text-amber-600">Priority Sort</span>       → retrieval_optimizer.py (rank + dedupe)
+<span class="text-orange-600">Regex Multi-Match</span>   → context_router.py (100+ YAML routes)</pre>
+  </div>
+</div>
+</section>
+
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">2. Hebbian Learning — Synaptic Strengthening</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <div class="rounded-lg bg-pink-50/40 border border-pink-100 p-4 mb-3">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="text-xs bg-pink-100 text-ed-pink border border-pink-200 px-2 py-0.5 rounded font-semibold">Principle</span>
+      <span class="text-sm font-bold text-gray-900">"Cells that fire together, wire together"</span>
+    </div>
+    <p class="text-xs text-gray-600 mb-3 italic">When two notes are co-accessed or one wikilinks to the other, their connection weight increases by delta=0.1 (capped at 1.0).</p>
+    <div class="bg-white border border-gray-200 rounded p-3 my-2">
+      <p class="code text-sm text-gray-800">strength = (frequency × 0.4) + (recency × 0.3) + (success_rate × 0.3)</p>
+    </div>
+    <div class="grid md:grid-cols-3 gap-2 mt-2">
+      <div class="bg-pink-50 border border-pink-100 rounded p-2"><span class="text-xs font-bold text-ed-pink">frequency × 0.4</span><p class="text-xs text-gray-600 mt-1">How often the link is traversed</p></div>
+      <div class="bg-blue-50 border border-blue-100 rounded p-2"><span class="text-xs font-bold text-ed-blue">recency × 0.3</span><p class="text-xs text-gray-600 mt-1">Exponential decay — recent = higher</p></div>
+      <div class="bg-teal-50 border border-teal-100 rounded p-2"><span class="text-xs font-bold text-ed-teal">success_rate × 0.3</span><p class="text-xs text-gray-600 mt-1">% of times the link gave a useful result</p></div>
+    </div>
+  </div>
+  <div class="rounded-lg bg-gray-50 border border-gray-200 overflow-hidden">
+    <div class="px-4 py-2 border-b border-gray-200"><span class="text-xs font-semibold text-gray-500">connection_tracker.py</span></div>
+    <pre class="code text-xs text-gray-700 p-4 overflow-x-auto">
+def strengthen_connection(self, source, target, delta=0.1):
+    key = f"{source}--{target}"
+    self.weights[key] = min(1.0, self.weights.get(key, 0.0) + delta)
+    self._save()
+
+def decay_connections(self, daily_rate=0.01):
+    for k in self.weights:
+        self.weights[k] *= (1 - daily_rate)   # w(t) = w0 * (1-r)^t
+    self._save()
+
+def prune_connections(self, threshold=0.1):
+    self.weights = {k: v for k, v in self.weights.items() if v >= threshold}
+    self._save()</pre>
+  </div>
+  <p class="text-xs text-gray-500 mt-2 font-mono">Time: strengthen O(1) | decay O(E) | prune O(E)</p>
+</div>
+</details>
+
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">3. Exponential Decay — Long-Term Depression</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <div class="rounded-lg bg-blue-50/40 border border-blue-100 p-4">
+    <div class="bg-white border border-gray-200 rounded p-3 my-2 text-center">
+      <p class="code text-sm text-gray-800">\( w(t) = w_0 \times (1 - 0.01)^{t} \)</p>
+      <p class="text-xs text-gray-500 mt-1">t = days without access, w₀ = initial weight, rate = 1%/day</p>
+    </div>
+    <div class="overflow-x-auto mt-3">
+      <table class="text-xs border-collapse w-full">
+        <thead><tr class="bg-gray-50 border-b border-gray-200">
+          <th class="text-left py-1.5 px-3 font-semibold text-gray-600">Days</th>
+          <th class="text-left py-1.5 px-3 font-semibold text-gray-600">Factor</th>
+          <th class="text-left py-1.5 px-3 font-semibold text-gray-600">Weight (w₀=0.9)</th>
+          <th class="text-left py-1.5 px-3 font-semibold text-gray-600">Status</th>
+        </tr></thead>
+        <tbody class="divide-y divide-gray-100">
+          <tr><td class="py-1.5 px-3">7</td><td class="py-1.5 px-3 code">0.932</td><td class="py-1.5 px-3 code text-emerald-600">0.839</td><td class="py-1.5 px-3 text-emerald-600 font-medium">Strong</td></tr>
+          <tr><td class="py-1.5 px-3">30</td><td class="py-1.5 px-3 code">0.740</td><td class="py-1.5 px-3 code text-amber-600">0.666</td><td class="py-1.5 px-3 text-amber-600 font-medium">Fading</td></tr>
+          <tr><td class="py-1.5 px-3">90</td><td class="py-1.5 px-3 code">0.407</td><td class="py-1.5 px-3 code text-orange-600">0.366</td><td class="py-1.5 px-3 text-orange-600 font-medium">Weak</td></tr>
+          <tr><td class="py-1.5 px-3">230+</td><td class="py-1.5 px-3 code">&lt;0.111</td><td class="py-1.5 px-3 code text-rose-600">&lt;0.1</td><td class="py-1.5 px-3 text-rose-600 font-bold">PRUNED</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</details>
+
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">4. Knowledge Graph — BFS Wikilink Traversal</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <div class="rounded-lg bg-teal-50/40 border border-teal-100 p-4 mb-3">
+    <p class="text-xs text-gray-600 mb-3">Notes = nodes. <code class="code bg-gray-100 px-1 rounded">[[wikilinks]]</code> = directed edges. Built as <code class="code bg-gray-100 px-1 rounded">networkx.DiGraph</code>, cached in memory, cap of 200 nodes for responsiveness.</p>
+    <div class="grid md:grid-cols-2 gap-3">
+      <div class="bg-white border border-gray-200 rounded p-3">
+        <span class="text-xs font-bold text-teal-700">_build_graph() — Build</span>
+        <ol class="mt-2 space-y-1">
+          <li class="flex gap-2 items-start"><span class="text-xs font-bold text-teal-700 bg-teal-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">1</span><p class="text-xs text-gray-700">Fetch all vault files via REST API</p></li>
+          <li class="flex gap-2 items-start"><span class="text-xs font-bold text-teal-700 bg-teal-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">2</span><p class="text-xs text-gray-700">For each .md: regex extract <code class="code text-xs">[[...]]</code> links</p></li>
+          <li class="flex gap-2 items-start"><span class="text-xs font-bold text-teal-700 bg-teal-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">3</span><p class="text-xs text-gray-700">Add directed edge: source → target</p></li>
+          <li class="flex gap-2 items-start"><span class="text-xs font-bold text-teal-700 bg-teal-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">4</span><p class="text-xs text-gray-700">Stop at 200 nodes (BFS cap)</p></li>
+        </ol>
+        <p class="text-xs text-gray-500 mt-2 code">O(V+E) time | O(V+E) space</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded p-3">
+        <span class="text-xs font-bold text-blue-700">traverse — Query</span>
+        <ol class="mt-2 space-y-1">
+          <li class="flex gap-2 items-start"><span class="text-xs font-bold text-blue-700 bg-blue-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">1</span><p class="text-xs text-gray-700">BFS from start_node with depth_limit</p></li>
+          <li class="flex gap-2 items-start"><span class="text-xs font-bold text-blue-700 bg-blue-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">2</span><p class="text-xs text-gray-700"><code class="code text-xs">nx.bfs_edges(G, source, depth_limit=n)</code></p></li>
+          <li class="flex gap-2 items-start"><span class="text-xs font-bold text-blue-700 bg-blue-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">3</span><p class="text-xs text-gray-700">Return path + synaptic weights per edge</p></li>
+        </ol>
+        <p class="text-xs text-gray-500 mt-2 code">find_connections("DSA", "career-tools")</p>
+      </div>
+    </div>
+  </div>
+</div>
+</details>
+
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">5. KNN Similarity — Semantic Nearest Neighbours</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <div class="rounded-lg bg-amber-50/40 border border-amber-100 p-4">
+    <p class="text-xs text-gray-600 mb-3">Pre-computes cosine similarity between concept embedding vectors. Stores top-k neighbours in <code class="code bg-gray-100 px-1 rounded">knn_graph.json</code> for O(1) query time.</p>
+    <div class="rounded-lg bg-gray-50 border border-gray-200 overflow-hidden">
+      <pre class="code text-xs text-gray-700 p-4 overflow-x-auto">
+# O(N^2 * D) build — N concepts, D embedding dims
+def update_knn_graph(self, k=5):
+    for concept_id, emb in self.embeddings.items():
+        sims = []
+        for other_id, other_emb in self.embeddings.items():
+            if other_id != concept_id:
+                # cosine = dot(a,b) / (|a| * |b|)
+                dot   = sum(x*y for x,y in zip(emb, other_emb))
+                norm  = (sum(x**2 for x in emb)**0.5 * 
+                         sum(x**2 for x in other_emb)**0.5 + 1e-10)
+                sims.append((other_id, dot/norm))
+        self.knn_graph[concept_id] = sorted(sims, key=lambda x:-x[1])[:k]</pre>
+    </div>
+    <div class="flex gap-4 mt-3 text-xs">
+      <div><span class="font-semibold text-gray-600">Build:</span> <span class="code text-gray-800">O(N²·D)</span> — run once, persist</div>
+      <div><span class="font-semibold text-gray-600">Query:</span> <span class="code text-gray-800">O(1)</span> — JSON lookup</div>
+    </div>
+  </div>
+</div>
+</details>
+
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">6. 3-Layer Retrieval — Ranked Merge</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <div class="space-y-3 mb-3">
+    <div class="flex gap-3 items-start"><span class="text-xs font-bold text-blue-700 bg-blue-100 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-0.5">L1</span><div><p class="text-xs text-gray-800 font-semibold">Direct Search</p><p class="text-xs text-gray-600">Obsidian REST API full-text. Fastest. O(N) per query.</p></div></div>
+    <div class="flex gap-3 items-start"><span class="text-xs font-bold text-purple-700 bg-purple-100 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-0.5">L2</span><div><p class="text-xs text-gray-800 font-semibold">Concept Keyword Index</p><p class="text-xs text-gray-600">Pre-built keyword→concept map from headings + bold text. O(1) lookup, catches synonyms.</p></div></div>
+    <div class="flex gap-3 items-start"><span class="text-xs font-bold text-teal-700 bg-teal-100 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-0.5">L3</span><div><p class="text-xs text-gray-800 font-semibold">Graph Traversal</p><p class="text-xs text-gray-600">BFS depth=2 from matched concepts. Surfaces connected knowledge. O(V+E).</p></div></div>
+  </div>
+  <div class="rounded-lg bg-gray-50 border border-gray-200 p-3">
+    <span class="text-xs font-bold text-gray-600">Merge &amp; Rank:</span>
+    <pre class="code text-xs text-gray-700 mt-2 overflow-x-auto">
+results = deduplicate(L1_hits + L2_hits + L3_hits)
+ranked  = sorted(results, key=lambda r: (
+    r.synaptic_weight * 0.4 +   # Hebbian strength
+    r.recency_score   * 0.3 +   # time since last access
+    r.direct_match    * 0.3     # exact keyword hit
+), reverse=True)</pre>
+  </div>
+</div>
+</details>
+
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">7. Dry Run — "Fix bug in jarvis" End-to-End</span>
+  <span class="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded font-semibold">Trace</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5">
+  <div class="rounded-lg bg-gray-50 border border-gray-200 p-4 space-y-2 text-xs code text-gray-700">
+    <p><span class="text-gray-400">// prompt:</span> "fix bug in jarvis"</p>
+    <p class="text-blue-600">// Step 1: context router O(R×K)</p>
+    <p>active_routes = [dev-debug.yaml, voice-ai.yaml]</p>
+    <p class="text-teal-600">// Step 2: inject skills + notes into context</p>
+    <p>ctx += skills/systematic-debugging + themes/voice-ai/knowledge</p>
+    <p class="text-purple-600">// Step 3: search("jarvis audio bug")</p>
+    <p>L1: ["voice-ai/jarvis/audio-pipeline.md"]</p>
+    <p>L2: concept_index["jarvis"] → concept_42</p>
+    <p>L3: BFS(42, depth=2) → +["stt.md", "mcp.md"]</p>
+    <p>ranked = sort_by(synaptic_weight + recency + direct)</p>
+    <p class="text-pink-600">// Step 4: Hebbian update O(1)</p>
+    <p>strengthen("jarvis", "audio-pipeline", delta=0.1)</p>
+    <p class="text-emerald-600 font-bold">// result: targeted context in &lt;200ms, graph smarter</p>
+  </div>
+</div>
+</details>
+
+<section class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+<div class="px-5 py-4 border-b border-gray-200"><h2 class="text-sm font-bold text-gray-900">8. Complexity Reference Card</h2></div>
+<div class="p-5 overflow-x-auto">
+  <table class="w-full text-xs border-collapse">
+    <thead><tr class="bg-gray-50 border-b border-gray-200">
+      <th class="text-left py-2 px-3 font-semibold text-gray-600">Operation</th>
+      <th class="text-left py-2 px-3 font-semibold text-gray-600">Algorithm</th>
+      <th class="text-left py-2 px-3 font-semibold text-gray-600">Time</th>
+      <th class="text-left py-2 px-3 font-semibold text-gray-600">Space</th>
+      <th class="text-left py-2 px-3 font-semibold text-gray-600">Module</th>
+    </tr></thead>
+    <tbody class="divide-y divide-gray-100">
+      <tr><td class="py-2 px-3 font-medium">Build wikilink graph</td><td class="py-2 px-3">BFS + regex</td><td class="py-2 px-3 code text-blue-600">O(V+E)</td><td class="py-2 px-3 code">O(V+E)</td><td class="py-2 px-3 code text-gray-500">brain-mcp-server.py</td></tr>
+      <tr><td class="py-2 px-3 font-medium">Graph traversal</td><td class="py-2 px-3">BFS depth-limited</td><td class="py-2 px-3 code text-blue-600">O(V+E)</td><td class="py-2 px-3 code">O(V)</td><td class="py-2 px-3 code text-gray-500">traverse MCP tool</td></tr>
+      <tr><td class="py-2 px-3 font-medium">Hebbian strengthen</td><td class="py-2 px-3">Hash map update</td><td class="py-2 px-3 code text-emerald-600">O(1)</td><td class="py-2 px-3 code">O(1)</td><td class="py-2 px-3 code text-gray-500">connection_tracker.py</td></tr>
+      <tr><td class="py-2 px-3 font-medium">Synaptic decay sweep</td><td class="py-2 px-3">Linear scan all edges</td><td class="py-2 px-3 code text-amber-600">O(E)</td><td class="py-2 px-3 code">O(1)</td><td class="py-2 px-3 code text-gray-500">connection_tracker.py</td></tr>
+      <tr><td class="py-2 px-3 font-medium">KNN graph build</td><td class="py-2 px-3">Pairwise cosine sim</td><td class="py-2 px-3 code text-rose-600">O(N²·D)</td><td class="py-2 px-3 code">O(N·K)</td><td class="py-2 px-3 code text-gray-500">obsidian_mind_integration</td></tr>
+      <tr><td class="py-2 px-3 font-medium">KNN query</td><td class="py-2 px-3">JSON lookup</td><td class="py-2 px-3 code text-emerald-600">O(1)</td><td class="py-2 px-3 code">O(1)</td><td class="py-2 px-3 code text-gray-500">knn_graph.json</td></tr>
+      <tr><td class="py-2 px-3 font-medium">Context router match</td><td class="py-2 px-3">Regex scan all routes</td><td class="py-2 px-3 code text-amber-600">O(R×K)</td><td class="py-2 px-3 code">O(1)</td><td class="py-2 px-3 code text-gray-500">context_router.py</td></tr>
+      <tr><td class="py-2 px-3 font-medium">3-layer retrieval merge</td><td class="py-2 px-3">Sort + dedupe</td><td class="py-2 px-3 code text-blue-600">O(N log N)</td><td class="py-2 px-3 code">O(N)</td><td class="py-2 px-3 code text-gray-500">retrieval_optimizer.py</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+</div>
+
+<script>
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => { el.classList.remove('active'); el.classList.add('text-gray-500'); });
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+  btn.classList.remove('text-gray-500');
+}
+</script>
+</body>
+</html>

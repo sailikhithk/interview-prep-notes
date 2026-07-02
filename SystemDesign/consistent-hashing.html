@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: Consistent Hashing Ring — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax for LaTeX Math Formatting -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        ed: { pink:'#db2777', blue:'#2563eb', teal:'#0d9488', amber:'#d97706', sky:'#0284c7', purple:'#7c3aed', orange:'#ea580c' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+.g { background:linear-gradient(135deg,#db2777,#7c3aed,#2563eb); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hg { background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(37,99,235,0.06) 0%,transparent 100%); }
+</style>
+</head>
+<body class="bg-white text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Glow Backdrop -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] bg-gradient-to-b from-blue-500/5 via-indigo-500/2 to-transparent blur-3xl pointer-events-none"></div>
+
+<!-- HERO -->
+<div class="relative overflow-hidden border-b border-gray-200 bg-gray-50 hg">
+<div class="max-w-4xl mx-auto px-6 py-12">
+  <div class="flex items-center gap-3 mb-4">
+    <span class="text-xs font-bold text-gray-500 tracking-wider">SYSTEM DESIGN</span>
+    <span class="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+    <span class="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded">SCALE: 100M+ DAU</span>
+  </div>
+  <h1 class="text-4xl md:text-5xl font-black tracking-tight mb-4"><span class="g">Consistent Hashing Ring</span></h1>
+  <p class="text-gray-600 text-lg mb-6 max-w-2xl leading-relaxed">Design a decentralized request routing and partition key redistribution ring to scale distributed caches and databases dynamically with minimal data relocation.</p>
+  <div class="flex flex-wrap gap-2 mb-6">
+    <span class="text-xs bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-full text-indigo-700 font-medium">Consistent Hashing</span>
+    <span class="text-xs bg-purple-50 border border-purple-200 px-3 py-1 rounded-full text-purple-700 font-medium">Dynamic Sharding</span>
+    <span class="text-xs bg-teal-50 border border-teal-200 px-3 py-1 rounded-full text-teal-700 font-medium">Virtual Nodes</span>
+  </div>
+  <div class="flex gap-4">
+    <div class="bg-white border border-gray-200 rounded-lg px-4 py-2"><span class="text-xs text-gray-500 block">Hash Latency</span><span class="text-sm font-mono font-bold text-emerald-600">&lt; 10ms</span></div>
+    <div class="bg-white border border-gray-200 rounded-lg px-4 py-2"><span class="text-xs text-gray-500 block">Uptime SLA</span><span class="text-sm font-mono font-bold text-indigo-600">99.999%</span></div>
+  </div>
+</div>
+</div>
+
+<div class="max-w-4xl mx-auto px-6 pb-20 space-y-6 mt-8 relative z-10">
+
+<!-- 1. REAL-WORLD REFERENCE & CASE STUDY -->
+<section class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+<div class="px-5 py-4 border-b border-gray-200 bg-gray-50/50"><h2 class="text-sm font-bold text-gray-900 uppercase tracking-wider">1. Real-World Reference &amp; Case Study</h2></div>
+<div class="p-6 space-y-6">
+  <div class="rounded-lg bg-ed-purple/5 border border-ed-purple/15 p-5 text-gray-800">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="bg-ed-purple/10 text-ed-purple border border-ed-purple/20 px-2.5 py-0.5 rounded font-bold text-xs uppercase">Production Anchor: Amazon DynamoDB</span>
+    </div>
+    <p class="text-xs text-gray-600 leading-relaxed mb-3">
+      Amazon's highly available shopping cart storage (DynamoDB paper, 2007) pioneered consistent hashing ring structures with virtual nodes. By replicating keys clockwise along the ring to \(N\) consecutive nodes, they survived complete server failures during high-traffic events, maintaining 99.9th percentile latencies below 10ms.
+    </p>
+    
+    <!-- DynamoDB Request Coordination Diagram -->
+    <div class="my-4 bg-white border border-purple-100 rounded-xl p-4">
+      <span class="text-xs font-semibold text-purple-700 block mb-2">DynamoDB Request Coordination Routing Architecture</span>
+      <div class="mermaid flex justify-center py-2">
+        graph TD
+          Client[Client Application] -->|1. Write/Read Request| Coord[Coordinator Node A]
+          
+          subgraph Consistent Hashing Ring [Hash Space: 0 to 2^32-1]
+              Coord -->|2. Replicate Write| NodeB["Node B (Replica 1)"]
+              Coord -->|2. Replicate Write| NodeC["Node C (Replica 2)"]
+              Coord -->|2. Replicate Write| NodeD["Node D (Replica 3)"]
+              
+              NodeB -.->|Gossip Heartbeats| NodeC
+              NodeC -.->|Gossip Heartbeats| NodeD
+              NodeD -.->|Gossip Heartbeats| Coord
+          end
+
+          style Coord fill:#eff6ff,stroke:#2563eb,stroke-width:2px;
+          style NodeB fill:#fff7ed,stroke:#ea580c,stroke-width:1.5px;
+          style NodeC fill:#fff7ed,stroke:#ea580c,stroke-width:1.5px;
+          style NodeD fill:#fff7ed,stroke:#ea580c,stroke-width:1.5px;
+      </div>
+      <!-- Legend -->
+      <div class="mt-4 pt-3 border-t border-purple-100/60 flex flex-wrap justify-center gap-6 text-[10px] font-semibold text-gray-500">
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-blue-100 border border-blue-400 inline-block"></span> Coordinator Node (Receives Key request)</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-orange-100 border border-orange-400 inline-block"></span> Clockwise Replicas (Store Key copies)</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-gray-50 border border-gray-300 inline-block"></span> Gossip Consensus Ring</span>
+      </div>
+    </div>
+    
+    <div class="text-xs text-gray-550 border-t border-purple-100/40 pt-3">
+      <strong>Relatability:</strong> When you add a new database node to a cluster of 1,000, traditional modulo hashing shifts 99% of your data. DynamoDB's consistent hashing ring shifts only 0.1%, protecting downstream relational dependencies.
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- 2. REQUIREMENTS & SCOPE CLARIFICATION -->
+<section class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+<div class="px-5 py-4 border-b border-gray-200 bg-gray-50/50"><h2 class="text-sm font-bold text-gray-900 uppercase tracking-wider">2. Requirements &amp; Scope Clarification</h2></div>
+<div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+  <div class="bg-blue-50/40 border border-blue-100 rounded-lg p-4">
+    <h3 class="text-xs font-bold text-blue-700 uppercase tracking-wider mb-3 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span>Functional</h3>
+    <ul class="text-xs text-gray-700 space-y-2.5 list-none">
+      <li class="flex items-start gap-2"><span class="w-1 h-1 rounded-full bg-blue-600 mt-1.5 flex-shrink-0"></span><span><strong>Node Membership:</strong> Dynamically add/remove server nodes without service interruption.</span></li>
+      <li class="flex items-start gap-2"><span class="w-1 h-1 rounded-full bg-blue-600 mt-1.5 flex-shrink-0"></span><span><strong>Request Routing:</strong> Route partition key lookups to the correct target node.</span></li>
+      <li class="flex items-start gap-2"><span class="w-1 h-1 rounded-full bg-blue-600 mt-1.5 flex-shrink-0"></span><span><strong>Uniform Distribution:</strong> Distribute keys evenly across servers to avoid hotspots.</span></li>
+    </ul>
+  </div>
+  <div class="bg-indigo-50/40 border border-indigo-100 rounded-lg p-4">
+    <h3 class="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-3 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>Non-Functional</h3>
+    <ul class="text-xs text-gray-700 space-y-2.5 list-none">
+      <li class="flex items-start gap-2"><span class="w-1 h-1 rounded-full bg-indigo-600 mt-1.5 flex-shrink-0"></span><span><strong>Scalability:</strong> Support billions of keys and thousands of physical nodes.</span></li>
+      <li class="flex items-start gap-2"><span class="w-1 h-1 rounded-full bg-indigo-600 mt-1.5 flex-shrink-0"></span><span><strong>Availability:</strong> Survive instant node failure/crashes with O(1) failover.</span></li>
+      <li class="flex items-start gap-2"><span class="w-1 h-1 rounded-full bg-indigo-600 mt-1.5 flex-shrink-0"></span><span><strong>Low Latency:</strong> Resolving the destination node for a request must take under 1ms.</span></li>
+    </ul>
+  </div>
+  <div class="bg-gray-50 border border-gray-100 rounded-lg p-4 text-gray-500">
+    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>Out of Scope</h3>
+    <ul class="text-xs space-y-2.5 list-none italic">
+      <li class="flex items-start gap-2"><span class="w-1 h-1 rounded-full bg-gray-455 mt-1.5 flex-shrink-0"></span><span>Internal storage engine implementation details (e.g. LSM vs B-Trees).</span></li>
+      <li class="flex items-start gap-2"><span class="w-1 h-1 rounded-full bg-gray-455 mt-1.5 flex-shrink-0"></span><span>Network socket buffers and TCP handshakes.</span></li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<!-- 3. SCALE & CAPACITY ESTIMATION (BACK-OF-THE-ENVELOPE) -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">3. Scale &amp; Capacity Estimation (Back-of-the-Envelope)</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-6">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div class="rounded-lg bg-ed-amber/5 border border-ed-amber/15 p-5">
+      <span class="text-xs font-bold text-ed-amber uppercase tracking-wider">Write Throughput (QPS)</span>
+      <div class="my-3 text-sm text-gray-700 leading-relaxed font-mono">
+        100M users write 10 objects daily:
+        $$ Avg\_Write\_QPS = \frac{100,000,000 \times 10}{86400} \approx 11,574 \text{ QPS} $$
+        $$ Peak\_Write\_QPS = 11,574 \times 3 \approx 34,722 \text{ QPS} $$
+      </div>
+    </div>
+    <div class="rounded-lg bg-ed-teal/5 border border-ed-teal/15 p-5">
+      <span class="text-xs font-bold text-ed-teal uppercase tracking-wider">5-Year Storage Size</span>
+      <div class="my-3 text-sm text-gray-700 leading-relaxed font-mono">
+        Average object size is 1 KB:
+        $$ Storage_{Daily} = 1\text{B writes} \times 1\text{ KB} = 1\text{ TB/day} $$
+        $$ Storage_{5Y} = 1\text{ TB/day} \times 365 \times 5 = 1.825\text{ PB} $$
+      </div>
+    </div>
+  </div>
+
+  <div class="rounded-lg bg-ed-teal/5 border border-ed-teal/15 p-5">
+    <span class="text-xs font-bold text-ed-teal uppercase tracking-wider block mb-3">Memory Cache Size Estimation</span>
+    <p class="text-xs text-gray-600 mb-3 leading-relaxed">Applying the 80/20 rule to cache 20% of the daily active reads (10 Billion reads total):</p>
+    <div class="text-sm text-gray-700 leading-relaxed font-mono">
+      $$ Cache\_Memory = 10\text{B reads} \times 0.20 \times 1\text{ KB} = 2\text{ TB} $$
+      If each cache server has 64 GB of RAM:
+      $$ Cache\_Servers = \frac{2,000\text{ GB}}{64\text{ GB}} \approx 32\text{ Cache Nodes} $$
+    </div>
+  </div>
+</div>
+</details>
+
+<!-- 4. HIGH-LEVEL DESIGN (HLD DIAGRAM) -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">4. High-Level Design (HLD Diagram)</span>
+  <span class="text-xs bg-indigo-50 border border-indigo-250 text-indigo-700 px-2 py-0.5 rounded font-semibold">HLD</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-4">
+  <div class="bg-indigo-50/20 border border-indigo-100 rounded-xl p-4">
+    <div class="mermaid flex justify-center py-4">
+      graph TD
+        Client[Client App] -->|1. HTTP Request| ALB[Application Load Balancer]
+        ALB -->|2. Route Request| APIGW[API Gateway Tier]
+        
+        subgraph Coordination Cluster
+            etcd[(etcd Raft Store)] -.->|3. Watcher Sync Ring| APIGW
+        end
+
+        subgraph Consistent Cache Ring
+            APIGW -->|Read: Blue Path| CacheA[Cache Node A: 10.0.1.2]
+            APIGW -->|Read: Blue Path| CacheB[Cache Node B: 10.0.1.3]
+            APIGW -->|Write: Orange Path| DBShardA[(Database Shard A)]
+            APIGW -->|Write: Orange Path| DBShardB[(Database Shard B)]
+        end
+
+        CacheA -.->|4. Cache Miss| DBShardA
+        CacheB -.->|4. Cache Miss| DBShardB
+
+        style APIGW fill:#eff6ff,stroke:#2563eb,stroke-width:2px;
+        style etcd fill:#faf5ff,stroke:#7c3aed,stroke-width:1px;
+        style CacheA fill:#f0fdf4,stroke:#16a34a,stroke-dasharray: 5 5;
+        style CacheB fill:#f0fdf4,stroke:#16a34a,stroke-dasharray: 5 5;
+        style DBShardA fill:#fff7ed,stroke:#ea580c,stroke-width:1px;
+        style DBShardB fill:#fff7ed,stroke:#ea580c,stroke-width:1px;
+    </div>
+    
+    <!-- Legend -->
+    <div class="mt-4 pt-3 border-t border-indigo-100/60 flex flex-wrap justify-center gap-6 text-[11px] font-semibold text-gray-500">
+      <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-blue-100 border border-blue-400 inline-block"></span> API Gateway / Router</span>
+      <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-purple-100 border border-purple-400 inline-block"></span> Consensus Store (etcd)</span>
+      <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-emerald-100 border border-emerald-400 inline-block"></span> Cache Nodes (Read Path)</span>
+      <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-orange-100 border border-orange-400 inline-block"></span> Database Shards (Write Path)</span>
+    </div>
+  </div>
+  <p class="text-xs text-gray-500 italic text-center">Figure 1: High-Level Architecture showing Client request routing via API Gateway synced to etcd.</p>
+</div>
+</details>
+
+<!-- 5. READ & WRITE DATA FLOW TRACES -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">5. Read &amp; Write Data Flow Traces</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-4 text-xs text-gray-750">
+  <div class="bg-blue-50/30 border border-blue-100 rounded-lg p-4">
+    <strong class="text-blue-700 font-bold block mb-2">Read Path Flow (Blue Path)</strong>
+    <ol class="list-decimal pl-4 space-y-2">
+      <li>Client issues a <code>GET /user_10293</code> read request.</li>
+      <li>Application Load Balancer (ALB) routes request to an API Gateway instance.</li>
+      <li>API Gateway hashes key <code>"user_10293"</code> and performs binary search on its local in-memory Ring TreeMap to find successor Cache Node A.</li>
+      <li>Gateway connects to Cache Node A. On a Cache Hit, Node A returns payload immediately.</li>
+      <li>On a Cache Miss, Gateway queries DB Shard A clockwise, writes data back to Cache Node A, and returns payload to Client.</li>
+    </ol>
+  </div>
+  <div class="bg-orange-50/30 border border-orange-100 rounded-lg p-4">
+    <strong class="text-orange-700 font-bold block mb-2">Write Path Flow (Orange Path)</strong>
+    <ol class="list-decimal pl-4 space-y-2">
+      <li>Client issues a <code>POST /user_10293</code> write payload.</li>
+      <li>API Gateway hashes the key, locates successor Database Shard A via the TreeMap ring.</li>
+      <li>Gateway writes the new record to DB Shard A (Primary).</li>
+      <li>DB Shard A propagates writes asynchronously to secondary replicas and triggers cache invalidations on Cache Node A.</li>
+    </ol>
+  </div>
+</div>
+</details>
+
+<!-- 6. SYSTEM CORE ENTITIES & DATABASE SCHEMA -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">6. System Core Entities &amp; Database Schema</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-4">
+  <div class="overflow-x-auto border border-gray-200 rounded-lg">
+    <table class="w-full text-xs">
+      <thead class="bg-indigo-50 border-b border-indigo-100 text-indigo-900">
+        <tr>
+          <th class="px-4 py-3 text-left font-semibold">Table: ring_nodes</th>
+          <th class="px-4 py-3 text-left font-semibold">Data Type</th>
+          <th class="px-4 py-3 text-left font-semibold">Constraints</th>
+          <th class="px-4 py-3 text-left font-semibold">Description</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-150">
+        <tr class="bg-white"><td class="px-4 py-3 text-gray-900 font-mono">node_id</td><td class="px-4 py-3 text-gray-600 font-mono">VARCHAR(64)</td><td class="px-4 py-3 text-indigo-700 font-semibold">PRIMARY KEY</td><td class="px-4 py-3 text-gray-600">Unique server node identifier</td></tr>
+        <tr class="bg-gray-50/50"><td class="px-4 py-3 text-gray-600 font-mono">ip_address</td><td class="px-4 py-3 text-gray-600 font-mono">VARCHAR(45)</td><td class="px-4 py-3 text-gray-600 font-medium">NOT NULL</td><td class="px-4 py-3 text-gray-600">Target server IPv4/IPv6 address</td></tr>
+        <tr class="bg-white"><td class="px-4 py-3 text-gray-900 font-mono">status</td><td class="px-4 py-3 text-gray-600 font-mono">VARCHAR(16)</td><td class="px-4 py-3 text-gray-600 font-medium">DEFAULT 'ACTIVE'</td><td class="px-4 py-3 text-gray-600">ACTIVE, INACTIVE, DRAINING</td></tr>
+        <tr class="bg-gray-50/50"><td class="px-4 py-3 text-gray-900 font-mono">updated_at</td><td class="px-4 py-3 text-gray-600 font-mono">TIMESTAMP</td><td class="px-4 py-3 text-gray-600 font-medium">NOT NULL</td><td class="px-4 py-3 text-gray-600">Heartbeat timestamp</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</details>
+
+<!-- 7. API DESIGN & DATA CONTRACT -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">7. API Design &amp; Data Contract</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-6">
+  <div class="bg-indigo-50 border border-indigo-150 p-5 rounded-xl">
+    <span class="text-xs font-bold text-indigo-700 uppercase tracking-wider block mb-3 flex items-center gap-2">
+      <span class="bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded font-bold">POST</span> /ring/nodes
+    </span>
+    <pre class="code text-xs text-gray-800 bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto">
+{
+  "node_id": "cache-node-33",
+  "ip_address": "10.0.4.12",
+  "port": 6379,
+  "vnode_count": 256
+}</pre>
+  </div>
+  <div class="bg-indigo-50 border border-indigo-150 p-5 rounded-xl">
+    <span class="text-xs font-bold text-indigo-700 uppercase tracking-wider block mb-3 flex items-center gap-2">
+      <span class="bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded font-bold">GET</span> /ring/route?key=user_10293
+    </span>
+    <pre class="code text-xs text-gray-800 bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto">
+{
+  "key": "user_10293",
+  "target_node": {
+    "node_id": "cache-node-15",
+    "ip_address": "10.0.2.112",
+    "port": 6379
+  }
+}</pre>
+  </div>
+</div>
+</details>
+
+<!-- 8. DISTRIBUTED COORDINATION & STATE MANAGEMENT -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">8. Distributed Coordination &amp; State Management</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 text-xs text-gray-700 leading-relaxed font-medium">
+  The node coordination registry ring requires strong consistency (CP in CAP) to prevent routing split-brain anomalies. etcd maintains cluster membership using Raft consensus. API Gateways establish a long-lived watcher session on the etcd directory, syncing ring modifications to local memory instances in under 1ms.
+</div>
+</details>
+
+<!-- 9. DETAILED PARTITIONING & DATABASE SCALING (SHARDING) -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">9. Detailed Partitioning &amp; Database Scaling (Sharding)</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 text-xs text-gray-700 leading-relaxed font-medium">
+  Scaling database shards is achieved by mapping database instances clockwise along the consistent hashing ring. We assign each physical database primary node 256 virtual coordinates to balance key partition sizing dynamically.
+</div>
+</details>
+
+<!-- 10. CONSISTENT HASHING & RING MECHANICS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">10. Consistent Hashing &amp; Ring Mechanics</span>
+  <span class="text-xs bg-ed-pink/10 border border-ed-pink/20 text-ed-pink px-2 py-0.5 rounded font-semibold">LLD Hashing Ring</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-6">
+  <p class="text-xs text-gray-600 leading-relaxed">
+    Consistent hashing maps both physical servers and data partition keys to a shared circular 32-bit integer space \([0, 2^{32}-1]\). To avoid non-uniform distribution (clustering), each physical node is assigned 256 virtual nodes scattered across the ring.
+  </p>
+
+  <!-- LLD Ring Diagram -->
+  <div class="bg-ed-pink/5 border border-ed-pink/15 rounded-xl p-4">
+    <div class="mermaid flex justify-center py-4">
+      graph TD
+        subgraph Hash Ring Circle [Hash Space: 0 to 2^32-1]
+            NodeA0["VNode A0 (Hash: 0x1A0F)"] -->|Clockwise| NodeB0["VNode B0 (Hash: 0x4B2C)"]
+            NodeB0 -->|Clockwise| NodeA1["VNode A1 (Hash: 0x8C1D)"]
+            NodeA1 -->|Clockwise| NodeB1["VNode B1 (Hash: 0xD3F4)"]
+            NodeB1 -->|Wrap Circular| NodeA0
+        end
+
+        Key1["Key: user_123 (Hash: 0x3C5A)"] -.->|Read search| NodeB0
+        Key2["Key: user_999 (Hash: 0x9D02)"] -.->|Read search| NodeB1
+
+        style NodeA0 fill:#eff6ff,stroke:#3b82f6,stroke-width:2px;
+        style NodeA1 fill:#eff6ff,stroke:#3b82f6,stroke-width:2px;
+        style NodeB0 fill:#fdf2f8,stroke:#db2777,stroke-width:2px;
+        style NodeB1 fill:#fdf2f8,stroke:#db2777,stroke-width:2px;
+        style Key1 fill:#f0fdf4,stroke:#16a34a;
+        style Key2 fill:#f0fdf4,stroke:#16a34a;
+    </div>
+    
+    <!-- Legend -->
+    <div class="mt-4 pt-3 border-t border-ed-pink/15 flex flex-wrap justify-center gap-6 text-[11px] font-semibold text-gray-500">
+      <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-blue-100 border border-blue-400 inline-block"></span> Virtual Nodes (Server A)</span>
+      <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-pink-100 border border-pink-400 inline-block"></span> Virtual Nodes (Server B)</span>
+      <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-emerald-100 border border-emerald-400 inline-block"></span> Data Keys (Mapped via Hash)</span>
+    </div>
+  </div>
+  <p class="text-xs text-gray-500 italic text-center">Figure 3: Topology representation showing virtual nodes A and B interleaved on the circular hash space clockwise.</p>
+</div>
+</details>
+
+<!-- 11. CACHING TOPOLOGY & INVALIDATION STRATEGY -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">11. Caching Topology &amp; Invalidation Strategy</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-4">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="rounded-lg bg-indigo-50 border border-indigo-200 p-5 text-indigo-900">
+      <span class="text-xs font-bold text-indigo-700 uppercase tracking-wider block mb-2">Caching Topologies</span>
+      <p class="text-xs text-gray-700 leading-relaxed">
+        <strong>Cache-Aside (Lazy Loading):</strong> The application checks the consistent hashing ring first. On a cache miss, data is read from the primary DB shard, written back to the specific cache node, and returned. This keeps cache memory optimized for active keys.
+      </p>
+    </div>
+    <div class="rounded-lg bg-indigo-50 border border-indigo-250 p-5 text-indigo-900">
+      <span class="text-xs font-bold text-purple-700 uppercase tracking-wider block mb-2">Eviction Policy &amp; TTLs</span>
+      <p class="text-xs text-gray-700 leading-relaxed">
+        <strong>Least Recently Used (LRU):</strong> Evicts the least active cache keys. Cache keys use a default <strong>TTL of 3600 seconds</strong> with random jitter (+/- 300s) to prevent concurrent expiration causing cache stampedes on database shards.
+      </p>
+    </div>
+  </div>
+</div>
+</details>
+
+<!-- 12. ASYNCHRONOUS PROCESSING & MESSAGE QUEUES -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">12. Asynchronous Processing &amp; Message Queues</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 text-xs text-gray-700 leading-relaxed bg-orange-50/10 border border-orange-100 rounded-xl m-6">
+  Dynamic membership swaps emit event messages via a Kafka message bus. Workers listen to the queue and initiate asynchronous background copy and syncing procedures for key relocation ranges, preventing direct blocking of the client request thread.
+</div>
+</details>
+
+<!-- 13. LOW-LEVEL COMPONENT DESIGN (LLD SEQUENCE & CODE) -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">13. Low-Level Component Design (LLD Sequence &amp; Code)</span>
+  <span class="text-xs bg-ed-sky/10 border border-ed-sky/20 text-ed-sky px-2 py-0.5 rounded font-semibold">LLD Sequence &amp; Code</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-6">
+  <!-- LLD Sequence Diagram -->
+  <div class="mermaid py-4 flex justify-center bg-ed-sky/5 border border-ed-sky/15 rounded-xl">
+    sequenceDiagram
+      autonumber
+      actor Client as Client App
+      participant GW as API Gateway (Local Memory)
+      participant Ring as TreeMap Hashing Ring
+      participant Cache as cache-node-15 (10.0.2.112)
+
+      Client->>GW: GET /user_10293
+      GW->>Ring: getSuccessorNode("user_10293")
+      Note over Ring: Hash("user_10293") -> 0x3C5A<br/>TreeMap.ceilingKey(0x3C5A) -> 0x4B2C (VNode B0)
+      Ring-->>GW: return cache-node-15 (10.0.2.112)
+      GW->>Cache: GET /user_10293
+      Cache-->>Client: 200 OK (User Data payload)
+  </div>
+
+  <span class="text-xs font-bold text-gray-500 uppercase tracking-wider block">Consistent Hashing TreeMap Implementation (Java)</span>
+  <pre class="code text-xs text-gray-800 bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto">
+<span class="text-indigo-700 font-semibold">public class</span> <span class="text-purple-700">ConsistentHashRing</span> {
+    <span class="text-indigo-700 font-semibold">private final</span> HashFunction hashFunction;
+    <span class="text-indigo-700 font-semibold">private final</span> TreeMap&lt;Integer, String&gt; ring = <span class="text-indigo-700 font-semibold">new</span> TreeMap&lt;&gt;();
+
+    <span class="text-indigo-700 font-semibold">public</span> <span class="text-purple-700">ConsistentHashRing</span>(HashFunction hashFunction) {
+        <span class="text-indigo-700 font-semibold">this</span>.hashFunction = hashFunction;
+    }
+
+    <span class="text-indigo-700 font-semibold">public void</span> <span class="text-purple-700">addNode</span>(String node, <span class="text-indigo-700 font-semibold">int</span> vnodes) {
+        <span class="text-indigo-700 font-semibold">for</span> (<span class="text-indigo-700 font-semibold">int</span> i = 0; i &lt; vnodes; i++) {
+            <span class="text-indigo-700 font-semibold">int</span> hash = hashFunction.hash(node + <span class="text-teal-700">"#"</span> + i);
+            ring.put(hash, node);
+        }
+    }
+
+    <span class="text-indigo-700 font-semibold">public</span> String <span class="text-purple-700">getNode</span>(String key) {
+        <span class="text-indigo-700 font-semibold">if</span> (ring.isEmpty()) <span class="text-indigo-700 font-semibold">return null</span>;
+        <span class="text-indigo-700 font-semibold">int</span> hash = hashFunction.hash(key);
+        <span class="text-indigo-700 font-semibold">if</span> (!ring.containsKey(hash)) {
+            SortedMap&lt;Integer, String&gt; tailMap = ring.tailMap(hash);
+            hash = tailMap.isEmpty() ? ring.firstKey() : tailMap.firstKey();
+        }
+        <span class="text-indigo-700 font-semibold">return</span> ring.get(hash);
+    }
+}</pre>
+
+  <span class="text-xs font-bold text-gray-500 uppercase tracking-wider block">Consistent Hashing TreeMap Implementation (Python)</span>
+  <pre class="code text-xs text-gray-800 bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto">
+<span class="text-indigo-750 font-semibold">import</span> hashlib
+<span class="text-indigo-750 font-semibold">import</span> bisect
+
+<span class="text-indigo-750 font-semibold">class</span> <span class="text-purple-750">ConsistentHashRing</span>:
+    <span class="text-indigo-750 font-semibold">def</span> <span class="text-purple-750">__init__</span>(self, vnodes=256):
+        self.vnodes = vnodes
+        self.ring = {}  <span class="text-gray-500"># hash -> node string</span>
+        self.sorted_keys = []
+
+    <span class="text-indigo-750 font-semibold">def</span> <span class="text-purple-750">_hash</span>(self, key: str) -> int:
+        <span class="text-indigo-750 font-semibold">return</span> int(hashlib.md5(key.encode(<span class="text-teal-700">'utf-8'</span>)).hexdigest(), 16) & 0xFFFFFFFF
+
+    <span class="text-indigo-750 font-semibold">def</span> <span class="text-purple-750">add_node</span>(self, node: str):
+        <span class="text-indigo-750 font-semibold">for</span> i <span class="text-indigo-750 font-semibold">in</span> range(self.vnodes):
+            h = self._hash(f<span class="text-teal-700">"{node}#{i}"</span>)
+            self.ring[h] = node
+            bisect.insort(self.sorted_keys, h)
+
+    <span class="text-indigo-750 font-semibold">def</span> <span class="text-purple-750">get_node</span>(self, key: str) -> str:
+        <span class="text-indigo-750 font-semibold">if</span> not self.ring:
+            <span class="text-indigo-750 font-semibold">return</span> None
+        h = self._hash(key)
+        idx = bisect.bisect_right(self.sorted_keys, h)
+        <span class="text-indigo-750 font-semibold">if</span> idx == len(self.sorted_keys):
+            <span class="text-indigo-750 font-semibold">return</span> self.ring[self.sorted_keys[0]]
+        <span class="text-indigo-750 font-semibold">return</span> self.ring[self.sorted_keys[idx]]</pre>
+</div>
+</details>
+
+<!-- 14. RESILIENCY & FAILURE MITIGATIONS (SCENARIO CARDS) -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">14. Resiliency &amp; Failure Mitigations (Scenario Cards)</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-4">
+  <div class="rounded-lg bg-red-50 border border-red-200 p-5 text-gray-800">
+    <p class="text-xs font-bold text-red-700 uppercase tracking-wider mb-2">Scenario 1: Cascading Failures (Server Crash Stampede)</p>
+    <p class="text-xs text-gray-700 leading-relaxed mb-2"><strong>Impact:</strong> If Node A crashes, its immediate clockwise neighbor Node B suddenly absorbs 100% of Node A's load, causing Node B to overload and crash too, taking down the entire cluster.</p>
+    <p class="text-xs text-gray-550 font-medium"><strong>Mitigation:</strong> Implement Virtual Nodes. When Node A crashes, its vnodes disappear, dispersing the load uniformly across all remaining active nodes.</p>
+  </div>
+  <div class="rounded-lg bg-ed-orange/5 border border-ed-orange/15 p-5 text-gray-800">
+    <p class="text-xs font-bold text-ed-orange uppercase tracking-wider mb-2">Scenario 2: Cache Stampede on dynamic membership change</p>
+    <p class="text-xs text-gray-700 leading-relaxed mb-2"><strong>Impact:</strong> When a new Node C is added to the ring, all read requests within C's hash range miss the cache, sending a massive wave of queries directly to the relational database shard.</p>
+    <p class="text-xs text-gray-550 font-medium"><strong>Mitigation:</strong> Pre-warm the cache. When Node C is added, it queries its successor node to fetch and replicate the keys belonging to Node C's target hash range prior to joining the active gateway routing ring.</p>
+  </div>
+</div>
+</details>
+
+<!-- 15. SECURITY, AUTH & DATA PROTECTION -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">15. Security, Auth &amp; Data Protection</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 text-xs text-gray-700 space-y-2 leading-relaxed">
+  <p>To secure access to coordinator structures and databases:</p>
+  <ul class="list-disc pl-4 space-y-1.5">
+    <li><strong>TLS Transport Layer:</strong> All communications between API Gateway, etcd directory, and nodes are encrypted with mTLS.</li>
+    <li><strong>Token Bucket Rate Limiting:</strong> Protect individual shards from malicious DDoS vectors using bucket filters on the ALB layer.</li>
+  </ul>
+</div>
+</details>
+
+<!-- 16. OBSERVABILITY, MONITORING & ALERTING -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">16. Observability, Monitoring &amp; Alerting</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-4 text-xs text-gray-700 leading-relaxed">
+  <p>Track cluster stats using Prometheus pull gauges:</p>
+  <ul class="list-disc pl-4 space-y-2">
+    <li><code>consistent_hashing_lookup_latency_seconds</code>: Tracks O(log V) ceiling key search latency at gateways. Alerts trigger if latency exceeds 2ms.</li>
+    <li><code>consistent_hashing_keys_per_node</code>: Distribution checking gauges. Standard deviation alerts notify if key allocation variance across nodes exceeds 15%.</li>
+  </ul>
+</div>
+</details>
+
+<!-- 17. TECHNICAL TRADE-OFF & CAP MATRIX -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">17. Technical Trade-Off &amp; CAP Matrix</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6">
+  <div class="overflow-x-auto border border-gray-205 rounded-lg">
+    <table class="w-full text-xs">
+      <thead class="bg-amber-50 text-amber-900 border-b border-amber-200 font-semibold">
+        <tr>
+          <th class="px-4 py-3 text-left">Decision Made</th>
+          <th class="px-4 py-3 text-left">Alternative</th>
+          <th class="px-4 py-3 text-left">Pros</th>
+          <th class="px-4 py-3 text-left">Cons</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-150">
+        <tr class="bg-white"><td class="px-4 py-3 text-gray-900 font-semibold">Consistent Hashing</td><td class="px-4 py-3 text-gray-600">Modulo Hashing (\(key \pmod N\))</td><td class="px-4 py-3 text-gray-600">Relocates only \(K/N\) keys on scaling changes. Prevents database crash.</td><td class="px-4 py-3 text-gray-600">More complex client logic; requires TreeMap search.</td></tr>
+        <tr class="bg-gray-50/50"><td class="px-4 py-3 text-gray-900 font-semibold">etcd Coordination</td><td class="px-4 py-3 text-gray-600">Peer-to-Peer Gossip Protocol</td><td class="px-4 py-3 text-gray-600">Strong consistency (CP) on ring configurations; prevents routing loops.</td><td class="px-4 py-3 text-gray-600">Single point of failure if etcd cluster loses quorum.</td></tr>
+        <tr class="bg-white"><td class="px-4 py-3 text-gray-900 font-semibold">AP Routing (Availability)</td><td class="px-4 py-3 text-gray-600">CP Routing (Consistency)</td><td class="px-4 py-3 text-gray-600">Immediate routing answers; tolerates temporary network partitions.</td><td class="px-4 py-3 text-gray-600 font-medium">Nodes might return stale read data before updates finish syncing.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</details>
+
+<!-- 18. THE INTERVIEW PITCH SCRIPT -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">18. The Interview Pitch Script</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-6">
+  <div class="bg-ed-purple/5 border border-ed-purple/10 rounded-xl p-5">
+    <blockquote class="border-l-4 border-purple-400 pl-4 py-1 italic text-gray-700 text-xs leading-relaxed">
+      "To scale database shards and distributed caches handling millions of requests, standard modulo hashing fails because changing node count invalidates nearly all keys. My design uses a Consistent Hashing Ring. Both keys and physical node addresses map to a 32-bit circular space. When a node joins or leaves, only a small fraction of keys (\(K/N\)) relocate. I map each server to 256 virtual nodes to distribute keys uniformly and avoid hotspots, and sync ring configurations via an etcd consensus store."
+    </blockquote>
+  </div>
+</div>
+</details>
+
+<!-- 19. HANDLING INTERVIEWER PUSHBACKS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">19. Handling Interviewer Pushbacks</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-6">
+  <div class="bg-ed-purple/5 border border-ed-purple/10 rounded-xl p-5">
+    <span class="bg-ed-purple/10 text-ed-purple border border-ed-purple/20 px-2 py-0.5 rounded font-semibold text-xs inline-block mb-3">Handling Hotkey Pushbacks:</span>
+    <blockquote class="border-l-4 border-purple-400 pl-4 py-1 italic text-gray-700 text-xs leading-relaxed">
+      "If a single hotkey (e.g. viral post) overwhelms a server, consistent hashing doesn't solve it since all queries map to the same node. To mitigate this, our API gateway detects traffic spikes on specific keys and creates dynamic replicas by appending suffixes (e.g., 'hotkey#1', 'hotkey#2'), dispersing the load across multiple active nodes on the ring."
+    </blockquote>
+  </div>
+</div>
+</details>
+
+<!-- 20. ADVANCED CONCEPT ACCORDIANS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer select-none border-b border-gray-200 bg-gray-50/50">
+  <span class="text-sm font-bold text-gray-900 uppercase tracking-wider flex-1">20. Advanced Concept Accordions</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-6 py-6 space-y-4">
+  <details class="rounded-lg border border-indigo-200 overflow-hidden bg-indigo-50/20">
+    <summary class="bg-indigo-50/60 px-4 py-3 cursor-pointer select-none border-b border-indigo-200 text-indigo-950 font-bold flex justify-between items-center text-xs">
+      <span>Q: How do client gateways quickly find the node for a key?</span>
+      <span class="text-indigo-400 group-open:rotate-180 transition-transform">&#9662;</span>
+    </summary>
+    <div class="px-4 py-3 bg-white border-t border-indigo-100 text-xs text-gray-700 leading-relaxed">
+      <p>Gateways store a sorted list of virtual node hash coordinates. When a key is hashed, the gateway performs a binary search (e.g. TreeMap.tailMap() or bisect_right) to locate the first node coordinate greater than or equal to the key hash in \(\mathcal{O}(\log V)\) time.</p>
+    </div>
+  </details>
+  <details class="rounded-lg border border-indigo-200 overflow-hidden bg-indigo-50/20">
+    <summary class="bg-indigo-50/60 px-4 py-3 cursor-pointer select-none border-b border-indigo-200 text-indigo-950 font-bold flex justify-between items-center text-xs">
+      <span>Q: What is Rendezvous Hashing (HRW) and when is it preferred?</span>
+      <span class="text-indigo-400 group-open:rotate-180 transition-transform">&#9662;</span>
+    </summary>
+    <div class="px-4 py-3 bg-white border-t border-indigo-100 text-xs text-gray-700 leading-relaxed">
+      <p>Highest Random Weight (HRW) hashing hashes the key concatenated with each node name, routing the request to the node with the highest hash value. It is preferred when nodes have differing weights (uneven capacity), ensuring proportional load distribution without maintaining thousands of virtual nodes.</p>
+    </div>
+  </details>
+  <details class="rounded-lg border border-indigo-200 overflow-hidden bg-indigo-50/20">
+    <summary class="bg-indigo-50/60 px-4 py-3 cursor-pointer select-none border-b border-indigo-200 text-indigo-950 font-bold flex justify-between items-center text-xs">
+      <span>Q: How do we handle hash ring modifications (addition/removal of nodes) without consistency issues?</span>
+      <span class="text-indigo-400 group-open:rotate-180 transition-transform">&#9662;</span>
+    </summary>
+    <div class="px-4 py-3 bg-white border-t border-indigo-100 text-xs text-gray-700 leading-relaxed">
+      <p>When a new node joins or an existing one leaves, it sends updates via the consensus service (etcd). Clients receive notification through a watcher channel and perform background ring updates. Temporarily, requests mapping to relocating keys may hit secondary replicas to ensure continuous reads while data is migrated.</p>
+    </div>
+  </details>
+  <details class="rounded-lg border border-indigo-200 overflow-hidden bg-indigo-50/20">
+    <summary class="bg-indigo-50/60 px-4 py-3 cursor-pointer select-none border-b border-indigo-200 text-indigo-950 font-bold flex justify-between items-center text-xs">
+      <span>Q: What is the impact of clock drift on consistent hashing ring mechanisms?</span>
+      <span class="text-indigo-400 group-open:rotate-180 transition-transform">&#9662;</span>
+    </summary>
+    <div class="px-4 py-3 bg-white border-t border-indigo-100 text-xs text-gray-700 leading-relaxed">
+      <p>Clock drift itself does not affect hashing. However, it impacts metadata replication like timestamps in Dynamo-style conflict resolution (vector clocks / Last-Write-Wins), which could cause split-brain-like data convergence issues if left unmitigated.</p>
+    </div>
+  </details>
+  <details class="rounded-lg border border-indigo-200 overflow-hidden bg-indigo-50/20">
+    <summary class="bg-indigo-50/60 px-4 py-3 cursor-pointer select-none border-b border-indigo-200 text-indigo-950 font-bold flex justify-between items-center text-xs">
+      <span>Q: How do we load-balance virtual nodes dynamically when physical hardware is heterogeneous?</span>
+      <span class="text-indigo-400 group-open:rotate-180 transition-transform">&#9662;</span>
+    </summary>
+    <div class="px-4 py-3 bg-white border-t border-indigo-100 text-xs text-gray-700 leading-relaxed">
+      <p>Heterogeneous systems allocate a variable number of virtual nodes per physical machine proportional to their relative storage/CPU capacity. A machine with 4x memory will receive 4x more vnodes, ensuring it accepts a proportional amount of the overall hash space load.</p>
+    </div>
+  </details>
+</div>
+</details>
+
+</div>
+
+<!-- FOOTER -->
+<div class="text-center pt-8 pb-12 border-t border-gray-200 bg-gray-50 relative z-10">
+  <p class="text-xs text-gray-500">System Design Study Workbook &middot; Consistent Hashing Ring (100M+ DAU)</p>
+</div>
+
+</body>
+</html>

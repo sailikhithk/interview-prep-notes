@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design Patterns in Python — LLD Study Guide</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        ed: { pink:'#db2777', blue:'#2563eb', teal:'#0d9488', amber:'#d97706', sky:'#0284c7', purple:'#7c3aed', orange:'#ea580c' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+.g { background:linear-gradient(135deg,#f472b6,#a78bfa,#60a5fa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+pre.code { white-space:pre; }
+</style>
+</head>
+<body class="bg-white text-gray-900 min-h-screen">
+
+<!-- HERO -->
+<div class="relative overflow-hidden bg-gray-50 border-b border-gray-200">
+<div class="max-w-4xl mx-auto px-6 py-12">
+  <div class="flex items-center gap-3 mb-4">
+    <span class="text-xs font-bold text-gray-500 tracking-wider">LOW-LEVEL DESIGN</span>
+    <span class="w-1 h-1 rounded-full bg-gray-400"></span>
+    <span class="text-xs font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded">GANG OF FOUR &middot; 23 PATTERNS</span>
+  </div>
+  <h1 class="text-4xl md:text-5xl font-extrabold mb-3 text-gray-900">Design Patterns in Python</h1>
+  <p class="text-gray-600 text-lg mb-6 max-w-2xl">All 23 Gang-of-Four patterns from a Low-Level Design perspective &mdash; intent, when-to-use, idiomatic Python code, the <em>Pythonic</em> alternative, real-world LLD usage, and the trap to avoid. Built for interviews and for writing better object-oriented code.</p>
+  <div class="flex flex-wrap gap-2 mb-6">
+    <span class="text-xs bg-sky-50 border border-sky-200 px-3 py-1 rounded-full text-sky-700 font-medium">5 Creational</span>
+    <span class="text-xs bg-teal-50 border border-teal-200 px-3 py-1 rounded-full text-teal-700 font-medium">7 Structural</span>
+    <span class="text-xs bg-purple-50 border border-purple-200 px-3 py-1 rounded-full text-purple-700 font-medium">11 Behavioral</span>
+    <span class="text-xs bg-amber-50 border border-amber-200 px-3 py-1 rounded-full text-amber-700 font-medium">+ Pythonic idioms</span>
+  </div>
+  <div class="flex gap-4 flex-wrap">
+    <div class="bg-white border border-gray-200 rounded-lg px-4 py-2"><span class="text-xs text-gray-500 block">Goal</span><span class="text-sm font-bold text-emerald-600">Reusable OO design</span></div>
+    <div class="bg-white border border-gray-200 rounded-lg px-4 py-2"><span class="text-xs text-gray-500 block">Core principle</span><span class="text-sm font-bold text-indigo-600">Program to an interface</span></div>
+  </div>
+</div>
+</div>
+
+<div class="max-w-4xl mx-auto px-6 pb-20 space-y-4 mt-8">
+
+<!-- 0. WHAT & WHY -->
+<section class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+<div class="px-5 py-4 border-b border-gray-200"><h2 class="text-sm font-bold text-gray-900">What a Design Pattern Is (and Isn't)</h2></div>
+<div class="p-5 space-y-3">
+  <p class="text-sm text-gray-700 leading-relaxed">A design pattern is a <strong>named, reusable solution</strong> to a recurring object-design problem. It is not a library or a copy-paste snippet &mdash; it is a <em>shape</em> of collaboration between classes that you adapt to your context. In LLD interviews, naming the pattern signals you recognize the underlying force (coupling, extension, object creation cost) the problem is really about.</p>
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div class="rounded-lg bg-sky-50 border border-sky-200 p-3">
+      <p class="text-xs font-bold text-sky-700 mb-1">Creational</p>
+      <p class="text-xs text-gray-600">Control <strong>how objects are made</strong>, decoupling clients from concrete classes.</p>
+    </div>
+    <div class="rounded-lg bg-teal-50 border border-teal-200 p-3">
+      <p class="text-xs font-bold text-teal-700 mb-1">Structural</p>
+      <p class="text-xs text-gray-600">Compose objects into <strong>larger structures</strong> while keeping them flexible.</p>
+    </div>
+    <div class="rounded-lg bg-purple-50 border border-purple-200 p-3">
+      <p class="text-xs font-bold text-purple-700 mb-1">Behavioral</p>
+      <p class="text-xs text-gray-600">Assign <strong>responsibilities and communication</strong> between objects.</p>
+    </div>
+  </div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3">
+    <p class="text-xs text-gray-700"><strong class="text-amber-700">Python caveat:</strong> Python's first-class functions, duck typing, modules, and decorators make several GoF patterns nearly invisible. Each card below shows the textbook OO form <em>and</em> the idiomatic Python shortcut, so you know when the full ceremony is worth it.</p>
+  </div>
+</div>
+</section>
+
+<!-- DECISION GUIDE -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">How to Pick a Pattern (Decision Guide)</span>
+  <span class="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded font-semibold">Cheat</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-2">
+  <div class="flex gap-3 items-start"><span class="text-xs font-bold text-blue-700 bg-blue-100 rounded px-1.5 py-0.5 flex-shrink-0">make</span><p class="text-xs text-gray-700">"Object creation is messy / expensive / conditional" &rarr; <strong>Factory Method, Abstract Factory, Builder, Prototype, Singleton</strong>.</p></div>
+  <div class="flex gap-3 items-start"><span class="text-xs font-bold text-teal-700 bg-teal-100 rounded px-1.5 py-0.5 flex-shrink-0">adapt</span><p class="text-xs text-gray-700">"Two interfaces don't fit / I need to add behavior without subclassing" &rarr; <strong>Adapter, Decorator, Bridge, Facade, Proxy</strong>.</p></div>
+  <div class="flex gap-3 items-start"><span class="text-xs font-bold text-teal-700 bg-teal-100 rounded px-1.5 py-0.5 flex-shrink-0">tree</span><p class="text-xs text-gray-700">"Part-whole hierarchies / many tiny shared objects" &rarr; <strong>Composite, Flyweight</strong>.</p></div>
+  <div class="flex gap-3 items-start"><span class="text-xs font-bold text-purple-700 bg-purple-100 rounded px-1.5 py-0.5 flex-shrink-0">vary</span><p class="text-xs text-gray-700">"Algorithm / behavior should swap at runtime" &rarr; <strong>Strategy, State, Template Method</strong>.</p></div>
+  <div class="flex gap-3 items-start"><span class="text-xs font-bold text-purple-700 bg-purple-100 rounded px-1.5 py-0.5 flex-shrink-0">talk</span><p class="text-xs text-gray-700">"Objects must react to / coordinate with each other" &rarr; <strong>Observer, Mediator, Chain of Responsibility, Command</strong>.</p></div>
+  <div class="flex gap-3 items-start"><span class="text-xs font-bold text-purple-700 bg-purple-100 rounded px-1.5 py-0.5 flex-shrink-0">walk</span><p class="text-xs text-gray-700">"Traverse / snapshot / add ops to a structure" &rarr; <strong>Iterator, Memento, Visitor, Interpreter</strong>.</p></div>
+</div>
+</details>
+
+<!-- LIVE INTERACTIVE VISUALIZATION (Observer) -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">Live Interactive Visualization &mdash; Observer Notify Cycle</span>
+  <span class="text-xs bg-ed-pink/10 text-ed-pink border border-ed-pink/20 px-2 py-0.5 rounded font-semibold">Interactive</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-5">
+  <p class="text-xs text-gray-600">Behavioral patterns are about object communication. Here is the <strong>Observer</strong> pattern: a <code class="code text-ed-sky">Subject</code> changes state and pushes the update to every registered <code class="code text-ed-sky">Observer</code>. Step through one full notify cycle.</p>
+  <div class="flex flex-wrap items-center gap-2">
+    <button id="viz-reset" class="text-xs font-semibold bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 shadow-sm px-3 py-1.5 rounded transition-colors">Reset</button>
+    <button id="viz-prev" class="text-xs font-semibold bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 shadow-sm px-3 py-1.5 rounded transition-colors">&#9664; Prev</button>
+    <button id="viz-next" class="text-xs font-semibold bg-ed-teal/10 hover:bg-ed-teal/20 border border-ed-teal/30 text-ed-teal px-3 py-1.5 rounded transition-colors">Next &#9654;</button>
+    <button id="viz-auto" class="text-xs font-semibold bg-ed-purple/10 hover:bg-ed-purple/20 border border-ed-purple/30 text-ed-purple px-3 py-1.5 rounded transition-colors">Auto Play</button>
+    <span id="viz-step-label" class="text-xs text-gray-500 ml-auto">Step 0 / 7</span>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-stretch">
+    <div class="md:col-span-1">
+      <p class="text-xs font-semibold text-gray-500 mb-2">Subject (WeatherStation)</p>
+      <div id="viz-subject" class="rounded-lg border-2 border-gray-200 bg-gray-50 p-4 text-center transition-all duration-300">
+        <div class="text-[10px] text-gray-400 uppercase">temperature</div>
+        <div id="viz-subject-val" class="text-2xl font-bold text-gray-700">--</div>
+      </div>
+    </div>
+    <div class="md:col-span-2">
+      <p class="text-xs font-semibold text-gray-500 mb-2">Observers</p>
+      <div id="viz-observers" class="grid grid-cols-3 gap-2"></div>
+    </div>
+  </div>
+
+  <div id="viz-status" class="bg-gray-100/60 border border-gray-300 rounded-lg p-3 text-xs text-gray-600 leading-relaxed">
+    Press <strong>Next</strong> to trigger a state change and watch it propagate.
+  </div>
+
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto">
+    <pre class="code text-xs leading-6 text-gray-500"><span id="code-L0">class Subject:</span>
+<span id="code-L1">    def attach(self, obs): self._observers.append(obs)</span>
+<span id="code-L2">    def set_temperature(self, t):</span>
+<span id="code-L3">        self._temp = t          # state changes</span>
+<span id="code-L4">        self.notify()           # push to all</span>
+<span id="code-L5">    def notify(self):</span>
+<span id="code-L6">        for obs in self._observers:</span>
+<span id="code-L7">            obs.update(self._temp)   # observer reacts</span></pre>
+  </div>
+</div>
+</details>
+
+<!-- ============ CREATIONAL ============ -->
+<div class="pt-4">
+  <div class="flex items-center gap-3 mb-1">
+    <span class="text-xs font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded">CREATIONAL &middot; 5</span>
+    <h2 class="text-xl font-extrabold text-gray-900">Creational Patterns</h2>
+  </div>
+  <p class="text-xs text-gray-500 mb-4">How objects get created &mdash; decoupling clients from concrete construction.</p>
+</div>
+<!-- 1. SINGLETON -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">1. Singleton</span>
+  <span class="text-xs bg-sky-50 text-sky-700 border border-sky-200 px-2 py-0.5 rounded font-semibold">Creational</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> guarantee a class has exactly one instance and provide a global access point to it.</p>
+  <div class="rounded-lg bg-sky-50 border border-sky-200 p-3"><p class="text-xs text-gray-600"><strong class="text-sky-700">When (LLD):</strong> shared config, a connection/thread pool, a logger, an in-memory cache &mdash; where multiple instances would be wasteful or inconsistent.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class Singleton:
+    _instance = None
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+class Config(Singleton):
+    def __init__(self):
+        self.settings = {"env": "prod"}
+
+a, b = Config(), Config()
+assert a is b   # same object</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> just use a <strong>module</strong>. A Python module is imported once and cached in <code class="code">sys.modules</code> &mdash; module-level objects are de-facto singletons. Or use <code class="code">@functools.lru_cache</code> / a <code class="code">@cache</code>-decorated factory function.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> singletons are global state &mdash; they hurt testability and hide dependencies. Not thread-safe by default (guard <code class="code">__new__</code> with a lock). Prefer dependency injection where you can.</p></div>
+</div>
+</details>
+
+<!-- 2. FACTORY METHOD -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">2. Factory Method</span>
+  <span class="text-xs bg-sky-50 text-sky-700 border border-sky-200 px-2 py-0.5 rounded font-semibold">Creational</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> define an interface for creating an object, but let subclasses (or a method) decide which concrete class to instantiate.</p>
+  <div class="rounded-lg bg-sky-50 border border-sky-200 p-3"><p class="text-xs text-gray-600"><strong class="text-sky-700">When (LLD):</strong> the client shouldn't hard-code <code class="code">PayPalGateway()</code> vs <code class="code">StripeGateway()</code>; it asks a factory and stays decoupled from concrete types.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">from abc import ABC, abstractmethod
+
+class Notifier(ABC):
+    @abstractmethod
+    def send(self, msg): ...
+
+class Email(Notifier):
+    def send(self, msg): print("email:", msg)
+class SMS(Notifier):
+    def send(self, msg): print("sms:", msg)
+
+def notifier_factory(kind: str) -&gt; Notifier:
+    return {"email": Email, "sms": SMS}[kind]()
+
+notifier_factory("sms").send("hi")</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> a <strong>dict dispatch</strong> (<code class="code">{"email": Email}</code>) or a registry decorator replaces a class hierarchy of factories. Classes are first-class, so you store the class itself, not a factory subclass.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> don't confuse with Abstract Factory &mdash; Factory Method makes <em>one</em> product via subclassing/override; Abstract Factory makes <em>families</em>.</p></div>
+</div>
+</details>
+
+<!-- 3. ABSTRACT FACTORY -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">3. Abstract Factory</span>
+  <span class="text-xs bg-sky-50 text-sky-700 border border-sky-200 px-2 py-0.5 rounded font-semibold">Creational</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> provide an interface to create <em>families</em> of related objects without specifying their concrete classes.</p>
+  <div class="rounded-lg bg-sky-50 border border-sky-200 p-3"><p class="text-xs text-gray-600"><strong class="text-sky-700">When (LLD):</strong> cross-platform UI kits (Win vs Mac buttons + checkboxes), or DB driver families where products must be used together consistently.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class Button: ...
+class Checkbox: ...
+class MacButton(Button): pass
+class MacCheckbox(Checkbox): pass
+class WinButton(Button): pass
+class WinCheckbox(Checkbox): pass
+
+class GUIFactory(ABC):
+    @abstractmethod
+    def button(self): ...
+    @abstractmethod
+    def checkbox(self): ...
+
+class MacFactory(GUIFactory):
+    def button(self): return MacButton()
+    def checkbox(self): return MacCheckbox()
+
+def build_ui(factory: GUIFactory):
+    return factory.button(), factory.checkbox()</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> group the family in a small class or namespace and pass it around; or use a dict of dicts keyed by platform &rarr; product type.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> adding a <em>new product type</em> means changing every factory &mdash; the interface is closed to new products but open to new families.</p></div>
+</div>
+</details>
+
+<!-- 4. BUILDER -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">4. Builder</span>
+  <span class="text-xs bg-sky-50 text-sky-700 border border-sky-200 px-2 py-0.5 rounded font-semibold">Creational</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> separate the construction of a complex object from its representation, so the same steps can build different results.</p>
+  <div class="rounded-lg bg-sky-50 border border-sky-200 p-3"><p class="text-xs text-gray-600"><strong class="text-sky-700">When (LLD):</strong> objects with many optional fields (HTTP request, SQL query, a Pizza), avoiding telescoping constructors with 10 positional args.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class Burger:
+    def __init__(self): self.parts = []
+
+class BurgerBuilder:
+    def __init__(self): self._b = Burger()
+    def add(self, part):
+        self._b.parts.append(part)
+        return self          # fluent chaining
+    def build(self): return self._b
+
+burger = (BurgerBuilder()
+          .add("bun").add("patty").add("cheese")
+          .build())</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> keyword arguments with defaults, <code class="code">@dataclass</code>, or <code class="code">**kwargs</code> usually remove the need. Reach for Builder only when construction has ordering rules or validation steps.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> a fluent builder that returns <code class="code">self</code> is convenient but makes partially-built objects observable &mdash; only expose the product via <code class="code">build()</code>.</p></div>
+</div>
+</details>
+
+<!-- 5. PROTOTYPE -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">5. Prototype</span>
+  <span class="text-xs bg-sky-50 text-sky-700 border border-sky-200 px-2 py-0.5 rounded font-semibold">Creational</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> create new objects by cloning an existing instance (the prototype) rather than constructing from scratch.</p>
+  <div class="rounded-lg bg-sky-50 border border-sky-200 p-3"><p class="text-xs text-gray-600"><strong class="text-sky-700">When (LLD):</strong> object creation is expensive (heavy DB load, deep config) and you need many near-identical copies; or you want to snapshot a configured instance as a template.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">import copy
+
+class Document:
+    def __init__(self, styles, content):
+        self.styles, self.content = styles, content
+    def clone(self):
+        return copy.deepcopy(self)
+
+template = Document({"font": "Inter"}, [])
+report = template.clone()        # cheap, independent copy
+report.content.append("Q3 numbers")</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> the pattern <em>is</em> the stdlib &mdash; <code class="code">copy.copy</code> (shallow) and <code class="code">copy.deepcopy</code> (deep). Customize via <code class="code">__copy__</code> / <code class="code">__deepcopy__</code>.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> shallow vs deep copy bugs &mdash; a shallow clone shares nested mutable objects, so mutating the copy can corrupt the prototype.</p></div>
+</div>
+</details>
+
+
+<!-- ============ STRUCTURAL ============ -->
+<div class="pt-4">
+  <div class="flex items-center gap-3 mb-1">
+    <span class="text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded">STRUCTURAL &middot; 7</span>
+    <h2 class="text-xl font-extrabold text-gray-900">Structural Patterns</h2>
+  </div>
+  <p class="text-xs text-gray-500 mb-4">How objects and classes compose into larger, flexible structures.</p>
+</div>
+<!-- 6. ADAPTER -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">6. Adapter</span>
+  <span class="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded font-semibold">Structural</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> convert the interface of a class into another interface clients expect, letting incompatible classes work together.</p>
+  <div class="rounded-lg bg-teal-50 border border-teal-200 p-3"><p class="text-xs text-gray-600"><strong class="text-teal-700">When (LLD):</strong> wrapping a third-party SDK or legacy class so it satisfies <em>your</em> interface without touching its source.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class LegacyPrinter:                 # adaptee (can't change)
+    def print_text(self, t): print("LEGACY:", t)
+
+class Printer(ABC):                  # target interface
+    @abstractmethod
+    def out(self, text): ...
+
+class PrinterAdapter(Printer):
+    def __init__(self, legacy): self._legacy = legacy
+    def out(self, text):             # translate call
+        self._legacy.print_text(text)
+
+PrinterAdapter(LegacyPrinter()).out("hello")</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> duck typing means you often just add a method or use a thin wrapper function. <code class="code">functools.partial</code> or a small closure can adapt a callable signature.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> Adapter changes an interface (after-the-fact fix); Bridge designs two axes up front; Decorator adds behavior with the <em>same</em> interface. Know the difference.</p></div>
+</div>
+</details>
+
+<!-- 7. BRIDGE -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">7. Bridge</span>
+  <span class="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded font-semibold">Structural</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> decouple an abstraction from its implementation so the two can vary independently.</p>
+  <div class="rounded-lg bg-teal-50 border border-teal-200 p-3"><p class="text-xs text-gray-600"><strong class="text-teal-700">When (LLD):</strong> you'd otherwise get a class explosion (Shape &times; RenderAPI = RasterCircle, VectorCircle, RasterSquare...). Bridge turns multiplication into addition.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class Renderer(ABC):                 # implementation axis
+    @abstractmethod
+    def draw_circle(self, r): ...
+class Vector(Renderer):
+    def draw_circle(self, r): print("vector circle", r)
+class Raster(Renderer):
+    def draw_circle(self, r): print("pixels circle", r)
+
+class Shape:                          # abstraction axis
+    def __init__(self, renderer): self.renderer = renderer
+class Circle(Shape):
+    def __init__(self, renderer, r):
+        super().__init__(renderer); self.r = r
+    def draw(self): self.renderer.draw_circle(self.r)
+
+Circle(Vector(), 5).draw()</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> plain composition &mdash; inject the implementation object in <code class="code">__init__</code>. Python rarely needs the formal abstraction/implementor class trees.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> Bridge is a <em>design-time</em> decision (two dimensions you know will both grow); Adapter is a <em>retrofit</em>. Same composition shape, different intent.</p></div>
+</div>
+</details>
+
+<!-- 8. COMPOSITE -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">8. Composite</span>
+  <span class="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded font-semibold">Structural</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> compose objects into tree structures and let clients treat individual objects and compositions uniformly.</p>
+  <div class="rounded-lg bg-teal-50 border border-teal-200 p-3"><p class="text-xs text-gray-600"><strong class="text-teal-700">When (LLD):</strong> file systems (file vs folder), UI widget trees, org charts, nested menus &mdash; any part-whole hierarchy.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class Node(ABC):
+    @abstractmethod
+    def size(self) -&gt; int: ...
+
+class File(Node):                    # leaf
+    def __init__(self, n): self.n = n
+    def size(self): return self.n
+
+class Folder(Node):                  # composite
+    def __init__(self): self.children = []
+    def add(self, c): self.children.append(c)
+    def size(self):
+        return sum(c.size() for c in self.children)
+
+root = Folder(); root.add(File(10)); root.add(File(20))
+print(root.size())   # 30 — same .size() call on leaf or tree</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> recursion over nested lists/dicts often suffices; the value of formal Composite is the uniform interface across leaf and container.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> leaves don't support <code class="code">add()</code>/<code class="code">remove()</code> &mdash; either raise on leaves or keep child-ops only on the composite (the safer, type-honest choice).</p></div>
+</div>
+</details>
+
+<!-- 9. DECORATOR -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">9. Decorator</span>
+  <span class="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded font-semibold">Structural</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> attach additional responsibilities to an object dynamically by wrapping it &mdash; a flexible alternative to subclassing.</p>
+  <div class="rounded-lg bg-teal-50 border border-teal-200 p-3"><p class="text-xs text-gray-600"><strong class="text-teal-700">When (LLD):</strong> stackable add-ons &mdash; coffee + milk + sugar, or an I/O stream + buffering + compression + encryption, each layered independently.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class Coffee:
+    def cost(self): return 2.0
+
+class MilkDecorator:
+    def __init__(self, wrapped): self.wrapped = wrapped
+    def cost(self): return self.wrapped.cost() + 0.5
+
+class SugarDecorator:
+    def __init__(self, wrapped): self.wrapped = wrapped
+    def cost(self): return self.wrapped.cost() + 0.2
+
+drink = SugarDecorator(MilkDecorator(Coffee()))
+print(drink.cost())   # 2.7</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> Python's <code class="code">@decorator</code> syntax is exactly this pattern for <em>functions</em> (wrap behavior). For objects, composition as above; <code class="code">functools.wraps</code> preserves metadata.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> decorators must honor the wrapped object's interface (delegate unknown calls via <code class="code">__getattr__</code>), or callers break when they reach past the methods you overrode.</p></div>
+</div>
+</details>
+
+<!-- 10. FACADE -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">10. Facade</span>
+  <span class="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded font-semibold">Structural</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> provide a single, simplified interface over a complex subsystem of many classes.</p>
+  <div class="rounded-lg bg-teal-50 border border-teal-200 p-3"><p class="text-xs text-gray-600"><strong class="text-teal-700">When (LLD):</strong> an <code class="code">OrderService.checkout()</code> that hides inventory, payment, shipping, and email subsystems behind one call.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class Inventory:
+    def reserve(self, item): print("reserved", item)
+class Payment:
+    def charge(self, amt): print("charged", amt)
+class Shipping:
+    def dispatch(self, item): print("shipped", item)
+
+class OrderFacade:                    # one simple door
+    def __init__(self):
+        self.inv, self.pay, self.ship = Inventory(), Payment(), Shipping()
+    def checkout(self, item, amt):
+        self.inv.reserve(item)
+        self.pay.charge(amt)
+        self.ship.dispatch(item)
+
+OrderFacade().checkout("book", 25)</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> a module with a few top-level functions is a natural facade over its internal helpers &mdash; the public API <em>is</em> the facade.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> a facade should simplify, not become a god-object. Keep subsystems still usable directly for advanced needs &mdash; don't lock everything behind it.</p></div>
+</div>
+</details>
+
+<!-- 11. FLYWEIGHT -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">11. Flyweight</span>
+  <span class="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded font-semibold">Structural</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> minimize memory by sharing the common (intrinsic) state of many fine-grained objects, keeping only the unique (extrinsic) state per use.</p>
+  <div class="rounded-lg bg-teal-50 border border-teal-200 p-3"><p class="text-xs text-gray-600"><strong class="text-teal-700">When (LLD):</strong> millions of objects with mostly identical data &mdash; glyphs in a text editor, tree sprites in a game, particles.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class GlyphFactory:
+    _cache = {}
+    @classmethod
+    def get(cls, char):              # shared intrinsic state
+        if char not in cls._cache:
+            cls._cache[char] = Glyph(char)   # font, shape...
+        return cls._cache[char]
+
+class Glyph:
+    def __init__(self, char): self.char = char
+    def render(self, x, y):          # extrinsic state passed in
+        print(self.char, "at", x, y)
+
+a1 = GlyphFactory.get("a")
+a2 = GlyphFactory.get("a")
+assert a1 is a2     # one shared object for every 'a'</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> <code class="code">@functools.lru_cache</code> on a factory, string interning, or <code class="code">__slots__</code> to shrink per-instance memory.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> shared flyweights must be <strong>immutable</strong>; if intrinsic state is mutated, every user is affected. Only optimize when memory is a proven bottleneck.</p></div>
+</div>
+</details>
+
+<!-- 12. PROXY -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">12. Proxy</span>
+  <span class="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded font-semibold">Structural</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> provide a surrogate that controls access to another object &mdash; for lazy loading, access control, caching, or logging.</p>
+  <div class="rounded-lg bg-teal-50 border border-teal-200 p-3"><p class="text-xs text-gray-600"><strong class="text-teal-700">When (LLD):</strong> virtual proxy (defer expensive init), protection proxy (auth checks), remote proxy (network stub), caching proxy.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class RealImage:
+    def __init__(self, path):
+        self.path = path
+        print("loading", path)       # expensive
+    def display(self): print("show", self.path)
+
+class ImageProxy:                     # same interface
+    def __init__(self, path): self.path, self._real = path, None
+    def display(self):
+        if self._real is None:        # lazy load on first use
+            self._real = RealImage(self.path)
+        self._real.display()
+
+img = ImageProxy("big.png")           # nothing loaded yet
+img.display()                          # now it loads + shows</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> <code class="code">@property</code> for lazy attributes, <code class="code">functools.cached_property</code>, <code class="code">__getattr__</code> delegation, or descriptors for access control.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> Proxy keeps the <em>same</em> interface and controls access; Decorator keeps the same interface and <em>adds</em> behavior; Adapter <em>changes</em> the interface. The intent is what separates them.</p></div>
+</div>
+</details>
+
+
+<!-- ============ BEHAVIORAL ============ -->
+<div class="pt-4">
+  <div class="flex items-center gap-3 mb-1">
+    <span class="text-xs font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded">BEHAVIORAL &middot; 11</span>
+    <h2 class="text-xl font-extrabold text-gray-900">Behavioral Patterns</h2>
+  </div>
+  <p class="text-xs text-gray-500 mb-4">How responsibilities are assigned and how objects communicate.</p>
+</div>
+<!-- 13. CHAIN OF RESPONSIBILITY -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">13. Chain of Responsibility</span>
+  <span class="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded font-semibold">Behavioral</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> pass a request along a chain of handlers; each either handles it or forwards to the next.</p>
+  <div class="rounded-lg bg-purple-50 border border-purple-200 p-3"><p class="text-xs text-gray-600"><strong class="text-purple-700">When (LLD):</strong> middleware stacks, approval workflows (team lead &rarr; manager &rarr; VP by amount), event/exception escalation, logging levels.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class Handler:
+    def __init__(self, nxt=None): self.nxt = nxt
+    def handle(self, amount):
+        if self.nxt: return self.nxt.handle(amount)
+        raise ValueError("unhandled")
+
+class TeamLead(Handler):
+    def handle(self, amount):
+        if amount &lt;= 1000: return f"TeamLead approved {amount}"
+        return super().handle(amount)
+
+class Manager(Handler):
+    def handle(self, amount):
+        if amount &lt;= 10000: return f"Manager approved {amount}"
+        return super().handle(amount)
+
+chain = TeamLead(Manager())
+print(chain.handle(5000))   # Manager approved 5000</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> a list of predicate&rarr;handler callables you loop over, or composed middleware functions (the WSGI/ASGI model).</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> decide the contract for an unhandled request &mdash; return <code class="code">None</code>, raise, or have a guaranteed default handler at the tail.</p></div>
+</div>
+</details>
+
+<!-- 14. COMMAND -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">14. Command</span>
+  <span class="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded font-semibold">Behavioral</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> encapsulate a request as an object, letting you parameterize, queue, log, and undo operations.</p>
+  <div class="rounded-lg bg-purple-50 border border-purple-200 p-3"><p class="text-xs text-gray-600"><strong class="text-purple-700">When (LLD):</strong> undo/redo stacks, task queues, macro recording, transactional operations, remote/CLI command dispatch.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class Command(ABC):
+    @abstractmethod
+    def execute(self): ...
+    @abstractmethod
+    def undo(self): ...
+
+class AddText(Command):
+    def __init__(self, doc, text): self.doc, self.text = doc, text
+    def execute(self): self.doc.append(self.text)
+    def undo(self): self.doc.pop()
+
+doc, history = [], []
+cmd = AddText(doc, "hello"); cmd.execute(); history.append(cmd)
+history.pop().undo()        # undo last command</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> a callable or <code class="code">functools.partial(func, *args)</code> <em>is</em> a command; store a list of them. Add <code class="code">undo</code> only when you need reversibility.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> undo must capture enough state to reverse precisely &mdash; pair with <strong>Memento</strong> when the operation isn't trivially invertible.</p></div>
+</div>
+</details>
+
+<!-- 15. INTERPRETER -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">15. Interpreter</span>
+  <span class="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded font-semibold">Behavioral</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> given a language, define a representation for its grammar plus an interpreter that evaluates sentences in it.</p>
+  <div class="rounded-lg bg-purple-50 border border-purple-200 p-3"><p class="text-xs text-gray-600"><strong class="text-purple-700">When (LLD):</strong> small DSLs &mdash; search filters, rule engines, math/boolean expressions, feature-flag conditions.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class Expr(ABC):
+    @abstractmethod
+    def eval(self, ctx): ...
+
+class Num(Expr):
+    def __init__(self, v): self.v = v
+    def eval(self, ctx): return self.v
+
+class Add(Expr):
+    def __init__(self, a, b): self.a, self.b = a, b
+    def eval(self, ctx): return self.a.eval(ctx) + self.b.eval(ctx)
+
+# (1 + 2) + 4
+tree = Add(Add(Num(1), Num(2)), Num(4))
+print(tree.eval({}))   # 7</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> for real grammars use <code class="code">ast</code>, <code class="code">lark</code>, or <code class="code">pyparsing</code> rather than hand-rolling node classes. Interpreter is mostly educational.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> it scales poorly &mdash; each grammar rule is a class. Beyond a tiny grammar, switch to a real parser. Never <code class="code">eval()</code> untrusted input.</p></div>
+</div>
+</details>
+
+<!-- 16. ITERATOR -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">16. Iterator</span>
+  <span class="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded font-semibold">Behavioral</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> provide sequential access to elements of a collection without exposing its underlying representation.</p>
+  <div class="rounded-lg bg-purple-50 border border-purple-200 p-3"><p class="text-xs text-gray-600"><strong class="text-purple-700">When (LLD):</strong> custom traversal order, lazy/streamed sequences, or hiding a complex internal structure (tree, graph, paginated API) behind a simple loop.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700"># Idiomatic: implement the iterator protocol
+class CountDown:
+    def __init__(self, n): self.n = n
+    def __iter__(self): return self
+    def __next__(self):
+        if self.n &lt;= 0: raise StopIteration
+        self.n -= 1
+        return self.n + 1
+
+for x in CountDown(3): print(x)   # 3 2 1
+
+# Even simpler: a generator
+def count_down(n):
+    while n &gt; 0:
+        yield n; n -= 1</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> this is built into the language &mdash; <code class="code">__iter__</code>/<code class="code">__next__</code> and especially <strong>generators</strong> (<code class="code">yield</code>). You almost never write a separate iterator class.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> an object that returns <code class="code">self</code> from <code class="code">__iter__</code> is single-use; return a fresh iterator if you need to loop multiple times.</p></div>
+</div>
+</details>
+
+<!-- 17. MEDIATOR -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">17. Mediator</span>
+  <span class="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded font-semibold">Behavioral</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> centralize complex communication between objects in a mediator, so they no longer refer to each other directly.</p>
+  <div class="rounded-lg bg-purple-50 border border-purple-200 p-3"><p class="text-xs text-gray-600"><strong class="text-purple-700">When (LLD):</strong> chat rooms (users talk via the room), air-traffic control, UI dialogs where widgets affect each other &mdash; turning a many-to-many mesh into a hub.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class ChatRoom:                       # mediator
+    def __init__(self): self.users = []
+    def join(self, u): self.users.append(u); u.room = self
+    def broadcast(self, sender, msg):
+        for u in self.users:
+            if u is not sender: u.receive(msg)
+
+class User:
+    def __init__(self, name): self.name, self.room = name, None
+    def send(self, msg): self.room.broadcast(self, msg)
+    def receive(self, msg): print(self.name, "got:", msg)
+
+room = ChatRoom(); a, b = User("A"), User("B")
+room.join(a); room.join(b); a.send("hi")</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> an event bus / pub-sub dict (<code class="code">{event: [callbacks]}</code>) is a lightweight mediator. <code class="code">blinker</code> signals are a ready-made one.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> the mediator can swell into a god-object. Observer decouples one-to-many notification; Mediator coordinates many-to-many <em>logic</em>.</p></div>
+</div>
+</details>
+
+<!-- 18. MEMENTO -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">18. Memento</span>
+  <span class="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded font-semibold">Behavioral</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> capture and externalize an object's internal state so it can be restored later &mdash; without violating encapsulation.</p>
+  <div class="rounded-lg bg-purple-50 border border-purple-200 p-3"><p class="text-xs text-gray-600"><strong class="text-purple-700">When (LLD):</strong> save points / checkpoints, editor undo (paired with Command), transaction rollback, game state snapshots.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class Editor:
+    def __init__(self): self.text = ""
+    def save(self):                  # create memento
+        return {"text": self.text}
+    def restore(self, memento):      # restore from it
+        self.text = memento["text"]
+
+ed = Editor(); ed.text = "v1"
+snapshot = ed.save()
+ed.text = "v2"
+ed.restore(snapshot)
+print(ed.text)   # v1</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> <code class="code">copy.deepcopy(self.__dict__)</code>, <code class="code">pickle</code>, or <code class="code">dataclasses.replace</code> capture state cheaply. The "caretaker" is often just a list of snapshots.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> snapshots can be memory-heavy &mdash; store diffs or cap history. The caretaker must treat the memento as opaque (no peeking at internals).</p></div>
+</div>
+</details>
+
+<!-- 19. OBSERVER -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">19. Observer <span class="text-[10px] text-ed-pink">&larr; visualized above</span></span>
+  <span class="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded font-semibold">Behavioral</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> define a one-to-many dependency so that when one object changes state, all its dependents are notified automatically.</p>
+  <div class="rounded-lg bg-purple-50 border border-purple-200 p-3"><p class="text-xs text-gray-600"><strong class="text-purple-700">When (LLD):</strong> event systems, MVC (model &rarr; views), reactive UIs, pub-sub, stock tickers, the live demo at the top of this page.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class Subject:
+    def __init__(self): self._observers = []
+    def attach(self, obs): self._observers.append(obs)
+    def notify(self, data):
+        for obs in self._observers:
+            obs.update(data)          # push to each
+
+class Logger:
+    def update(self, data): print("log:", data)
+
+s = Subject(); s.attach(Logger())
+s.notify("temp=72")</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> a list of callbacks (<code class="code">self._subscribers.append(fn)</code>), the <code class="code">blinker</code> library, or <code class="code">property</code> setters that fire listeners. Observers need only be callables.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> leaked subscriptions cause memory leaks (keep <code class="code">detach()</code> / weak refs); notification order isn't guaranteed; an observer raising can break the loop &mdash; isolate failures.</p></div>
+</div>
+</details>
+
+<!-- 20. STATE -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">20. State</span>
+  <span class="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded font-semibold">Behavioral</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> let an object alter its behavior when its internal state changes &mdash; it appears to change its class.</p>
+  <div class="rounded-lg bg-purple-50 border border-purple-200 p-3"><p class="text-xs text-gray-600"><strong class="text-purple-700">When (LLD):</strong> finite state machines &mdash; order lifecycle (draft &rarr; paid &rarr; shipped), TCP connection, vending machine, document workflow. Replaces sprawling <code class="code">if state == ...</code> blocks.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class State(ABC):
+    @abstractmethod
+    def next(self, order): ...
+
+class Draft(State):
+    def next(self, order): order.state = Paid(); print("-&gt; Paid")
+class Paid(State):
+    def next(self, order): order.state = Shipped(); print("-&gt; Shipped")
+class Shipped(State):
+    def next(self, order): print("already shipped")
+
+class Order:
+    def __init__(self): self.state = Draft()
+    def advance(self): self.state.next(self)
+
+o = Order(); o.advance(); o.advance()   # -&gt; Paid -&gt; Shipped</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> a transition table (<code class="code">{(state, event): new_state}</code>), an <code class="code">enum.Enum</code> + dict, or libraries like <code class="code">transitions</code> for richer FSMs.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> State and Strategy share the structure; the difference is intent &mdash; State objects know about and trigger transitions to each other; Strategy objects are independent and chosen by the client.</p></div>
+</div>
+</details>
+
+<!-- 21. STRATEGY -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">21. Strategy</span>
+  <span class="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded font-semibold">Behavioral</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> define a family of interchangeable algorithms, encapsulate each, and make them swappable at runtime.</p>
+  <div class="rounded-lg bg-purple-50 border border-purple-200 p-3"><p class="text-xs text-gray-600"><strong class="text-purple-700">When (LLD):</strong> pluggable sort/compression/pricing/routing algorithms; payment methods; A/B-swappable behavior chosen by config or context.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700"># Pythonic Strategy: pass a function
+def by_price(items): return sorted(items, key=lambda x: x["price"])
+def by_name(items):  return sorted(items, key=lambda x: x["name"])
+
+class Catalog:
+    def __init__(self, strategy): self.strategy = strategy
+    def list(self, items): return self.strategy(items)
+
+data = [{"name": "b", "price": 2}, {"name": "a", "price": 9}]
+print(Catalog(by_price).list(data))   # swap strategy freely</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> the textbook Strategy interface collapses to a <strong>first-class function</strong> or any callable. The <code class="code">key=</code> argument to <code class="code">sorted()</code> is Strategy in the stdlib.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> don't build a 4-class hierarchy when a function suffices. Use classes only when strategies carry their own state or config.</p></div>
+</div>
+</details>
+
+<!-- 22. TEMPLATE METHOD -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">22. Template Method</span>
+  <span class="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded font-semibold">Behavioral</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> define the skeleton of an algorithm in a base method, deferring specific steps to subclasses.</p>
+  <div class="rounded-lg bg-purple-50 border border-purple-200 p-3"><p class="text-xs text-gray-600"><strong class="text-purple-700">When (LLD):</strong> fixed pipelines with pluggable steps &mdash; ETL (extract/transform/load), test setup/run/teardown, data parsers sharing one flow.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class Pipeline(ABC):
+    def run(self):                   # the template (fixed skeleton)
+        data = self.extract()
+        data = self.transform(data)
+        self.load(data)
+    @abstractmethod
+    def extract(self): ...
+    @abstractmethod
+    def transform(self, d): ...
+    def load(self, d): print("loaded", d)   # default hook
+
+class CSVPipeline(Pipeline):
+    def extract(self): return [1, 2, 3]
+    def transform(self, d): return [x * 10 for x in d]
+
+CSVPipeline().run()   # loaded [10, 20, 30]</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> pass the varying steps as functions (that's Strategy) instead of subclassing. Template Method = inheritance; Strategy = composition &mdash; prefer the latter unless the skeleton truly belongs in a base class.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> deep inheritance and the "fragile base class" problem &mdash; changing the template can silently break every subclass.</p></div>
+</div>
+</details>
+
+<!-- 23. VISITOR -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">23. Visitor</span>
+  <span class="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded font-semibold">Behavioral</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <p class="text-sm text-gray-700"><strong>Intent:</strong> represent an operation to be performed on elements of an object structure, letting you add new operations without modifying those classes.</p>
+  <div class="rounded-lg bg-purple-50 border border-purple-200 p-3"><p class="text-xs text-gray-600"><strong class="text-purple-700">When (LLD):</strong> AST traversal (type-check, compile, pretty-print), file-tree operations, exporting a model to many formats &mdash; a stable class hierarchy but a growing set of operations.</p></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto"><pre class="code text-xs leading-6 text-gray-700">class Circle:
+    def __init__(self, r): self.r = r
+    def accept(self, v): return v.visit_circle(self)
+class Square:
+    def __init__(self, s): self.s = s
+    def accept(self, v): return v.visit_square(self)
+
+class AreaVisitor:                    # new op, no shape edits
+    def visit_circle(self, c): return 3.14 * c.r ** 2
+    def visit_square(self, s): return s.s ** 2
+
+shapes = [Circle(1), Square(2)]
+print(sum(sh.accept(AreaVisitor()) for sh in shapes))</pre></div>
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3"><p class="text-xs text-gray-700"><strong class="text-amber-700">Pythonic idiom:</strong> <code class="code">functools.singledispatch</code> dispatches on type without the double-dispatch boilerplate &mdash; register one function per node type.</p></div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3"><p class="text-xs text-gray-700"><strong class="text-rose-700">Gotcha:</strong> Visitor makes adding <em>operations</em> easy but adding a new <em>element type</em> hard (touch every visitor) &mdash; the "expression problem". Choose based on which axis changes more.</p></div>
+</div>
+</details>
+
+
+<!-- COMPARISON / CHEAT SHEET -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group mt-6" open>
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">Cheat Sheet &mdash; One-Line Intents</span>
+  <span class="text-xs bg-gray-100 text-gray-700 border border-gray-300 px-2 py-0.5 rounded font-semibold">One-Pager</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 overflow-x-auto">
+  <table class="text-xs w-full border-collapse">
+    <thead><tr class="text-gray-500 text-left">
+      <th class="border border-gray-200 px-2 py-1 bg-gray-50">Pattern</th>
+      <th class="border border-gray-200 px-2 py-1 bg-gray-50">Group</th>
+      <th class="border border-gray-200 px-2 py-1 bg-gray-50">One-line intent</th>
+    </tr></thead>
+    <tbody class="text-gray-700">
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Singleton</td><td class="border border-gray-200 px-2 py-1 text-sky-700">Creational</td><td class="border border-gray-200 px-2 py-1">One shared instance, global access point.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Factory Method</td><td class="border border-gray-200 px-2 py-1 text-sky-700">Creational</td><td class="border border-gray-200 px-2 py-1">Subclass decides which concrete object to create.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Abstract Factory</td><td class="border border-gray-200 px-2 py-1 text-sky-700">Creational</td><td class="border border-gray-200 px-2 py-1">Create families of related objects together.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Builder</td><td class="border border-gray-200 px-2 py-1 text-sky-700">Creational</td><td class="border border-gray-200 px-2 py-1">Construct a complex object step by step.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Prototype</td><td class="border border-gray-200 px-2 py-1 text-sky-700">Creational</td><td class="border border-gray-200 px-2 py-1">Clone an existing object instead of building anew.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Adapter</td><td class="border border-gray-200 px-2 py-1 text-teal-700">Structural</td><td class="border border-gray-200 px-2 py-1">Make an incompatible interface fit.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Bridge</td><td class="border border-gray-200 px-2 py-1 text-teal-700">Structural</td><td class="border border-gray-200 px-2 py-1">Split abstraction from implementation so both vary.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Composite</td><td class="border border-gray-200 px-2 py-1 text-teal-700">Structural</td><td class="border border-gray-200 px-2 py-1">Treat individual and grouped objects uniformly.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Decorator</td><td class="border border-gray-200 px-2 py-1 text-teal-700">Structural</td><td class="border border-gray-200 px-2 py-1">Add behavior by wrapping, not subclassing.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Facade</td><td class="border border-gray-200 px-2 py-1 text-teal-700">Structural</td><td class="border border-gray-200 px-2 py-1">One simple front door over a complex subsystem.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Flyweight</td><td class="border border-gray-200 px-2 py-1 text-teal-700">Structural</td><td class="border border-gray-200 px-2 py-1">Share immutable state across many objects.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Proxy</td><td class="border border-gray-200 px-2 py-1 text-teal-700">Structural</td><td class="border border-gray-200 px-2 py-1">Stand-in that controls access to the real object.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Chain of Responsibility</td><td class="border border-gray-200 px-2 py-1 text-purple-700">Behavioral</td><td class="border border-gray-200 px-2 py-1">Pass a request along a chain until handled.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Command</td><td class="border border-gray-200 px-2 py-1 text-purple-700">Behavioral</td><td class="border border-gray-200 px-2 py-1">Encapsulate a request as an object (undo/queue).</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Interpreter</td><td class="border border-gray-200 px-2 py-1 text-purple-700">Behavioral</td><td class="border border-gray-200 px-2 py-1">Evaluate sentences in a small grammar.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Iterator</td><td class="border border-gray-200 px-2 py-1 text-purple-700">Behavioral</td><td class="border border-gray-200 px-2 py-1">Traverse a collection without exposing internals.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Mediator</td><td class="border border-gray-200 px-2 py-1 text-purple-700">Behavioral</td><td class="border border-gray-200 px-2 py-1">Central hub coordinates object interactions.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Memento</td><td class="border border-gray-200 px-2 py-1 text-purple-700">Behavioral</td><td class="border border-gray-200 px-2 py-1">Capture/restore state without breaking encapsulation.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Observer</td><td class="border border-gray-200 px-2 py-1 text-purple-700">Behavioral</td><td class="border border-gray-200 px-2 py-1">Notify dependents when subject state changes.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">State</td><td class="border border-gray-200 px-2 py-1 text-purple-700">Behavioral</td><td class="border border-gray-200 px-2 py-1">Object changes behavior when its state changes.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Strategy</td><td class="border border-gray-200 px-2 py-1 text-purple-700">Behavioral</td><td class="border border-gray-200 px-2 py-1">Swap interchangeable algorithms at runtime.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Template Method</td><td class="border border-gray-200 px-2 py-1 text-purple-700">Behavioral</td><td class="border border-gray-200 px-2 py-1">Fix the skeleton, let subclasses fill steps.</td></tr>
+      <tr><td class="border border-gray-200 px-2 py-1 font-semibold">Visitor</td><td class="border border-gray-200 px-2 py-1 text-purple-700">Behavioral</td><td class="border border-gray-200 px-2 py-1">Add operations to a class hierarchy externally.</td></tr>
+    </tbody>
+  </table>
+</div>
+</details>
+
+<!-- SOLID + ANTI-PATTERNS -->
+<details class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm group">
+<summary class="px-5 py-4 flex items-center gap-3 hover:bg-gray-100/60 transition-colors cursor-pointer select-none">
+  <span class="text-sm font-bold text-gray-900 flex-1">SOLID Foundations &amp; When NOT to Use Patterns</span>
+  <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+</summary>
+<div class="px-5 pb-5 space-y-3">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+    <div class="rounded-lg bg-gray-50 border border-gray-200 p-3"><p class="text-xs"><strong class="text-ed-blue">S</strong>ingle Responsibility &mdash; one reason to change per class.</p></div>
+    <div class="rounded-lg bg-gray-50 border border-gray-200 p-3"><p class="text-xs"><strong class="text-ed-blue">O</strong>pen/Closed &mdash; open to extension, closed to modification. (Strategy, Decorator)</p></div>
+    <div class="rounded-lg bg-gray-50 border border-gray-200 p-3"><p class="text-xs"><strong class="text-ed-blue">L</strong>iskov Substitution &mdash; subtypes must be usable as their base.</p></div>
+    <div class="rounded-lg bg-gray-50 border border-gray-200 p-3"><p class="text-xs"><strong class="text-ed-blue">I</strong>nterface Segregation &mdash; many small interfaces beat one fat one.</p></div>
+    <div class="rounded-lg bg-gray-50 border border-gray-200 p-3 sm:col-span-2"><p class="text-xs"><strong class="text-ed-blue">D</strong>ependency Inversion &mdash; depend on abstractions, not concretions. (Factory, Bridge)</p></div>
+  </div>
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-3">
+    <p class="text-xs font-semibold text-rose-700 mb-1.5">Pattern overuse is a smell</p>
+    <p class="text-xs text-gray-700">Don't reach for a pattern until the duplication or rigidity actually hurts. In Python especially, a function, a dict dispatch table, or a module-level object often beats a five-class pattern. Patterns are vocabulary for real forces &mdash; not a checklist to satisfy.</p>
+  </div>
+</div>
+</details>
+
+<!-- FOOTER -->
+<div class="text-center pt-8 pb-4 border-t border-gray-100">
+  <p class="text-xs text-gray-500">Generated for LLD study &middot; 23 Gang-of-Four Design Patterns in Python</p>
+</div>
+
+</div>
+
+<script>
+(function() {
+  const observers = [
+    { name: 'PhoneDisplay', icon: '📱' },
+    { name: 'WebDashboard', icon: '🖥️' },
+    { name: 'AlertService', icon: '🔔' }
+  ];
+  // steps: subjectVal, highlightObserver index (-1 none), observersUpdated[], line, msg, subjectActive
+  const steps = [
+    { val: '--', active:false, hi:-1, updated:[], line:null, msg:'Three observers are <strong>attached</strong> to the WeatherStation subject. None has data yet. Press <strong>Next</strong>.' },
+    { val: '72°', active:true, hi:-1, updated:[], line:3, msg:'Client calls <code class="code">set_temperature(72)</code>. The subject\'s internal state updates to <strong>72°</strong>.' },
+    { val: '72°', active:true, hi:-1, updated:[], line:4, msg:'<code class="code">set_temperature</code> immediately calls <code class="code">notify()</code> &mdash; the subject does not know or care who is listening.' },
+    { val: '72°', active:true, hi:-1, updated:[], line:6, msg:'<code class="code">notify()</code> begins iterating the observer list. Loose coupling: it only knows each obeys the <code class="code">update()</code> contract.' },
+    { val: '72°', active:true, hi:0, updated:[0], line:7, msg:'Observer 1 <strong>PhoneDisplay</strong> receives <code class="code">update(72)</code> and refreshes its UI.' },
+    { val: '72°', active:true, hi:1, updated:[0,1], line:7, msg:'Observer 2 <strong>WebDashboard</strong> receives <code class="code">update(72)</code> and re-renders its chart.' },
+    { val: '72°', active:true, hi:2, updated:[0,1,2], line:7, msg:'Observer 3 <strong>AlertService</strong> receives <code class="code">update(72)</code> and checks its threshold rules.' },
+    { val: '72°', active:false, hi:-1, updated:[0,1,2], line:null, msg:'<span class="text-ed-teal font-semibold">Cycle complete.</span> All observers are in sync. Adding a 4th observer requires <strong>zero</strong> changes to the subject &mdash; that is the Open/Closed payoff.' }
+  ];
+
+  let step = 0, autoTimer = null;
+  const els = {
+    subject: document.getElementById('viz-subject'),
+    subjectVal: document.getElementById('viz-subject-val'),
+    observers: document.getElementById('viz-observers'),
+    status: document.getElementById('viz-status'),
+    label: document.getElementById('viz-step-label'),
+    next: document.getElementById('viz-next'),
+    prev: document.getElementById('viz-prev'),
+    reset: document.getElementById('viz-reset'),
+    auto: document.getElementById('viz-auto')
+  };
+
+  function render() {
+    const s = steps[step];
+    els.subjectVal.textContent = s.val;
+    els.subject.className = 'rounded-lg border-2 p-4 text-center transition-all duration-300 ' +
+      (s.active ? 'border-sky-400 bg-sky-50 ring-2 ring-sky-300/50' : 'border-gray-200 bg-gray-50');
+
+    els.observers.innerHTML = observers.map((o, idx) => {
+      const updated = s.updated.includes(idx);
+      const hi = s.hi === idx;
+      let cls = 'rounded-lg border p-3 text-center transition-all duration-300 ';
+      if (hi) cls += 'border-ed-pink bg-ed-pink/10 ring-2 ring-ed-pink/40 scale-105';
+      else if (updated) cls += 'border-emerald-300 bg-emerald-50';
+      else cls += 'border-gray-200 bg-white';
+      return '<div class="' + cls + '">' +
+        '<div class="text-xl">' + o.icon + '</div>' +
+        '<div class="text-[11px] font-semibold text-gray-700 mt-1">' + o.name + '</div>' +
+        '<div class="text-[10px] font-mono mt-1 ' + (updated ? 'text-emerald-600' : 'text-gray-400') + '">' +
+          (updated ? s.val : 'stale') + '</div>' +
+      '</div>';
+    }).join('');
+
+    els.status.innerHTML = s.msg;
+    for (let n = 0; n <= 7; n++) {
+      const line = document.getElementById('code-L' + n);
+      if (line) line.className = (s.line === n)
+        ? 'block bg-ed-teal/10 text-ed-teal border-l-2 border-ed-teal pl-2 -ml-2'
+        : 'block text-gray-500';
+    }
+    els.label.textContent = 'Step ' + step + ' / ' + (steps.length - 1);
+    els.prev.style.opacity = step <= 0 ? '0.4' : '1';
+    els.next.style.opacity = step >= steps.length - 1 ? '0.4' : '1';
+  }
+  function setStep(n){ step = Math.max(0, Math.min(steps.length-1, n)); render(); }
+  function toggleAuto(){
+    if (autoTimer){ clearInterval(autoTimer); autoTimer=null; els.auto.textContent='Auto Play'; }
+    else { els.auto.textContent='Pause'; if(step>=steps.length-1) setStep(0);
+      autoTimer=setInterval(function(){ if(step>=steps.length-1){toggleAuto();return;} setStep(step+1); },1500); }
+  }
+  els.next.addEventListener('click', function(){ setStep(step+1); });
+  els.prev.addEventListener('click', function(){ setStep(step-1); });
+  els.reset.addEventListener('click', function(){ if(autoTimer) toggleAuto(); setStep(0); });
+  els.auto.addEventListener('click', toggleAuto);
+
+  // Category filter tabs (if present)
+  render();
+})();
+</script>
+
+</body>
+</html>
