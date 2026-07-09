@@ -1,0 +1,1814 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Binary Search — AlgoViz</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0a0e1a;
+        --panel: #111726;
+        --panel-2: #161d2e;
+        --border: #1f2942;
+        --border-soft: #1a2238;
+        --fg: #e6eaf3;
+        --fg-dim: #9aa3bb;
+        --fg-mute: #6b7494;
+        --teal: #2dd4bf;
+        --teal-soft: #2dd4bf26;
+        --purple: #8b5cf6;
+        --purple-soft: #8b5cf626;
+        --red: #ef4444;
+        --red-soft: #ef444426;
+        --amber: #f59e0b;
+        --pink: #ec4899;
+        --blue: #38bdf8;
+        --grid: #1a223844;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
+          monospace;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      a {
+        color: var(--teal);
+      }
+      .wrap {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px 24px 80px;
+      }
+      /* HEADER */
+      header.app {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 0 18px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 22px;
+      }
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        font-size: 16px;
+        letter-spacing: 0.5px;
+      }
+      .logo .bolt {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, var(--teal), var(--purple));
+        display: grid;
+        place-items: center;
+        color: #0a0e1a;
+        font-weight: 800;
+      }
+      .pills {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .pill {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        padding: 5px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        color: var(--fg-dim);
+      }
+      .pill.cat {
+        color: var(--teal);
+        border-color: #2dd4bf3a;
+      }
+      .pill.time {
+        color: var(--purple);
+        border-color: #8b5cf63a;
+      }
+      .pill.space {
+        color: var(--amber);
+        border-color: #f59e0b3a;
+      }
+      h1.algoname {
+        font-size: 24px;
+        font-weight: 700;
+        margin: 0 0 4px;
+      }
+      p.algodesc {
+        margin: 0 0 16px;
+        color: var(--fg-dim);
+        font-size: 12px;
+        max-width: 900px;
+      }
+      /* GRID */
+      .grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+        gap: 18px;
+      }
+      @media (max-width: 980px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .card-head {
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--panel-2);
+      }
+      .card-head .title {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--fg-dim);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      .card-body {
+        padding: 14px;
+      }
+      /* CODE */
+      pre.code {
+        margin: 0;
+        font-size: 12.5px;
+        line-height: 1.65;
+        white-space: pre;
+        overflow-x: auto;
+        color: #d6dbe7;
+      }
+      pre.code .ln {
+        color: var(--fg-mute);
+        display: inline-block;
+        width: 30px;
+        text-align: right;
+        margin-right: 14px;
+        user-select: none;
+      }
+      pre.code .kw {
+        color: var(--purple);
+      }
+      pre.code .fn {
+        color: var(--teal);
+      }
+      pre.code .num {
+        color: var(--amber);
+      }
+      pre.code .str {
+        color: #6ee7b7;
+      }
+      pre.code .com {
+        color: var(--fg-mute);
+        font-style: italic;
+      }
+      /* VIZ */
+      .viz {
+        position: relative;
+        min-height: 320px;
+        padding: 22px 18px 14px;
+        background-image: linear-gradient(var(--grid) 1px, transparent 1px),
+          linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+        background-size: 24px 24px;
+      }
+      .bars {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        height: 240px;
+      }
+      .bar {
+        flex: 1 1 0;
+        min-width: 14px;
+        background: #2a3554;
+        border-top-left-radius: 4px;
+        border-top-right-radius: 4px;
+        position: relative;
+        transition: background 200ms ease, transform 200ms ease,
+          box-shadow 200ms ease;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding-top: 6px;
+        font-size: 11px;
+        color: #c1c8dc;
+      }
+      .bar.hl {
+        background: var(--teal);
+        color: #07241f;
+        box-shadow: 0 0 0 2px #2dd4bf66;
+        transform: translateY(-3px);
+      }
+      .bar.swap {
+        background: var(--red);
+        color: #2a0a0a;
+        box-shadow: 0 0 0 2px #ef444466;
+      }
+      .bar.done {
+        background: var(--purple);
+        color: #160a2a;
+      }
+      .ptr-row {
+        display: flex;
+        gap: 6px;
+        margin-top: 6px;
+        height: 22px;
+      }
+      .ptr-cell {
+        flex: 1 1 0;
+        min-width: 14px;
+        font-size: 9.5px;
+        text-align: center;
+        color: var(--fg-mute);
+      }
+      .ptr-cell .tag {
+        display: inline-block;
+        padding: 1px 5px;
+        border-radius: 4px;
+        background: #1d2640;
+        color: var(--teal);
+        border: 1px solid #2dd4bf3a;
+        margin: 1px 1px 0;
+        font-size: 9.5px;
+      }
+      .msg {
+        margin-top: 14px;
+        padding: 10px 12px;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 12px;
+        color: var(--fg);
+        min-height: 38px;
+      }
+      .msg .step-tag {
+        font-size: 10px;
+        color: var(--fg-mute);
+        margin-right: 8px;
+      }
+      .msg .phase {
+        display: inline-block;
+        font-size: 9.5px;
+        padding: 1px 6px;
+        border-radius: 4px;
+        background: #2dd4bf26;
+        color: var(--teal);
+        margin-right: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      /* CONTROLS */
+      .controls {
+        margin-top: 12px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .controls button {
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        color: var(--fg);
+        padding: 6px 12px;
+        border-radius: 7px;
+        font-family: inherit;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 150ms;
+      }
+      .controls button:hover {
+        background: #1d2640;
+        border-color: #2dd4bf55;
+      }
+      .controls button.primary {
+        background: linear-gradient(
+          135deg,
+          var(--teal),
+          var(--purple)
+        );
+        color: #0a0e1a;
+        font-weight: 700;
+        border: none;
+      }
+      .controls input[type="range"] {
+        accent-color: var(--teal);
+        flex: 1 1 200px;
+      }
+      .controls .label {
+        font-size: 11px;
+        color: var(--fg-mute);
+      }
+      .progress {
+        font-size: 11px;
+        color: var(--fg-dim);
+        margin-left: auto;
+      }
+      .vars {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+      }
+      .var {
+        background: #16203a;
+        border: 1px solid var(--border-soft);
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-size: 10.5px;
+        color: var(--fg-dim);
+      }
+      .var b {
+        color: var(--teal);
+        margin-right: 4px;
+      }
+      /* LEARN */
+      section.learn {
+        margin-top: 28px;
+      }
+      .learn-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .learn-head .icon {
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+        background: linear-gradient(135deg, var(--teal), var(--purple));
+        display: grid;
+        place-items: center;
+        font-size: 14px;
+      }
+      .learn-head h2 {
+        font-size: 16px;
+        margin: 0;
+      }
+      .learn-head .sub {
+        font-size: 11px;
+        color: var(--fg-mute);
+      }
+      details.section {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin-bottom: 10px;
+        overflow: hidden;
+      }
+      details.section[open] {
+        border-color: #2dd4bf30;
+      }
+      details.section > summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--fg);
+        user-select: none;
+      }
+      details.section > summary::-webkit-details-marker {
+        display: none;
+      }
+      details.section > summary::after {
+        content: "▸";
+        margin-left: auto;
+        color: var(--fg-mute);
+        transition: transform 200ms;
+      }
+      details.section[open] > summary::after {
+        transform: rotate(90deg);
+      }
+      details.section > summary .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--teal);
+      }
+      details.section > summary .dot.pink {
+        background: var(--pink);
+      }
+      details.section > summary .dot.purple {
+        background: var(--purple);
+      }
+      details.section > summary .dot.amber {
+        background: var(--amber);
+      }
+      details.section > summary .dot.blue {
+        background: var(--blue);
+      }
+      details.section > summary .dot.red {
+        background: var(--red);
+      }
+      .section-body {
+        padding: 0 16px 16px;
+        font-size: 12.5px;
+        color: var(--fg-dim);
+      }
+      .tinted {
+        background: #2dd4bf08;
+        border: 1px solid #2dd4bf24;
+        padding: 12px;
+        border-radius: 8px;
+      }
+      .tinted.pink {
+        background: #ec489908;
+        border-color: #ec489924;
+      }
+      .tinted.purple {
+        background: #8b5cf608;
+        border-color: #8b5cf624;
+      }
+      .tinted.amber {
+        background: #f59e0b08;
+        border-color: #f59e0b24;
+      }
+      .tinted.red {
+        background: #ef444408;
+        border-color: #ef444424;
+      }
+      .tag {
+        display: inline-block;
+        font-size: 10px;
+        padding: 2px 7px;
+        border-radius: 999px;
+        background: var(--teal-soft);
+        color: var(--teal);
+        margin-right: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .tag.pink {
+        background: #ec489922;
+        color: var(--pink);
+      }
+      .tag.purple {
+        background: var(--purple-soft);
+        color: var(--purple);
+      }
+      .tag.amber {
+        background: #f59e0b22;
+        color: var(--amber);
+      }
+      .tag.red {
+        background: var(--red-soft);
+        color: var(--red);
+      }
+      .tag.blue {
+        background: #38bdf822;
+        color: var(--blue);
+      }
+      ul.bul {
+        margin: 6px 0 0;
+        padding-left: 0;
+        list-style: none;
+      }
+      ul.bul li {
+        position: relative;
+        padding-left: 16px;
+        margin: 6px 0;
+        color: var(--fg);
+        font-size: 12px;
+      }
+      ul.bul li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 7px;
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: var(--teal);
+      }
+      ul.bul.pink li::before {
+        background: var(--pink);
+      }
+      ul.bul.purple li::before {
+        background: var(--purple);
+      }
+      ul.bul.amber li::before {
+        background: var(--amber);
+      }
+      ul.bul.red li::before {
+        background: var(--red);
+      }
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      @media (max-width: 720px) {
+        .grid-2 {
+          grid-template-columns: 1fr;
+        }
+      }
+      .think-step {
+        padding: 10px 12px;
+        background: #161d2e;
+        border-left: 3px solid var(--purple);
+        border-radius: 6px;
+        margin: 8px 0;
+      }
+      .think-step .lbl {
+        font-size: 9.5px;
+        color: var(--purple);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-right: 6px;
+        font-weight: 700;
+      }
+      .step-row {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        margin: 6px 0;
+      }
+      .step-row .num {
+        flex: 0 0 22px;
+        height: 22px;
+        border-radius: 6px;
+        background: var(--teal-soft);
+        color: var(--teal);
+        font-weight: 700;
+        font-size: 11px;
+        display: grid;
+        place-items: center;
+      }
+      .step-row .body {
+        flex: 1;
+        font-size: 12px;
+      }
+      .flashcards {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      @media (max-width: 720px) {
+        .flashcards {
+          grid-template-columns: 1fr;
+        }
+      }
+      .flashcard {
+        perspective: 1000px;
+        height: 130px;
+      }
+      .flashcard .inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        transform-style: preserve-3d;
+        transition: transform 500ms;
+      }
+      .flashcard.flipped .inner {
+        transform: rotateY(180deg);
+      }
+      .flashcard .face {
+        position: absolute;
+        inset: 0;
+        backface-visibility: hidden;
+        border-radius: 8px;
+        padding: 14px;
+        font-size: 12px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        text-align: center;
+      }
+      .flashcard .front {
+        background: linear-gradient(135deg, #16203a, #1d2640);
+        border: 1px solid #2dd4bf3a;
+      }
+      .flashcard .front .q-tag {
+        font-size: 9px;
+        color: var(--teal);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 6px;
+      }
+      .flashcard .back {
+        transform: rotateY(180deg);
+        background: linear-gradient(135deg, #1c172e, #251c3a);
+        border: 1px solid #8b5cf64a;
+        color: var(--fg);
+      }
+      .flashcard .back .a-tag {
+        font-size: 9px;
+        color: var(--purple);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 6px;
+      }
+      .table-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 12px;
+      }
+      .table-row:last-child {
+        border-bottom: 0;
+      }
+      .table-row .k {
+        color: var(--teal);
+        font-weight: 600;
+        flex: 0 0 30%;
+      }
+      .table-row .v {
+        flex: 1;
+        color: var(--fg-dim);
+      }
+      footer.foot {
+        margin-top: 40px;
+        text-align: center;
+        font-size: 11px;
+        color: var(--fg-mute);
+      }
+      /* WALKTHROUGH */
+      section.walkthrough {
+        margin-top: 28px;
+      }
+      .wt-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .wt-head .icon {
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+        background: linear-gradient(135deg, var(--blue), var(--teal));
+        display: grid;
+        place-items: center;
+        font-size: 14px;
+      }
+      .wt-head h2 {
+        font-size: 16px;
+        margin: 0;
+      }
+      .wt-head .sub {
+        font-size: 11px;
+        color: var(--fg-mute);
+      }
+      .wt-card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .wt-body {
+        padding: 16px;
+      }
+      .wt-row {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        margin: 8px 0;
+        padding: 8px 10px;
+        background: var(--panel-2);
+        border-radius: 8px;
+        border-left: 3px solid var(--teal);
+      }
+      .wt-row.done {
+        border-left-color: var(--purple);
+        background: #2dd4bf08;
+      }
+      .wt-row .num {
+        flex: 0 0 24px;
+        height: 24px;
+        border-radius: 6px;
+        background: var(--teal-soft);
+        color: var(--teal);
+        font-weight: 700;
+        font-size: 11px;
+        display: grid;
+        place-items: center;
+      }
+      .wt-row .content {
+        flex: 1;
+      }
+      .wt-row .content .msg {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        min-height: auto;
+        font-size: 12.5px;
+        color: var(--fg);
+      }
+      .wt-row .content .vars {
+        margin-top: 6px;
+      }
+      .wt-input {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+        padding: 10px 12px;
+        background: #16203a;
+        border: 1px solid var(--border-soft);
+        border-radius: 8px;
+      }
+      .wt-input .lbl {
+        font-size: 10.5px;
+        color: var(--fg-mute);
+        margin-right: 4px;
+      }
+      .wt-input .val {
+        font-size: 11.5px;
+        color: var(--teal);
+        font-weight: 600;
+      }
+      .wt-output {
+        margin-top: 12px;
+        padding: 10px 12px;
+        background: #2dd4bf08;
+        border: 1px solid #2dd4bf24;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .wt-output .lbl {
+        font-size: 10.5px;
+        color: var(--fg-mute);
+      }
+      .wt-output .val {
+        font-size: 14px;
+        color: var(--teal);
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="app">
+        <div class="logo">
+          <span class="bolt">⚡</span> AlgoViz
+        </div>
+        <div class="pills" id="header-pills"></div>
+      </header>
+
+      <h1 class="algoname" id="algo-name">Algorithm Name</h1>
+      <p class="algodesc" id="algo-desc">Description.</p>
+
+      <div class="grid">
+        <!-- CODE -->
+        <div class="card">
+          <div class="card-head">
+            <span class="title">solution.py</span>
+            <span class="title" id="lang-tag">PYTHON</span>
+          </div>
+          <div class="card-body">
+            <pre class="code" id="code-block"></pre>
+          </div>
+        </div>
+
+        <!-- VIZ -->
+        <div class="card">
+          <div class="card-head">
+            <span class="title">Visualization</span>
+            <span class="title" id="viz-meta"></span>
+          </div>
+          <div class="viz" id="viz">
+            <div class="bars" id="bars"></div>
+            <div class="ptr-row" id="ptrs"></div>
+            <div class="msg" id="msg">
+              <span class="step-tag">Step 0</span>Press play to begin.
+            </div>
+            <div class="vars" id="vars"></div>
+            <div class="controls">
+              <button id="btn-restart" title="Restart">⟲</button>
+              <button id="btn-back" title="Step back">◀</button>
+              <button class="primary" id="btn-play">▶ Play</button>
+              <button id="btn-fwd" title="Step forward">▶</button>
+              <span class="label">Speed</span>
+              <input
+                type="range"
+                id="speed"
+                min="80"
+                max="1500"
+                step="20"
+                value="500"
+              />
+              <span class="progress" id="progress">0 / 0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CODE WALKTHROUGH -->
+      <section class="walkthrough" id="sec-walkthrough">
+        <div class="wt-head">
+          <div class="icon">🚶</div>
+          <div>
+            <h2>Code Walkthrough</h2>
+            <div class="sub">Follow the input through every step to the output.</div>
+          </div>
+        </div>
+        <div class="wt-card">
+          <div class="wt-body" id="body-walkthrough"></div>
+        </div>
+      </section>
+
+      <!-- LEARN -->
+      <section class="learn">
+        <div class="learn-head">
+          <div class="icon">🎓</div>
+          <div>
+            <h2>Algorithm Editorial</h2>
+            <div class="sub">Learn how to think, not just what to code.</div>
+          </div>
+        </div>
+
+        <details class="section" open id="sec-pattern">
+          <summary><span class="dot pink"></span>Pattern Recognition</summary>
+          <div class="section-body" id="body-pattern"></div>
+        </details>
+
+        <details class="section" id="sec-think">
+          <summary>
+            <span class="dot purple"></span>How to Think About It
+          </summary>
+          <div class="section-body" id="body-think"></div>
+        </details>
+
+        <details class="section" id="sec-analogy">
+          <summary><span class="dot blue"></span>Real-World Analogy</summary>
+          <div class="section-body" id="body-analogy"></div>
+        </details>
+
+        <details class="section" id="sec-intuition">
+          <summary><span class="dot amber"></span>Build Your Intuition</summary>
+          <div class="section-body" id="body-intuition"></div>
+        </details>
+
+        <details class="section" id="sec-step">
+          <summary>
+            <span class="dot"></span>How It Works (Step by Step)
+          </summary>
+          <div class="section-body" id="body-step"></div>
+        </details>
+
+        <details class="section" id="sec-complex">
+          <summary>
+            <span class="dot purple"></span>Complexity Deep Dive
+          </summary>
+          <div class="section-body" id="body-complex"></div>
+        </details>
+
+        <details class="section" id="sec-brute">
+          <summary>
+            <span class="dot amber"></span>From Brute Force to Optimal
+          </summary>
+          <div class="section-body" id="body-brute"></div>
+        </details>
+
+        <details class="section" id="sec-edge">
+          <summary><span class="dot red"></span>Edge Cases & Gotchas</summary>
+          <div class="section-body" id="body-edge"></div>
+        </details>
+
+        <details class="section" id="sec-cards">
+          <summary><span class="dot"></span>Flashcards (click to flip)</summary>
+          <div class="section-body" id="body-cards"></div>
+        </details>
+
+        <details class="section" id="sec-real">
+          <summary>
+            <span class="dot blue"></span>Where It's Used (Real World)
+          </summary>
+          <div class="section-body" id="body-real"></div>
+        </details>
+
+        <details class="section" id="sec-mistakes">
+          <summary><span class="dot red"></span>Common Mistakes</summary>
+          <div class="section-body" id="body-mistakes"></div>
+        </details>
+
+        <details class="section" id="sec-tips">
+          <summary><span class="dot"></span>Interview Tips</summary>
+          <div class="section-body" id="body-tips"></div>
+        </details>
+
+        <details class="section" id="sec-similar">
+          <summary>
+            <span class="dot pink"></span>Similar Problems to Practice
+          </summary>
+          <div class="section-body" id="body-similar"></div>
+        </details>
+
+        <details class="section" id="sec-related">
+          <summary>
+            <span class="dot purple"></span>Related Algorithms
+          </summary>
+          <div class="section-body" id="body-related"></div>
+        </details>
+      </section>
+
+      <footer class="foot">
+        Generated locally · No API calls · Inspired by AlgoViz
+      </footer>
+    </div>
+
+    <!-- ====== DATA ====== -->
+    <script id="ALGOVIZ_DATA" type="application/json">
+      {
+  "algorithm": {
+    "name": "Binary Search",
+    "category": "Search / Divide & Conquer",
+    "time": "O(log n)",
+    "space": "O(1)",
+    "description": "Binary search finds the position of a target value in a sorted array by repeatedly dividing the search interval in half."
+  },
+  "input": {
+    "array": [
+      2,
+      5,
+      8,
+      12,
+      16,
+      23,
+      38,
+      56,
+      72,
+      91
+    ],
+    "target": 23
+  },
+  "code": "def binary_search(arr, target):\n    low, high = 0, len(arr) - 1\n    while low <= high:\n        mid = (low + high) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            low = mid + 1\n        else:\n            high = mid - 1\n    return -1",
+  "steps": [
+    {
+      "array": [
+        2,
+        5,
+        8,
+        12,
+        16,
+        23,
+        38,
+        56,
+        72,
+        91
+      ],
+      "highlights": [
+        0,
+        9
+      ],
+      "swapping": [],
+      "sorted": [],
+      "pointers": {
+        "low": 0,
+        "high": 9,
+        "mid": 4
+      },
+      "variables": {
+        "target": 23
+      },
+      "phase": "agentic-infra-init",
+      "message": "Start with the full sorted array. low=0, high=9, so mid = (0+9)//2 = 4. The value at mid is 16."
+    },
+    {
+      "array": [
+        2,
+        5,
+        8,
+        12,
+        16,
+        23,
+        38,
+        56,
+        72,
+        91
+      ],
+      "highlights": [
+        4
+      ],
+      "swapping": [],
+      "sorted": [],
+      "pointers": {
+        "low": 0,
+        "high": 9,
+        "mid": 4
+      },
+      "variables": {
+        "target": 23,
+        "mid_value": 16
+      },
+      "phase": "compare",
+      "message": "Compare target 23 with arr[mid] = 16. Since 23 > 16, the target must be in the right half."
+    },
+    {
+      "array": [
+        2,
+        5,
+        8,
+        12,
+        16,
+        23,
+        38,
+        56,
+        72,
+        91
+      ],
+      "highlights": [
+        5,
+        9
+      ],
+      "swapping": [],
+      "sorted": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "pointers": {
+        "low": 5,
+        "high": 9,
+        "mid": 7
+      },
+      "variables": {
+        "target": 23
+      },
+      "phase": "narrow",
+      "message": "Narrow to the right half: low = mid + 1 = 5, high stays 9. New mid = (5+9)//2 = 7, value 56."
+    },
+    {
+      "array": [
+        2,
+        5,
+        8,
+        12,
+        16,
+        23,
+        38,
+        56,
+        72,
+        91
+      ],
+      "highlights": [
+        7
+      ],
+      "swapping": [],
+      "sorted": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "pointers": {
+        "low": 5,
+        "high": 9,
+        "mid": 7
+      },
+      "variables": {
+        "target": 23,
+        "mid_value": 56
+      },
+      "phase": "compare",
+      "message": "Compare target 23 with arr[mid] = 56. Since 23 < 56, the target must be in the left half."
+    },
+    {
+      "array": [
+        2,
+        5,
+        8,
+        12,
+        16,
+        23,
+        38,
+        56,
+        72,
+        91
+      ],
+      "highlights": [
+        5,
+        6
+      ],
+      "swapping": [],
+      "sorted": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        7,
+        8,
+        9
+      ],
+      "pointers": {
+        "low": 5,
+        "high": 6,
+        "mid": 5
+      },
+      "variables": {
+        "target": 23
+      },
+      "phase": "narrow",
+      "message": "Narrow to the left half: high = mid - 1 = 6, low stays 5. New mid = (5+6)//2 = 5, value 23."
+    },
+    {
+      "array": [
+        2,
+        5,
+        8,
+        12,
+        16,
+        23,
+        38,
+        56,
+        72,
+        91
+      ],
+      "highlights": [
+        5
+      ],
+      "swapping": [],
+      "sorted": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "pointers": {
+        "low": 5,
+        "high": 6,
+        "mid": 5
+      },
+      "variables": {
+        "target": 23,
+        "mid_value": 23
+      },
+      "phase": "done",
+      "message": "Found! arr[5] == 23. Return index 5."
+    }
+  ],
+  "learn": {
+    "patternRecognition": {
+      "pattern": "Sorted array + target lookup",
+      "whenToUse": "Whenever the input is sorted and you need to find an exact value, boundary, or insertion point.",
+      "signals": [
+        "Array is sorted (or can be sorted cheaply)",
+        "You need to locate a single element or boundary",
+        "Linear scan feels too slow for large inputs"
+      ]
+    },
+    "thinkingProcess": [
+      {
+        "thought": "Can I eliminate half of the array at each step?",
+        "reasoning": "If the array is sorted, comparing against the middle tells us which half can contain the target.",
+        "conclusion": "Yes, use binary search for O(log n) lookup."
+      },
+      {
+        "thought": "How do I avoid the off-by-one bug?",
+        "reasoning": "The loop condition `low <= high` and updating `low = mid + 1` / `high = mid - 1` keeps the search space valid.",
+        "conclusion": "Stick to the closed-interval form and test on empty/single-element arrays."
+      }
+    ],
+    "realWorldAnalogy": {
+      "title": "Looking up a word in a dictionary",
+      "story": "You open the dictionary to the middle page, see if your word is before or after, then repeat on the relevant half until you find the exact page."
+    },
+    "intuitionBuilder": {
+      "question": "Why is binary search O(log n)?",
+      "insight": "Each comparison cuts the problem size in half. Cutting n in half log2(n) times leaves one element."
+    },
+    "stepByStep": [
+      "Set low = 0 and high = len(arr) - 1.",
+      "While low <= high, compute mid = (low + high) // 2.",
+      "If arr[mid] == target, return mid.",
+      "If arr[mid] < target, move low to mid + 1.",
+      "Otherwise, move high to mid - 1.",
+      "If the loop ends, return -1."
+    ],
+    "complexityExplanation": {
+      "time": "O(log n)",
+      "timeWhy": "The search space is halved at every step, so at most log2(n) comparisons are needed.",
+      "space": "O(1)",
+      "spaceWhy": "Only a few pointers are stored, regardless of input size."
+    },
+    "bruteForceToOptimal": {
+      "naive": {
+        "approach": "Scan every element from left to right.",
+        "complexity": "O(n) time, O(1) space",
+        "whyItWorks": "It eventually checks every element."
+      },
+      "optimal": {
+        "approach": "Binary search using the sorted order.",
+        "complexity": "O(log n) time, O(1) space",
+        "keyInsight": "Sorting lets us discard half the data after one comparison."
+      },
+      "comparisonExample": "For n = 1,000,000, linear scan does up to 1,000,000 checks; binary search does at most 20."
+    },
+    "edgeCases": [
+      {
+        "case": "Empty array",
+        "howToHandle": "Return -1 immediately.",
+        "commonBug": "Forgetting the `low <= high` check can cause an infinite loop."
+      },
+      {
+        "case": "Target not present",
+        "howToHandle": "Return -1 after the loop exits.",
+        "commonBug": "Returning the last mid instead of -1."
+      },
+      {
+        "case": "Single element array",
+        "howToHandle": "low == high == 0, mid == 0. Check and return.",
+        "commonBug": "Using `low < high` skips the only element."
+      },
+      {
+        "case": "Integer overflow in low + high",
+        "howToHandle": "Use `low + (high - low) // 2` in low-level languages.",
+        "commonBug": "`(low + high) // 2` can overflow for very large indices."
+      }
+    ],
+    "flashcards": [
+      {
+        "q": "What is the time complexity of binary search?",
+        "a": "O(log n)"
+      },
+      {
+        "q": "What precondition must hold for binary search?",
+        "a": "The input array must be sorted."
+      },
+      {
+        "q": "How do you compute mid safely?",
+        "a": "`low + (high - low) // 2`"
+      },
+      {
+        "q": "When does the loop terminate?",
+        "a": "When `low > high`, meaning the search space is empty."
+      },
+      {
+        "q": "What should you return if the target is not found?",
+        "a": "Typically -1, or the insertion point depending on the variant."
+      }
+    ],
+    "realWorldApplications": [
+      {
+        "domain": "Databases",
+        "application": "Index lookups in B-trees and sorted table indexes",
+        "scale": "Billions of rows"
+      },
+      {
+        "domain": "Git",
+        "application": "`git bisect` finds the commit that introduced a bug",
+        "scale": "Large commit histories"
+      },
+      {
+        "domain": "Compilers",
+        "application": "Searching sorted symbol tables",
+        "scale": "Program scopes"
+      },
+      {
+        "domain": "Machine Learning",
+        "application": "Finding thresholds in sorted feature values",
+        "scale": "High-dimensional data"
+      }
+    ],
+    "commonMistakes": [
+      "Using `low < high` instead of `low <= high` and missing the target.",
+      "Forgetting to update `low` or `high` after comparing.",
+      "Applying binary search to an unsorted array.",
+      "Returning the value instead of the index.",
+      "Not handling the empty array case."
+    ],
+    "interviewTips": [
+      "Always verify the array is sorted before proposing binary search.",
+      "Mention the closed vs open interval variants.",
+      "For boundaries, practice lower_bound and upper_bound variants.",
+      "Test your logic mentally on arrays of size 0, 1, 2, and 3.",
+      "If asked about overflow, use `low + (high - low) // 2`."
+    ],
+    "similarProblems": [
+      {
+        "name": "Search in Rotated Sorted Array",
+        "difficulty": "Medium",
+        "connection": "Same binary search skeleton, but the sorted half is identified first."
+      },
+      {
+        "name": "Find Minimum in Rotated Sorted Array",
+        "difficulty": "Medium",
+        "connection": "Binary search on a monotonic pattern."
+      },
+      {
+        "name": "First Bad Version",
+        "difficulty": "Easy",
+        "connection": "Binary search on a boolean predicate."
+      },
+      {
+        "name": "Find Peak Element",
+        "difficulty": "Medium",
+        "connection": "Binary search on a unimodal array."
+      }
+    ],
+    "relatedAlgorithms": [
+      {
+        "name": "Linear Search",
+        "relationship": "Works on unsorted arrays but is O(n)."
+      },
+      {
+        "name": "Ternary Search",
+        "relationship": "Divides into thirds; useful for unimodal functions."
+      },
+      {
+        "name": "Interpolation Search",
+        "relationship": "Estimates position based on value distribution; O(log log n) for uniform data."
+      },
+      {
+        "name": "Exponential Search",
+        "relationship": "Finds a range first, then binary searches; good for unbounded/infinite arrays."
+      }
+    ]
+  }
+}
+    </script>
+
+    <!-- ====== ENGINE ====== -->
+    <script>
+      const D = JSON.parse(document.getElementById("ALGOVIZ_DATA").textContent);
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) =>
+        String(s ?? "").replace(/[&<>]/g, (c) =>
+          c === "&" ? "&amp;" : c === "<" ? "&lt;" : "&gt;",
+        );
+
+      // ---- HEADER ----
+      const a = D.algorithm || {};
+      $("algo-name").textContent = a.name || "Algorithm";
+      $("algo-desc").textContent = a.description || "";
+      const pills = [];
+      if (a.category)
+        pills.push(`<span class="pill cat">${esc(a.category)}</span>`);
+      if (a.time) pills.push(`<span class="pill time">⏱ ${esc(a.time)}</span>`);
+      if (a.space)
+        pills.push(`<span class="pill space">⛁ ${esc(a.space)}</span>`);
+      if (D.input && Array.isArray(D.input.array))
+        pills.push(`<span class="pill">n=${D.input.array.length}</span>`);
+      if (D.input && D.input.target !== undefined)
+        pills.push(`<span class="pill">target=${esc(D.input.target)}</span>`);
+      $("header-pills").innerHTML = pills.join("");
+      $("viz-meta").textContent =
+        (D.steps ? D.steps.length : 0) + " steps";
+
+      // ---- CODE ----
+      function highlightPython(src) {
+        // Token-based highlighter — no class= attrs injected, so the
+        // keyword 'class' can't corrupt our own HTML.
+        const KW_SET = new Set("def return if elif else for while in not and or None True False break continue class import from as with try except raise lambda yield pass".split(" "));
+        const BUILTIN_SET = new Set("len range sorted reversed min max sum abs enumerate zip map filter set list dict tuple str int float print".split(" "));
+        const C = { kw: "#8b5cf6", fn: "#2dd4bf", num: "#f59e0b", str: "#6ee7b7", com: "#6b7494" };
+        const lines = src.split("\n");
+        return lines
+          .map((line, i) => {
+            let out = "";
+            let k = 0;
+            const n = line.length;
+            while (k < n) {
+              const c = line[k];
+              // comment to end-of-line
+              if (c === "#") {
+                out += `<span style="color:${C.com};font-style:italic">${esc(line.slice(k))}</span>`;
+                break;
+              }
+              // string literal
+              if (c === '"' || c === "'") {
+                let j = k + 1;
+                while (j < n && line[j] !== c) {
+                  if (line[j] === "\\") j++;
+                  j++;
+                }
+                j = Math.min(j + 1, n);
+                out += `<span style="color:${C.str}">${esc(line.slice(k, j))}</span>`;
+                k = j;
+                continue;
+              }
+              // number
+              if (/[0-9]/.test(c)) {
+                let j = k;
+                while (j < n && /[0-9.]/.test(line[j])) j++;
+                out += `<span style="color:${C.num}">${esc(line.slice(k, j))}</span>`;
+                k = j;
+                continue;
+              }
+              // identifier / keyword
+              if (/[A-Za-z_]/.test(c)) {
+                let j = k;
+                while (j < n && /[A-Za-z0-9_]/.test(line[j])) j++;
+                const word = line.slice(k, j);
+                // function definition name follows `def `
+                const isDefName = out.endsWith(`>def</span> `);
+                if (KW_SET.has(word)) {
+                  out += `<span style="color:${C.kw};font-weight:600">${word}</span>`;
+                } else if (BUILTIN_SET.has(word)) {
+                  out += `<span style="color:${C.fn}">${word}</span>`;
+                } else if (isDefName) {
+                  out += `<span style="color:${C.fn};font-weight:600">${word}</span>`;
+                } else {
+                  out += esc(word);
+                }
+                k = j;
+                continue;
+              }
+              out += esc(c);
+              k++;
+            }
+            const ln = String(i + 1).padStart(2, " ");
+            return `<span class="ln">${ln}</span>${out}`;
+          })
+          .join("\n");
+      }
+      $("code-block").innerHTML = highlightPython(D.code || "");
+
+      // ---- VIZ ENGINE ----
+      const steps = D.steps || [];
+      let cur = 0;
+      let playing = false;
+      let timer = null;
+
+      function render() {
+        const s = steps[cur] || {};
+        const arr = s.array || (D.input && D.input.array) || [];
+        const max = Math.max(1, ...arr);
+        const hl = new Set(s.highlights || []);
+        const sw = new Set(s.swapping || []);
+        const dn = new Set(s.sorted || s.visited || []);
+        const ptrs = s.pointers || {};
+
+        // bars
+        $("bars").innerHTML = arr
+          .map((v, i) => {
+            let cls = "bar";
+            if (sw.has(i)) cls += " swap";
+            else if (hl.has(i)) cls += " hl";
+            else if (dn.has(i)) cls += " done";
+            const pct = (v / max) * 100;
+            return `<div class="${cls}" style="height:${pct}%">${v}</div>`;
+          })
+          .join("");
+
+        // pointer row
+        const labels = Array.from({ length: arr.length }, () => []);
+        for (const [name, idx] of Object.entries(ptrs)) {
+          if (idx >= 0 && idx < arr.length) labels[idx].push(name);
+        }
+        $("ptrs").innerHTML = labels
+          .map(
+            (lbls) =>
+              `<div class="ptr-cell">${lbls
+                .map((l) => `<span class="tag">${esc(l)}</span>`)
+                .join("")}</div>`,
+          )
+          .join("");
+
+        // message
+        const phase = s.phase
+          ? `<span class="phase">${esc(s.phase)}</span>`
+          : "";
+        $("msg").innerHTML =
+          `<span class="step-tag">Step ${cur + 1}/${steps.length}</span>` +
+          phase +
+          esc(s.message || "");
+
+        // vars
+        const vars = s.variables || {};
+        $("vars").innerHTML = Object.entries(vars)
+          .map(([k, v]) => `<div class="var"><b>${esc(k)}</b>${esc(v)}</div>`)
+          .join("");
+
+        $("progress").textContent = `${cur + 1} / ${steps.length}`;
+      }
+
+      function step(delta) {
+        cur = Math.max(0, Math.min(steps.length - 1, cur + delta));
+        render();
+        if (cur === steps.length - 1) stop();
+      }
+      function play() {
+        if (playing) return stop();
+        if (cur >= steps.length - 1) cur = 0;
+        playing = true;
+        $("btn-play").textContent = "❚❚ Pause";
+        const tick = () => {
+          if (!playing) return;
+          if (cur >= steps.length - 1) return stop();
+          cur++;
+          render();
+          timer = setTimeout(tick, +$("speed").value);
+        };
+        timer = setTimeout(tick, +$("speed").value);
+      }
+      function stop() {
+        playing = false;
+        clearTimeout(timer);
+        $("btn-play").textContent = "▶ Play";
+      }
+      $("btn-play").onclick = play;
+      $("btn-fwd").onclick = () => {
+        stop();
+        step(1);
+      };
+      $("btn-back").onclick = () => {
+        stop();
+        step(-1);
+      };
+      $("btn-restart").onclick = () => {
+        stop();
+        cur = 0;
+        render();
+      };
+      render();
+
+      // ---- CODE WALKTHROUGH ----
+      function renderWalkthrough() {
+        const steps = D.steps || [];
+        if (!steps.length) {
+          $("sec-walkthrough").style.display = "none";
+          return;
+        }
+
+        const input = D.input || {};
+        let html = "";
+
+        // Input block
+        html += `<div class="wt-input">`;
+        html += `<span class="lbl">Input:</span>`;
+        if (input.array !== undefined) {
+          html += `<span class="val">[${input.array.join(", ")}]</span>`;
+        }
+        if (input.target !== undefined) {
+          html += `<span class="lbl">Target:</span><span class="val">${esc(input.target)}</span>`;
+        }
+        html += `</div>`;
+
+        // Step rows
+        steps.forEach((s, i) => {
+          const phaseTag = s.phase
+            ? `<span class="phase" style="display:inline-block;font-size:9.5px;padding:1px 6px;border-radius:4px;background:#2dd4bf26;color:var(--teal);margin-right:6px;text-transform:uppercase;letter-spacing:0.5px;">${esc(s.phase)}</span>`
+            : "";
+          const vars = s.variables || {};
+          const varChips = Object.entries(vars)
+            .map(([k, v]) => `<span class="var"><b>${esc(k)}</b>${esc(v)}</span>`)
+            .join("");
+
+          const doneClass = s.phase === "done" ? " done" : "";
+
+          html += `
+            <div class="wt-row${doneClass}">
+              <div class="num">${i + 1}</div>
+              <div class="content">
+                <div class="msg">${phaseTag}${esc(s.message || "")}</div>
+                ${varChips ? `<div class="vars">${varChips}</div>` : ""}
+              </div>
+            </div>`;
+        });
+
+        // Output block (from last step)
+        const last = steps[steps.length - 1];
+        const returnVal = last.variables?.return;
+        if (returnVal !== undefined) {
+          html += `<div class="wt-output"><span class="lbl">Output:</span><span class="val">${esc(returnVal)}</span></div>`;
+        }
+
+        $("body-walkthrough").innerHTML = html;
+      }
+      renderWalkthrough();
+
+      // ---- LEARN ----
+      const L = D.learn || {};
+
+      function renderPattern() {
+        if (!L.patternRecognition) return ($("sec-pattern").style.display = "none");
+        const p = L.patternRecognition;
+        $("body-pattern").innerHTML = `
+          <div class="tinted pink">
+            <div style="margin-bottom:8px;">
+              <span class="tag pink">Pattern</span>
+              <b style="color:var(--fg)">${esc(p.pattern || "")}</b>
+            </div>
+            <p style="font-style:italic;margin:0 0 10px;color:var(--fg)">${esc(p.whenToUse || "")}</p>
+            <div style="font-size:10px;color:var(--fg-mute);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">How to spot it</div>
+            <ul class="bul pink">${(p.signals || [])
+              .map((s) => `<li>${esc(s)}</li>`)
+              .join("")}</ul>
+          </div>`;
+      }
+
+      function renderThink() {
+        if (!L.thinkingProcess || !L.thinkingProcess.length)
+          return ($("sec-think").style.display = "none");
+        $("body-think").innerHTML = L.thinkingProcess
+          .map(
+            (t, i) => `
+            <div class="think-step">
+              <div><span class="lbl">Thought ${i + 1}</span>${esc(t.thought)}</div>
+              <div style="margin-top:6px;color:var(--fg-dim);font-size:11.5px;">${esc(t.reasoning || "")}</div>
+              ${t.conclusion ? `<div style="margin-top:6px;color:var(--teal);font-size:11.5px;">→ ${esc(t.conclusion)}</div>` : ""}
+            </div>`,
+          )
+          .join("");
+      }
+
+      function renderAnalogy() {
+        if (!L.realWorldAnalogy) return ($("sec-analogy").style.display = "none");
+        const r = L.realWorldAnalogy;
+        $("body-analogy").innerHTML = `
+          <div class="tinted">
+            <div style="font-weight:700;color:var(--fg);margin-bottom:6px;">${esc(r.title || "")}</div>
+            <div style="color:var(--fg)">${esc(r.story || "")}</div>
+          </div>`;
+      }
+
+      function renderIntuition() {
+        if (!L.intuitionBuilder) return ($("sec-intuition").style.display = "none");
+        const i = L.intuitionBuilder;
+        $("body-intuition").innerHTML = `
+          <div class="tinted amber">
+            <div style="margin-bottom:8px;"><span class="tag amber">Question</span><span style="color:var(--fg)">${esc(i.question || "")}</span></div>
+            <div><span class="tag">Insight</span><span style="color:var(--fg)">${esc(i.insight || "")}</span></div>
+          </div>`;
+      }
+
+      function renderStepByStep() {
+        const xs = L.stepByStep || [];
+        if (!xs.length) return ($("sec-step").style.display = "none");
+        $("body-step").innerHTML = xs
+          .map(
+            (s, i) =>
+              `<div class="step-row"><div class="num">${i + 1}</div><div class="body">${esc(s)}</div></div>`,
+          )
+          .join("");
+      }
+
+      function renderComplex() {
+        if (!L.complexityExplanation) return ($("sec-complex").style.display = "none");
+        const c = L.complexityExplanation;
+        $("body-complex").innerHTML = `
+          <div class="grid-2">
+            <div class="tinted purple">
+              <div style="margin-bottom:6px;"><span class="tag purple">Time</span><b style="color:var(--fg)">${esc(c.time || "")}</b></div>
+              <div style="color:var(--fg)">${esc(c.timeWhy || "")}</div>
+            </div>
+            <div class="tinted amber">
+              <div style="margin-bottom:6px;"><span class="tag amber">Space</span><b style="color:var(--fg)">${esc(c.space || "")}</b></div>
+              <div style="color:var(--fg)">${esc(c.spaceWhy || "")}</div>
+            </div>
+          </div>`;
+      }
+
+      function renderBrute() {
+        if (!L.bruteForceToOptimal) return ($("sec-brute").style.display = "none");
+        const b = L.bruteForceToOptimal;
+        $("body-brute").innerHTML = `
+          <div class="grid-2">
+            <div class="tinted red">
+              <div style="margin-bottom:6px;"><span class="tag red">Brute Force</span><b style="color:var(--fg)">${esc(b.naive?.complexity || "")}</b></div>
+              <div style="color:var(--fg);margin-bottom:6px;">${esc(b.naive?.approach || "")}</div>
+              <div style="color:var(--fg-dim);font-size:11.5px;">${esc(b.naive?.whyItWorks || "")}</div>
+            </div>
+            <div class="tinted">
+              <div style="margin-bottom:6px;"><span class="tag">Optimal</span><b style="color:var(--fg)">${esc(b.optimal?.complexity || "")}</b></div>
+              <div style="color:var(--fg);margin-bottom:6px;">${esc(b.optimal?.approach || "")}</div>
+              <div style="color:var(--teal);font-size:11.5px;">💡 ${esc(b.optimal?.keyInsight || "")}</div>
+            </div>
+          </div>
+          ${b.comparisonExample ? `<div style="margin-top:10px;padding:10px;background:var(--panel-2);border-radius:8px;color:var(--fg);font-size:11.5px;">${esc(b.comparisonExample)}</div>` : ""}`;
+      }
+
+      function renderEdge() {
+        const xs = L.edgeCases || [];
+        if (!xs.length) return ($("sec-edge").style.display = "none");
+        $("body-edge").innerHTML = xs
+          .map(
+            (e) => `
+            <div class="tinted red" style="margin-bottom:8px;">
+              <div style="margin-bottom:6px;"><span class="tag red">Case</span><b style="color:var(--fg)">${esc(e.case)}</b></div>
+              <div style="color:var(--fg);margin-bottom:4px;font-size:11.5px;"><b style="color:var(--teal)">Handle:</b> ${esc(e.howToHandle)}</div>
+              <div style="color:var(--fg-dim);font-size:11.5px;"><b style="color:var(--red)">Common bug:</b> ${esc(e.commonBug)}</div>
+            </div>`,
+          )
+          .join("");
+      }
+
+      function renderCards() {
+        const xs = L.flashcards || [];
+        if (!xs.length) return ($("sec-cards").style.display = "none");
+        $("body-cards").innerHTML = `<div class="flashcards">${xs
+          .map(
+            (c, i) => `
+            <div class="flashcard" data-i="${i}">
+              <div class="inner">
+                <div class="face front"><div class="q-tag">Q</div>${esc(c.q || c.question || "")}</div>
+                <div class="face back"><div class="a-tag">A</div>${esc(c.a || c.answer || "")}</div>
+              </div>
+            </div>`,
+          )
+          .join("")}</div>`;
+        document.querySelectorAll(".flashcard").forEach((el) => {
+          el.addEventListener("click", () => el.classList.toggle("flipped"));
+        });
+      }
+
+      function renderReal() {
+        const xs = L.realWorldApplications || [];
+        if (!xs.length) return ($("sec-real").style.display = "none");
+        $("body-real").innerHTML = xs
+          .map(
+            (r) => `
+            <div class="table-row">
+              <div class="k">${esc(r.domain)}</div>
+              <div class="v">${esc(r.application)}<div style="color:var(--fg-mute);font-size:10.5px;margin-top:2px;">${esc(r.scale || "")}</div></div>
+            </div>`,
+          )
+          .join("");
+      }
+
+      function renderList(arr, target) {
+        if (!arr || !arr.length) return ($(target).parentElement.style.display = "none");
+        $(target).innerHTML = `<ul class="bul">${arr
+          .map((s) => `<li>${esc(s)}</li>`)
+          .join("")}</ul>`;
+      }
+
+      function renderSimilar() {
+        const xs = L.similarProblems || [];
+        if (!xs.length) return ($("sec-similar").style.display = "none");
+        $("body-similar").innerHTML = xs
+          .map(
+            (p) => `
+            <div class="table-row">
+              <div class="k">${esc(p.name)} <span class="tag pink">${esc(p.difficulty || "")}</span></div>
+              <div class="v">${esc(p.connection || "")}</div>
+            </div>`,
+          )
+          .join("");
+      }
+
+      function renderRelated() {
+        const xs = L.relatedAlgorithms || [];
+        if (!xs.length) return ($("sec-related").style.display = "none");
+        $("body-related").innerHTML = xs
+          .map(
+            (r) => `
+            <div class="table-row">
+              <div class="k">${esc(r.name)}</div>
+              <div class="v">${esc(r.relationship || "")}</div>
+            </div>`,
+          )
+          .join("");
+      }
+
+      renderPattern();
+      renderThink();
+      renderAnalogy();
+      renderIntuition();
+      renderStepByStep();
+      renderComplex();
+      renderBrute();
+      renderEdge();
+      renderCards();
+      renderReal();
+      renderList(L.commonMistakes, "body-mistakes");
+      renderList(L.interviewTips, "body-tips");
+      renderSimilar();
+      renderRelated();
+    </script>
+  </body>
+</html>

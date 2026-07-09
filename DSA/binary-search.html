@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>704. Binary Search — Algorithm Study Guide</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        ed: { pink:'#db2777', blue:'#2563eb', teal:'#0d9488', amber:'#d97706', sky:'#0284c7', purple:'#7c3aed', orange:'#ea580c' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+.g { background:linear-gradient(135deg,#f472b6,#a78bfa,#60a5fa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+</style>
+</head>
+<body class="bg-white text-gray-900 min-h-screen">
+
+<!-- HERO -->
+<div class="relative overflow-hidden bg-gray-50 border-b border-gray-200">
+<div class="max-w-4xl mx-auto px-6 py-12">
+  <div class="flex items-center gap-3 mb-4">
+    <span class="text-xs font-bold text-gray-500 tracking-wider">LEETCODE 704</span>
+    <span class="w-1 h-1 rounded-full bg-gray-400"></span>
+    <span class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">EASY</span>
+  </div>
+  <h1 class="text-4xl md:text-5xl font-extrabold mb-3 text-gray-900">Binary Search</h1>
+  <p class="text-gray-600 text-lg mb-6 max-w-2xl">Given a sorted array of integers <code class="code text-ed-sky">nums</code> and an integer <code class="code text-ed-sky">target</code>, return the index of <code class="code text-ed-sky">target</code> if it exists, otherwise return <code class="code text-ed-pink">-1</code>. The algorithm must run in <code class="code text-ed-sky">O(log n)</code> time.</p>
+  <div class="flex flex-wrap gap-2 mb-6">
+    <span class="text-xs bg-purple-50 border border-purple-200 px-3 py-1 rounded-full text-purple-700 font-medium">Binary Search</span>
+    <span class="text-xs bg-blue-50 border border-blue-200 px-3 py-1 rounded-full text-blue-700 font-medium">Array</span>
+    <span class="text-xs bg-teal-50 border border-teal-200 px-3 py-1 rounded-full text-teal-700 font-medium">Divide & Conquer</span>
+  </div>
+  <div class="flex gap-4">
+    <div class="bg-white border border-gray-200 rounded-lg px-4 py-2"><span class="text-xs text-gray-500 block">Time</span><span class="text-sm font-mono font-bold text-emerald-600">O(log n)</span></div>
+    <div class="bg-white border border-gray-200 rounded-lg px-4 py-2"><span class="text-xs text-gray-500 block">Space</span><span class="text-sm font-mono font-bold text-indigo-600">O(1)</span></div>
+  </div>
+</div>
+</div>
+
+<div class="max-w-4xl mx-auto px-6 pb-20 space-y-4 mt-8">
+
+<!-- 1. PROBLEM STATEMENT -->
+<section class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+<div class="px-5 py-4 border-b border-gray-200"><h2 class="text-sm font-bold text-gray-900">1. Problem Statement</h2></div>
+<div class="p-5 space-y-4">
+  <p class="text-sm text-gray-700 leading-relaxed">Write a function that searches for a target value in a sorted integer array. You must not use linear scan; the solution must run in logarithmic time by leveraging the sorted order.</p>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm">
+    <div class="font-semibold text-gray-900 mb-2">Example</div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div><span class="text-gray-500">Input:</span><br><code class="code">nums = [-1,0,3,5,9,12], target = 9</code></div>
+      <div><span class="text-gray-500">Output:</span><br><code class="code font-bold text-emerald-600">4</code></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- 2. PATTERN RECOGNITION -->
+<section class="bg-ed-pink/5 border border-ed-pink/15 rounded-xl overflow-hidden">
+<details><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-ed-pink">2. Pattern Recognition</h2><span class="text-xs text-ed-pink">expand</span></summary>
+<div class="p-5 space-y-3 text-sm">
+  <p><strong class="text-ed-pink">Core pattern:</strong> Sorted array + target lookup.</p>
+  <ul class="space-y-2 ml-4">
+    <li class="flex items-start gap-2"><span class="w-2 h-2 rounded-full bg-ed-pink mt-1.5"></span>The input is sorted in a known order (ascending or descending).</li>
+    <li class="flex items-start gap-2"><span class="w-2 h-2 rounded-full bg-ed-pink mt-1.5"></span>You need to find a single element, a boundary, or an insertion point.</li>
+    <li class="flex items-start gap-2"><span class="w-2 h-2 rounded-full bg-ed-pink mt-1.5"></span>A linear scan would be too slow for large inputs.</li>
+  </ul>
+</div>
+</details>
+</section>
+
+<!-- 3. PATTERN BLUEPRINT -->
+<section class="bg-blue-50 border border-blue-200 rounded-xl overflow-hidden">
+<details><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-blue-700">3. Pattern Blueprint</h2><span class="text-xs text-blue-700">expand</span></summary>
+<div class="p-5 space-y-3 text-sm">
+  <ol class="space-y-3">
+    <li class="flex items-start gap-3"><span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">1</span>Initialize two pointers: <code class="code">low</code> and <code class="code">high</code>.</li>
+    <li class="flex items-start gap-3"><span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">2</span>While the search space is valid, compute the middle index.</li>
+    <li class="flex items-start gap-3"><span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">3</span>Compare the middle element with the target.</li>
+    <li class="flex items-start gap-3"><span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">4</span>Discard the half that cannot contain the target.</li>
+    <li class="flex items-start gap-3"><span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">5</span>Return the answer when found or when the search space is exhausted.</li>
+  </ol>
+</div>
+</details>
+</section>
+
+<!-- 4. HOW TO THINK ABOUT IT -->
+<section class="bg-ed-blue/5 border border-gray-300 rounded-xl overflow-hidden">
+<details><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-ed-blue">4. How to Think About It</h2><span class="text-xs text-ed-blue">expand</span></summary>
+<div class="p-5 space-y-3 text-sm">
+  <div class="flex items-start gap-3">
+    <span class="w-6 h-6 rounded-full bg-ed-blue/15 text-ed-blue flex items-center justify-center text-xs font-bold">1</span>
+    <p>Start with the whole array. The middle element is the pivot.</p>
+  </div>
+  <div class="flex items-start gap-3">
+    <span class="w-6 h-6 rounded-full bg-ed-blue/15 text-ed-blue flex items-center justify-center text-xs font-bold">2</span>
+    <p>Ask: is the target to the left or right of the pivot? <span class="text-ed-teal">→</span> One half is eliminated.</p>
+  </div>
+  <div class="flex items-start gap-3">
+    <span class="w-6 h-6 rounded-full bg-ed-blue/15 text-ed-blue flex items-center justify-center text-xs font-bold">3</span>
+    <p>Repeat on the remaining half until the target is found or no elements remain.</p>
+  </div>
+</div>
+</details>
+</section>
+
+<!-- 5. REAL-WORLD ANALOGY -->
+<section class="bg-ed-teal/5 border border-ed-teal/15 rounded-xl overflow-hidden">
+<details><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-ed-teal">5. Real-World Analogy</h2><span class="text-xs text-ed-teal">expand</span></summary>
+<div class="p-5 space-y-3 text-sm text-gray-700">
+  <p>Imagine looking up a word in a physical dictionary. You do not flip through every page from A to Z. Instead, you open the book near the middle, check whether your word comes before or after that page, and then repeat the process on the relevant half.</p>
+  <p><strong>Mapping:</strong> the sorted dictionary pages are the sorted array; the middle page is <code class="code">mid</code>; your word is the <code class="code">target</code>.</p>
+</div>
+</details>
+</section>
+
+<!-- 6. BUILD YOUR INTUITION -->
+<section class="bg-ed-amber/5 border border-ed-amber/15 rounded-xl overflow-hidden">
+<details><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-ed-amber">6. Build Your Intuition</h2><span class="text-xs text-ed-amber">expand</span></summary>
+<div class="p-5 space-y-3 text-sm">
+  <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-3">
+    <p class="font-semibold text-ed-teal mb-1">Why is binary search O(log n)?</p>
+    <p class="text-gray-700">Each comparison cuts the remaining search space in half. After k steps, the space is n / 2^k. When n / 2^k = 1, k = log2(n).</p>
+  </div>
+  <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-3">
+    <p class="font-semibold text-ed-teal mb-1">What is the most common bug?</p>
+    <p class="text-gray-700">Using <code class="code">low < high</code> instead of <code class="code">low <= high</code> can skip the final element or miss the target entirely.</p>
+  </div>
+</div>
+</details>
+</section>
+
+<!-- 7. HOW IT WORKS -->
+<section class="bg-ed-sky/15 border border-blue-200 rounded-xl overflow-hidden">
+<details><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-ed-sky">7. How It Works (Step by Step)</h2><span class="text-xs text-ed-sky">expand</span></summary>
+<div class="p-5 space-y-3 text-sm">
+  <ol class="space-y-3">
+    <li class="flex items-start gap-3"><span class="w-6 h-6 rounded-full bg-ed-sky/15 text-ed-sky flex items-center justify-center text-xs font-bold">1</span>Set <code class="code">low = 0</code> and <code class="code">high = len(nums) - 1</code>.</li>
+    <li class="flex items-start gap-3"><span class="w-6 h-6 rounded-full bg-ed-sky/15 text-ed-sky flex items-center justify-center text-xs font-bold">2</span>While <code class="code">low <= high</code>, compute <code class="code">mid = (low + high) // 2</code>.</li>
+    <li class="flex items-start gap-3"><span class="w-6 h-6 rounded-full bg-ed-sky/15 text-ed-sky flex items-center justify-center text-xs font-bold">3</span>If <code class="code">nums[mid] == target</code>, return <code class="code">mid</code>.</li>
+    <li class="flex items-start gap-3"><span class="w-6 h-6 rounded-full bg-ed-sky/15 text-ed-sky flex items-center justify-center text-xs font-bold">4</span>If <code class="code">nums[mid] < target</code>, set <code class="code">low = mid + 1</code>.</li>
+    <li class="flex items-start gap-3"><span class="w-6 h-6 rounded-full bg-ed-sky/15 text-ed-sky flex items-center justify-center text-xs font-bold">5</span>Otherwise, set <code class="code">high = mid - 1</code>.</li>
+    <li class="flex items-start gap-3"><span class="w-6 h-6 rounded-full bg-ed-sky/15 text-ed-sky flex items-center justify-center text-xs font-bold">6</span>If the loop ends, return <code class="code">-1</code>.</li>
+  </ol>
+</div>
+</details>
+</section>
+
+<!-- 8. DRY RUN TABLE -->
+<section class="bg-amber-50 border border-amber-200 rounded-xl overflow-hidden">
+<details><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-amber-700">8. Dry Run Table</h2><span class="text-xs text-amber-700">expand</span></summary>
+<div class="p-5 overflow-x-auto">
+  <table class="text-sm w-full border-collapse">
+    <thead><tr class="border-b border-amber-200"><th class="text-left py-2 text-amber-700">Iteration</th><th class="text-left py-2 text-amber-700">low</th><th class="text-left py-2 text-amber-700">high</th><th class="text-left py-2 text-amber-700">mid</th><th class="text-left py-2 text-amber-700">nums[mid]</th><th class="text-left py-2 text-amber-700">Action</th></tr></thead>
+    <tbody class="text-gray-700">
+      <tr class="border-b border-amber-100"><td class="py-2">1</td><td>0</td><td>9</td><td>4</td><td>16</td><td>23 &gt; 16 → low = 5</td></tr>
+      <tr class="border-b border-amber-100"><td class="py-2">2</td><td>5</td><td>9</td><td>7</td><td>56</td><td>23 &lt; 56 → high = 6</td></tr>
+      <tr class="border-b border-amber-100"><td class="py-2">3</td><td>5</td><td>6</td><td>5</td><td>23</td><td>Found → return 5</td></tr>
+    </tbody>
+  </table>
+</div>
+</details>
+</section>
+
+<!-- 9. LIVE VISUALIZATION -->
+<section class="bg-ed-pink/10 border border-ed-pink/20 rounded-xl overflow-hidden">
+<details open><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-ed-pink">9. Live Interactive Visualization</h2><span class="text-xs text-ed-pink">collapse</span></summary>
+<div class="p-5 space-y-4">
+  <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+    <!-- Bars -->
+    <div id="bs-stage" class="flex items-end justify-center gap-1 mb-3 overflow-x-auto" style="min-height:160px;max-height:180px;">
+      <div class="bs-bar-wrap flex flex-col items-center gap-1 flex-shrink-0" data-idx="0"><div class="bs-bar w-10 rounded-t-md flex items-end justify-center pb-1 text-xs code transition-all duration-300" style="height:22px;background:#e0f2fe;color:#0284c7;border:1px solid #7dd3fc;">2</div><div class="bs-label text-[10px] text-gray-400 h-4"></div></div>
+      <div class="bs-bar-wrap flex flex-col items-center gap-1 flex-shrink-0" data-idx="1"><div class="bs-bar w-10 rounded-t-md flex items-end justify-center pb-1 text-xs code transition-all duration-300" style="height:22px;background:#e0f2fe;color:#0284c7;border:1px solid #7dd3fc;">5</div><div class="bs-label text-[10px] text-gray-400 h-4"></div></div>
+      <div class="bs-bar-wrap flex flex-col items-center gap-1 flex-shrink-0" data-idx="2"><div class="bs-bar w-10 rounded-t-md flex items-end justify-center pb-1 text-xs code transition-all duration-300" style="height:22px;background:#e0f2fe;color:#0284c7;border:1px solid #7dd3fc;">8</div><div class="bs-label text-[10px] text-gray-400 h-4"></div></div>
+      <div class="bs-bar-wrap flex flex-col items-center gap-1 flex-shrink-0" data-idx="3"><div class="bs-bar w-10 rounded-t-md flex items-end justify-center pb-1 text-xs code transition-all duration-300" style="height:22px;background:#e0f2fe;color:#0284c7;border:1px solid #7dd3fc;">12</div><div class="bs-label text-[10px] text-gray-400 h-4"></div></div>
+      <div class="bs-bar-wrap flex flex-col items-center gap-1 flex-shrink-0" data-idx="4"><div class="bs-bar w-10 rounded-t-md flex items-end justify-center pb-1 text-xs code transition-all duration-300" style="height:26px;background:#e0f2fe;color:#0284c7;border:1px solid #7dd3fc;">16</div><div class="bs-label text-[10px] text-gray-400 h-4"></div></div>
+      <div class="bs-bar-wrap flex flex-col items-center gap-1 flex-shrink-0" data-idx="5"><div class="bs-bar w-10 rounded-t-md flex items-end justify-center pb-1 text-xs code transition-all duration-300" style="height:34px;background:#e0f2fe;color:#0284c7;border:1px solid #7dd3fc;">23</div><div class="bs-label text-[10px] text-gray-400 h-4"></div></div>
+      <div class="bs-bar-wrap flex flex-col items-center gap-1 flex-shrink-0" data-idx="6"><div class="bs-bar w-10 rounded-t-md flex items-end justify-center pb-1 text-xs code transition-all duration-300" style="height:54px;background:#e0f2fe;color:#0284c7;border:1px solid #7dd3fc;">38</div><div class="bs-label text-[10px] text-gray-400 h-4"></div></div>
+      <div class="bs-bar-wrap flex flex-col items-center gap-1 flex-shrink-0" data-idx="7"><div class="bs-bar w-10 rounded-t-md flex items-end justify-center pb-1 text-xs code transition-all duration-300" style="height:78px;background:#e0f2fe;color:#0284c7;border:1px solid #7dd3fc;">56</div><div class="bs-label text-[10px] text-gray-400 h-4"></div></div>
+      <div class="bs-bar-wrap flex flex-col items-center gap-1 flex-shrink-0" data-idx="8"><div class="bs-bar w-10 rounded-t-md flex items-end justify-center pb-1 text-xs code transition-all duration-300" style="height:100px;background:#e0f2fe;color:#0284c7;border:1px solid #7dd3fc;">72</div><div class="bs-label text-[10px] text-gray-400 h-4"></div></div>
+      <div class="bs-bar-wrap flex flex-col items-center gap-1 flex-shrink-0" data-idx="9"><div class="bs-bar w-10 rounded-t-md flex items-end justify-center pb-1 text-xs code transition-all duration-300" style="height:126px;background:#e0f2fe;color:#0284c7;border:1px solid #7dd3fc;">91</div><div class="bs-label text-[10px] text-gray-400 h-4"></div></div>
+    </div>
+    <!-- Controls -->
+    <div class="flex flex-wrap justify-center items-center gap-2 mb-4">
+      <button id="bs-prev" class="px-3 py-1.5 text-xs font-medium bg-white border border-gray-300 rounded hover:bg-gray-50">&#9664; Prev</button>
+      <button id="bs-play" class="px-3 py-1.5 text-xs font-medium bg-white border border-gray-300 rounded hover:bg-gray-50">&#9654; Play</button>
+      <button id="bs-next" class="px-3 py-1.5 text-xs font-medium bg-white border border-gray-300 rounded hover:bg-gray-50">Next &#9654;</button>
+      <button id="bs-reset" class="px-3 py-1.5 text-xs font-medium bg-white border border-gray-300 rounded hover:bg-gray-50">&#8634; Reset</button>
+      <span class="text-xs text-gray-500 ml-2">Speed:</span>
+      <input id="bs-speed" type="range" min="400" max="3000" step="200" value="1400" class="w-24 h-1">
+      <span id="bs-progress" class="text-xs font-mono text-gray-500 ml-2">Step 1/7</span>
+    </div>
+    <!-- Status -->
+    <div class="flex flex-wrap justify-center gap-2 mb-3 text-xs">
+      <span class="px-2 py-1 rounded bg-blue-100 text-blue-700">Target: 23</span>
+      <span class="px-2 py-1 rounded bg-emerald-100 text-emerald-700">low: <span id="bs-low">0</span></span>
+      <span class="px-2 py-1 rounded bg-rose-100 text-rose-700">high: <span id="bs-high">9</span></span>
+      <span class="px-2 py-1 rounded bg-purple-100 text-purple-700">mid: <span id="bs-mid">-</span></span>
+      <span class="px-2 py-1 rounded bg-amber-100 text-amber-700">nums[mid]: <span id="bs-midval">-</span></span>
+    </div>
+    <div id="bs-message" class="text-center text-sm text-gray-700 font-medium mb-4"><span id="bs-phase" class="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-teal-100 text-teal-700 mr-2">init</span>Start with low=0, high=9. The active range is the entire array. Press Next to step through.</div>
+    <!-- Code panel with syntax highlighting -->
+    <div class="bg-gray-900 rounded-lg p-4 text-xs code overflow-x-auto">
+      <div id="bs-code-line-0" class="bs-code-line px-1 rounded"><span style="color:#8b5cf6;font-weight:600">def</span> <span style="color:#2dd4bf;font-weight:600">search</span>(nums, target):</div>
+      <div id="bs-code-line-1" class="bs-code-line px-1 rounded">&nbsp;&nbsp;&nbsp;&nbsp;low, high = <span style="color:#f59e0b">0</span>, <span style="color:#2dd4bf">len</span>(nums) - <span style="color:#f59e0b">1</span></div>
+      <div id="bs-code-line-2" class="bs-code-line px-1 rounded">&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#8b5cf6;font-weight:600">while</span> low &lt;= high:</div>
+      <div id="bs-code-line-3" class="bs-code-line px-1 rounded">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mid = (low + high) <span style="color:#8b5cf6;font-weight:600">//</span> <span style="color:#f59e0b">2</span></div>
+      <div id="bs-code-line-4" class="bs-code-line px-1 rounded">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#8b5cf6;font-weight:600">if</span> nums[mid] == target:</div>
+      <div id="bs-code-line-5" class="bs-code-line px-1 rounded">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#8b5cf6;font-weight:600">return</span> mid</div>
+      <div id="bs-code-line-6" class="bs-code-line px-1 rounded">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#8b5cf6;font-weight:600">if</span> nums[mid] &lt; target:</div>
+      <div id="bs-code-line-7" class="bs-code-line px-1 rounded">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;low = mid + <span style="color:#f59e0b">1</span></div>
+      <div id="bs-code-line-8" class="bs-code-line px-1 rounded">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#8b5cf6;font-weight:600">else</span>:</div>
+      <div id="bs-code-line-9" class="bs-code-line px-1 rounded">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;high = mid - <span style="color:#f59e0b">1</span></div>
+      <div id="bs-code-line-10" class="bs-code-line px-1 rounded">&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#8b5cf6;font-weight:600">return</span> -<span style="color:#f59e0b">1</span></div>
+    </div>
+  </div>
+</div>
+</details>
+<script>
+(function(){
+  const arr = [2,5,8,12,16,23,38,56,72,91];
+  const target = 23;
+  const maxVal = 91;
+  const steps = [
+    {low:0, high:9, mid:4, midVal:16, line:2, phase:"init", message:"Start with low=0, high=9. The active range is the entire array."},
+    {low:0, high:9, mid:4, midVal:16, line:3, phase:"compare", message:"Compute mid = (0 + 9) // 2 = 4. nums[mid] = 16."},
+    {low:0, high:9, mid:4, midVal:16, line:6, phase:"narrow", message:"23 > 16, so the target must be in the right half. Move low to mid + 1 = 5."},
+    {low:5, high:9, mid:7, midVal:56, line:3, phase:"compare", message:"New range is [5, 9]. mid = (5 + 9) // 2 = 7. nums[mid] = 56."},
+    {low:5, high:9, mid:7, midVal:56, line:8, phase:"narrow", message:"23 < 56, so the target must be in the left half. Move high to mid - 1 = 6."},
+    {low:5, high:6, mid:5, midVal:23, line:3, phase:"compare", message:"New range is [5, 6]. mid = (5 + 6) // 2 = 5. nums[mid] = 23."},
+    {low:5, high:6, mid:5, midVal:23, line:4, phase:"done", message:"nums[mid] == target! Return 5."}
+  ];
+  const phaseColors = {
+    init: 'bg-teal-100 text-teal-700',
+    compare: 'bg-blue-100 text-blue-700',
+    narrow: 'bg-amber-100 text-amber-700',
+    done: 'bg-emerald-100 text-emerald-700'
+  };
+  let i = 0;
+  let playing = false;
+  let timer = null;
+  const wraps = document.querySelectorAll('.bs-bar-wrap');
+  const lowEl = document.getElementById('bs-low');
+  const highEl = document.getElementById('bs-high');
+  const midEl = document.getElementById('bs-mid');
+  const midValEl = document.getElementById('bs-midval');
+  const msgEl = document.getElementById('bs-message');
+  const phaseEl = document.getElementById('bs-phase');
+  const progressEl = document.getElementById('bs-progress');
+  const speedEl = document.getElementById('bs-speed');
+  function styleBar(bar, type) {
+    if (type === 'mid') {
+      bar.style.background = '#c4b5fd'; bar.style.color = '#6d28d9'; bar.style.borderColor = '#a78bfa';
+      bar.style.boxShadow = '0 0 0 3px #a78bfa55';
+    } else if (type === 'target') {
+      bar.style.background = '#a7f3d0'; bar.style.color = '#047857'; bar.style.borderColor = '#34d399';
+      bar.style.boxShadow = '0 0 0 3px #34d39955';
+    } else if (type === 'active') {
+      bar.style.background = '#e0f2fe'; bar.style.color = '#0284c7'; bar.style.borderColor = '#7dd3fc';
+      bar.style.boxShadow = 'none';
+    } else if (type === 'eliminated') {
+      bar.style.background = '#f3f4f6'; bar.style.color = '#9ca3af'; bar.style.borderColor = '#e5e7eb';
+      bar.style.boxShadow = 'none';
+    }
+  }
+  function render(stepIdx) {
+    const s = steps[stepIdx];
+    wraps.forEach((w, idx) => {
+      const bar = w.querySelector('.bs-bar');
+      const label = w.querySelector('.bs-label');
+      label.textContent = '';
+      if (idx === s.mid) {
+        styleBar(bar, 'mid');
+        label.textContent = 'mid';
+        label.className = 'bs-label text-[10px] font-bold text-purple-600 h-4';
+      } else if (idx === 5) {
+        styleBar(bar, 'target');
+        label.textContent = 'target';
+        label.className = 'bs-label text-[10px] font-bold text-emerald-600 h-4';
+      } else if (idx >= s.low && idx <= s.high) {
+        styleBar(bar, 'active');
+      } else {
+        styleBar(bar, 'eliminated');
+      }
+      if (idx === s.low) {
+        label.textContent = label.textContent ? label.textContent + ' · low' : 'low';
+        label.className = 'bs-label text-[10px] font-bold text-emerald-600 h-4';
+      }
+      if (idx === s.high) {
+        label.textContent = label.textContent ? label.textContent + ' · high' : 'high';
+        label.className = 'bs-label text-[10px] font-bold text-rose-600 h-4';
+      }
+    });
+    lowEl.textContent = s.low;
+    highEl.textContent = s.high;
+    midEl.textContent = s.mid;
+    midValEl.textContent = s.midVal;
+    msgEl.innerHTML = '<span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider mr-2 ' + (phaseColors[s.phase] || phaseColors.init) + '">' + s.phase + '</span>' + s.message;
+    progressEl.textContent = 'Step ' + (stepIdx + 1) + '/' + steps.length;
+    document.querySelectorAll('.bs-code-line').forEach(el => el.style.background = 'transparent');
+    const lineEl = document.getElementById('bs-code-line-' + s.line);
+    if (lineEl) lineEl.style.background = 'rgba(56,189,248,0.25)';
+  }
+  function next() {
+    if (i < steps.length - 1) { i++; render(i); }
+    else if (playing) { clearInterval(timer); playing = false; document.getElementById('bs-play').innerHTML = '&#9654; Play'; }
+  }
+  function prev() {
+    if (i > 0) { i--; render(i); }
+  }
+  function reset() {
+    if (playing) { clearInterval(timer); playing = false; document.getElementById('bs-play').innerHTML = '&#9654; Play'; }
+    i = 0;
+    render(i);
+  }
+  function togglePlay() {
+    if (playing) {
+      clearInterval(timer); playing = false; document.getElementById('bs-play').innerHTML = '&#9654; Play';
+    } else {
+      playing = true; document.getElementById('bs-play').innerHTML = '&#10074;&#10074; Pause';
+      timer = setInterval(() => {
+        if (i < steps.length - 1) next();
+        else { clearInterval(timer); playing = false; document.getElementById('bs-play').innerHTML = '&#9654; Play'; }
+      }, +speedEl.value);
+    }
+  }
+  document.getElementById('bs-next').addEventListener('click', next);
+  document.getElementById('bs-prev').addEventListener('click', prev);
+  document.getElementById('bs-reset').addEventListener('click', reset);
+  document.getElementById('bs-play').addEventListener('click', togglePlay);
+  render(0);
+})();
+</script>
+</section>
+
+<!-- 10. COMPLEXITY DEEP DIVE -->
+<section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+<details><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-gray-900">10. Complexity Deep Dive</h2><span class="text-xs text-gray-500">expand</span></summary>
+<div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+  <div class="bg-white border border-gray-200 rounded-lg p-4">
+    <div class="font-bold text-ed-teal mb-1">Time: O(log n)</div>
+    <p class="text-gray-700">Each iteration halves the remaining elements. The number of iterations is bounded by log2(n).</p>
+  </div>
+  <div class="bg-white border border-gray-200 rounded-lg p-4">
+    <div class="font-bold text-ed-purple mb-1">Space: O(1)</div>
+    <p class="text-gray-700">Only three integer pointers are needed regardless of input size.</p>
+  </div>
+</div>
+</details>
+</section>
+
+<!-- 11. BRUTE FORCE TO OPTIMAL -->
+<section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+<details><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-gray-900">11. From Brute Force to Optimal</h2><span class="text-xs text-gray-500">expand</span></summary>
+<div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+  <div class="bg-red-500/5 border border-red-500/15 rounded-lg p-4">
+    <div class="font-bold text-red-500 mb-1">Naive: Linear Scan</div>
+    <p class="text-gray-700">Check every element from left to right. O(n) time.</p>
+  </div>
+  <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-4">
+    <div class="font-bold text-ed-teal mb-1">Optimal: Binary Search</div>
+    <p class="text-gray-700">Use the sorted order to discard half the elements each step. O(log n) time.</p>
+  </div>
+  <div class="col-span-full text-sm text-gray-700">For n = 1,000,000, linear scan may do 1,000,000 comparisons; binary search does at most 20.</div>
+</div>
+</details>
+</section>
+
+<!-- 12. EDGE CASES -->
+<section class="bg-ed-orange/5 border border-gray-300 rounded-xl overflow-hidden">
+<details><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-gray-900">12. Edge Cases & Gotchas</h2><span class="text-xs text-gray-500">expand</span></summary>
+<div class="p-5 space-y-3 text-sm text-gray-700">
+  <div class="bg-white border border-gray-200 rounded-lg p-3"><strong>Empty array:</strong> Return -1 immediately. The <code class="code">low <= high</code> loop never runs.</div>
+  <div class="bg-white border border-gray-200 rounded-lg p-3"><strong>Single element:</strong> Only one element is checked. Using <code class="code">low < high</code> would skip it.</div>
+  <div class="bg-white border border-gray-200 rounded-lg p-3"><strong>Target absent:</strong> Loop ends with <code class="code">low > high</code>; return -1.</div>
+  <div class="bg-white border border-gray-200 rounded-lg p-3"><strong>Integer overflow:</strong> In languages with fixed-size ints, use <code class="code">low + (high - low) // 2</code>.</div>
+</div>
+</details>
+</section>
+
+<!-- 13. FLASHCARDS -->
+<section class="bg-ed-purple/10 border border-ed-purple/20 rounded-xl overflow-hidden">
+<details><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-ed-purple">13. Flashcards</h2><span class="text-xs text-ed-purple">expand</span></summary>
+<div class="p-5 space-y-3 text-sm">
+  <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3"><strong>Q:</strong> What is the precondition for binary search?<br><strong>A:</strong> The input must be sorted.</div>
+  <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3"><strong>Q:</strong> What is the loop invariant?<br><strong>A:</strong> If the target exists, it lies within <code class="code">[low, high]</code>.</div>
+  <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3"><strong>Q:</strong> How many iterations for n = 1,000,000?<br><strong>A:</strong> At most 20.</div>
+</div>
+</details>
+</section>
+
+<!-- 14. WHERE IT IS USED -->
+<section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+<details><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-gray-900">14. Where It Is Used (Real World)</h2><span class="text-xs text-gray-500">expand</span></summary>
+<div class="p-5 space-y-3 text-sm">
+  <div class="bg-amber-100 border border-amber-300 rounded-lg p-3 text-amber-700"><strong>Databases:</strong> B-tree and sorted index lookups.</div>
+  <div class="bg-rose-100 border border-rose-300 rounded-lg p-3 text-rose-700"><strong>Git:</strong> <code class="code">git bisect</code> finds the commit that introduced a bug.</div>
+  <div class="bg-indigo-100 border border-indigo-300 rounded-lg p-3 text-indigo-700"><strong>Compilers:</strong> Searching sorted symbol tables.</div>
+</div>
+</details>
+</section>
+
+<!-- 15. COMMON MISTAKES -->
+<section class="bg-ed-orange/5 border border-gray-300 rounded-xl overflow-hidden">
+<details><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-gray-900">15. Common Mistakes</h2><span class="text-xs text-gray-500">expand</span></summary>
+<div class="p-5 space-y-2 text-sm text-gray-700">
+  <div class="flex items-start gap-2"><span class="w-2 h-2 rounded-full bg-ed-orange mt-1.5"></span>Using <code class="code">low < high</code> and missing the last element.</div>
+  <div class="flex items-start gap-2"><span class="w-2 h-2 rounded-full bg-ed-orange mt-1.5"></span>Applying binary search to an unsorted array.</div>
+  <div class="flex items-start gap-2"><span class="w-2 h-2 rounded-full bg-ed-orange mt-1.5"></span>Returning the value instead of the index.</div>
+  <div class="flex items-start gap-2"><span class="w-2 h-2 rounded-full bg-ed-orange mt-1.5"></span>Incorrect mid update: <code class="code">low = mid</code> instead of <code class="code">low = mid + 1</code>.</div>
+</div>
+</details>
+</section>
+
+<!-- 16. INTERVIEW TIPS -->
+<section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+<details><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-gray-900">16. Interview Tips</h2><span class="text-xs text-gray-500">expand</span></summary>
+<div class="p-5 space-y-2 text-sm text-gray-700">
+  <div class="flex items-start gap-2"><span class="w-2 h-2 rounded-full bg-ed-purple mt-1.5"></span>Always state the sorted precondition first.</div>
+  <div class="flex items-start gap-2"><span class="w-2 h-2 rounded-full bg-ed-purple mt-1.5"></span>Walk through the closed vs open interval variants.</div>
+  <div class="flex items-start gap-2"><span class="w-2 h-2 rounded-full bg-ed-purple mt-1.5"></span>Practice boundary variants like lower_bound and upper_bound.</div>
+</div>
+</details>
+</section>
+
+<!-- 17. SIMILAR PROBLEMS -->
+<section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+<details><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-gray-900">17. Similar Problems to Practice</h2><span class="text-xs text-gray-500">expand</span></summary>
+<div class="p-5 space-y-2 text-sm">
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center justify-between"><span>Search in Rotated Sorted Array</span><span class="text-xs bg-amber-100 border border-amber-300 px-2 py-0.5 rounded text-amber-700">Medium</span></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center justify-between"><span>Find Minimum in Rotated Sorted Array</span><span class="text-xs bg-amber-100 border border-amber-300 px-2 py-0.5 rounded text-amber-700">Medium</span></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center justify-between"><span>First Bad Version</span><span class="text-xs bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded text-emerald-700">Easy</span></div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center justify-between"><span>Find Peak Element</span><span class="text-xs bg-amber-100 border border-amber-300 px-2 py-0.5 rounded text-amber-700">Medium</span></div>
+</div>
+</details>
+</section>
+
+<!-- 18. RELATED ALGORITHMS -->
+<section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+<details><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-gray-900">18. Related Algorithms</h2><span class="text-xs text-gray-500">expand</span></summary>
+<div class="p-5 space-y-2 text-sm text-gray-700">
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-3"><strong>Linear Search</strong> — works on unsorted arrays but is O(n).</div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-3"><strong>Interpolation Search</strong> — estimates position from value distribution.</div>
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-3"><strong>Exponential Search</strong> — finds a range first, then binary searches.</div>
+</div>
+</details>
+</section>
+
+<!-- 19. SYSTEM DESIGN MAPPING -->
+<section class="bg-indigo-50 border border-indigo-200 rounded-xl overflow-hidden">
+<details><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-indigo-700">19. Where This Pattern Meets System Design</h2><span class="text-xs text-indigo-700">expand</span></summary>
+<div class="p-5 space-y-3 text-sm text-gray-700">
+  <p>Binary search mirrors the principle of <strong>logarithmic lookup</strong> used in distributed systems:</p>
+  <ul class="space-y-2 ml-4">
+    <li><strong>Consistent hashing:</strong> locating a key on a ring is a binary-search-like operation.</li>
+    <li><strong>Database indexes:</strong> B-trees provide O(log n) lookups on disk.</li>
+    <li><strong>Range partitioning:</strong> finding the correct shard for a sorted key space.</li>
+  </ul>
+</div>
+</details>
+</section>
+
+<!-- 20. CODE SOLUTIONS -->
+<section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+<details><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-gray-900">20. Code Solutions</h2><span class="text-xs text-gray-500">expand</span></summary>
+<div class="p-5 space-y-4 text-sm">
+  <div><div class="font-bold text-ed-sky mb-1">Python</div>
+  <pre class="code bg-gray-900 text-gray-100 p-3 rounded-lg overflow-x-auto"><code>def search(nums, target):
+    low, high = 0, len(nums) - 1
+    while low <= high:
+        mid = (low + high) // 2
+        if nums[mid] == target:
+            return mid
+        elif nums[mid] < target:
+            low = mid + 1
+        else:
+            high = mid - 1
+    return -1</code></pre>
+  </div>
+  <div><div class="font-bold text-ed-sky mb-1">Java</div>
+  <pre class="code bg-gray-900 text-gray-100 p-3 rounded-lg overflow-x-auto"><code>public int search(int[] nums, int target) {
+    int low = 0, high = nums.length - 1;
+    while (low <= high) {
+        int mid = (low + high) >>> 1;
+        if (nums[mid] == target) return mid;
+        else if (nums[mid] < target) low = mid + 1;
+        else high = mid - 1;
+    }
+    return -1;
+}</code></pre>
+  </div>
+  <div><div class="font-bold text-ed-sky mb-1">TypeScript</div>
+  <pre class="code bg-gray-900 text-gray-100 p-3 rounded-lg overflow-x-auto"><code>function search(nums: number[], target: number): number {
+    let low = 0, high = nums.length - 1;
+    while (low <= high) {
+        const mid = Math.floor((low + high) / 2);
+        if (nums[mid] === target) return mid;
+        if (nums[mid] < target) low = mid + 1;
+        else high = mid - 1;
+    }
+    return -1;
+}</code></pre>
+  </div>
+</div>
+</details>
+</section>
+
+<!-- 21. FOLLOW-UP QUESTIONS -->
+<section class="bg-indigo-50 border border-indigo-200 rounded-xl overflow-hidden">
+<details><summary class="px-5 py-4 flex items-center justify-between"><h2 class="text-sm font-bold text-indigo-700">21. Follow-Up Questions</h2><span class="text-xs text-indigo-700">expand</span></summary>
+<div class="p-5 space-y-3 text-sm text-gray-700">
+  <div class="bg-white border border-indigo-200 rounded-lg p-3"><strong>What if the array is sorted in descending order?</strong><br>Reverse the comparison logic: if <code class="code">nums[mid] < target</code>, move <code class="code">high</code> instead.</div>
+  <div class="bg-white border border-indigo-200 rounded-lg p-3"><strong>How would you find the first or last occurrence of a duplicate target?</strong><br>Once a match is found, continue searching in the relevant half instead of returning immediately.</div>
+  <div class="bg-white border border-indigo-200 rounded-lg p-3"><strong>Can you implement binary search recursively?</strong><br>Yes, but the iterative version is preferred for O(1) space.</div>
+</div>
+</details>
+</section>
+
+<!-- 22. QUICK REFERENCE -->
+<section class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+<div class="px-5 py-4 border-b border-gray-200"><h2 class="text-sm font-bold text-gray-900">22. Quick Reference</h2></div>
+<div class="p-5 space-y-4 text-sm">
+  <div class="bg-gray-900 text-gray-100 p-3 rounded-lg code overflow-x-auto">
+    low, high = 0, len(nums) - 1<br>
+    while low <= high:<br>
+    &nbsp;&nbsp;mid = (low + high) // 2<br>
+    &nbsp;&nbsp;if nums[mid] == target: return mid<br>
+    &nbsp;&nbsp;if nums[mid] < target: low = mid + 1<br>
+    &nbsp;&nbsp;else: high = mid - 1<br>
+    return -1
+  </div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-center text-xs">
+    <div class="bg-ed-teal/10 text-ed-teal rounded p-2">Time: O(log n)</div>
+    <div class="bg-ed-purple/10 text-ed-purple rounded p-2">Space: O(1)</div>
+    <div class="bg-ed-blue/10 text-ed-blue rounded p-2">Input: sorted</div>
+    <div class="bg-ed-amber/10 text-ed-amber rounded p-2">Loop: low <= high</div>
+  </div>
+</div>
+</section>
+
+</div>
+</body>
+</html>
