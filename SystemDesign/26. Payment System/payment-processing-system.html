@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Design a Payment Processing System · Capital One Prep</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'neutral' });</script>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ed: {
+              pink: '#db2777', blue: '#2563eb', teal: '#0d9488', amber: '#d97706',
+              sky: '#0284c7', purple: '#7c3aed', orange: '#ea580c',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .mermaid { background: #fafafa; border-radius: 8px; padding: 1rem; }
+    details > summary { cursor: pointer; list-style: none; }
+    details > summary::-webkit-details-marker { display: none; }
+    details[open] > summary .chevron { transform: rotate(90deg); }
+    .chevron { transition: transform 0.2s; display: inline-block; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased">
+
+<div class="max-w-5xl mx-auto px-6 py-10">
+
+  <!-- Hero Header -->
+  <header class="mb-12">
+    <div class="flex items-center gap-2 text-xs font-mono text-gray-500 mb-3">
+      <span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded">CAPITAL ONE GPN</span>
+      <span>·</span>
+      <span>SYSTEM DESIGN PREP</span>
+    </div>
+    <h1 class="text-4xl font-extrabold tracking-tight text-gray-900 mb-4">Design a Payment Processing System</h1>
+    <p class="text-lg text-gray-600 mb-6 max-w-3xl">Stripe-style payment platform handling card-present and card-not-present transactions with idempotency, double-entry ledger, and async PSP integration.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-semibold">Scale: 10K TPS peak</span>
+      <span class="bg-amber-50 border border-amber-200 text-amber-700 px-3 py-1.5 rounded-lg text-sm font-semibold">Bottleneck: Write-heavy + latency-bound</span>
+      <span class="bg-teal-50 border border-teal-200 text-teal-700 px-3 py-1.5 rounded-lg text-sm font-semibold">SLA: p99 &lt; 500ms sync, &lt; 100ms async</span>
+      <span class="bg-pink-50 border border-pink-200 text-pink-700 px-3 py-1.5 rounded-lg text-sm font-semibold">Availability: 99.99%</span>
+    </div>
+  </header>
+
+  <!-- 1. Real-World Reference & Case Study -->
+  <section class="mb-10 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">1. Real-World Reference &amp; Case Study</h2>
+    <p class="text-gray-700 mb-4">Stripe processes hundreds of millions of transactions per day. Their architecture separates the <strong>synchronous hot path</strong> (auth + capture) from the <strong>asynchronous lane</strong> (settlement, reconciliation, webhooks). Capital One uses a similar three-lane model with AWS-native services (EKS, MSK, Aurora, ElastiCache).</p>
+    <div class="grid grid-cols-3 gap-4 mb-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-xs font-mono text-gray-500 mb-1">STRIPE</div>
+        <div class="text-2xl font-bold text-ed-purple">250M+</div>
+        <div class="text-sm text-gray-600">requests/day</div>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-xs font-mono text-gray-500 mb-1">CAPITAL ONE</div>
+        <div class="text-2xl font-bold text-ed-purple">~70M</div>
+        <div class="text-sm text-gray-600">card transactions/day</div>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-xs font-mono text-gray-500 mb-1">VISA NET</div>
+        <div class="text-2xl font-bold text-ed-purple">65K</div>
+        <div class="text-sm text-gray-600">TPS peak</div>
+      </div>
+    </div>
+    <div class="mermaid">
+flowchart TD
+    Client["Client / Merchant"]
+    GW["API Gateway<br/>auth + rate limit"]
+    PS["Payment Service<br/>state machine"]
+    IDEM[("Idempotency<br/>Redis + DB")]
+    LEDGER[("Ledger DB<br/>double-entry")]
+    OUTBOX[("Outbox table")]
+    BUS["Kafka (MSK)"]
+    WORKER["Payment Workers"]
+    PSP["PSP Adapter<br/>Visa / Mastercard"]
+    Client -->|"POST /charges"| GW
+    GW -->|"auth + idempotency"| PS
+    PS --> IDEM
+    PS -->|"ACID tx"| LEDGER
+    PS --> OUTBOX
+    OUTBOX -->|"relay"| BUS
+    BUS --> WORKER
+    WORKER -->|"charge"| PSP
+    PSP -->|"webhook"| BUS
+    </div>
+    <div class="mt-3 flex flex-wrap gap-3 text-xs">
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-ed-purple rounded"></span> Focal service</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-ed-blue rounded"></span> Sync path</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-ed-orange rounded"></span> Async path</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-gray-400 rounded"></span> Store</span>
+    </div>
+  </section>
+
+  <!-- 2. Requirements & Scope -->
+  <section class="mb-10 bg-white border border-gray-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">2. Requirements &amp; Scope Clarification</h2>
+    <div class="grid md:grid-cols-3 gap-6">
+      <div>
+        <h3 class="font-semibold text-ed-blue mb-2 flex items-center gap-2"><span class="w-2 h-2 bg-ed-blue rounded-full"></span>Functional</h3>
+        <ul class="space-y-1.5 text-sm text-gray-700">
+          <li class="flex gap-2"><span class="text-ed-blue">•</span><span><strong>Process payment</strong> — charge a card via PSP</span></li>
+          <li class="flex gap-2"><span class="text-ed-blue">•</span><span><strong>Idempotency</strong> — retries don't double-charge</span></li>
+          <li class="flex gap-2"><span class="text-ed-blue">•</span><span><strong>Refund</strong> — full or partial, with reversal entries</span></li>
+          <li class="flex gap-2"><span class="text-ed-blue">•</span><span><strong>Webhook</strong> — receive PSP status updates</span></li>
+          <li class="flex gap-2"><span class="text-ed-blue">•</span><span><strong>Reconcile</strong> — nightly batch vs settlement</span></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-semibold text-ed-teal mb-2 flex items-center gap-2"><span class="w-2 h-2 bg-ed-teal rounded-full"></span>Non-Functional</h3>
+        <ul class="space-y-1.5 text-sm text-gray-700">
+          <li class="flex gap-2"><span class="text-ed-teal">•</span><span><strong>Consistency</strong> — money is never lost or duplicated</span></li>
+          <li class="flex gap-2"><span class="text-ed-teal">•</span><span><strong>Availability</strong> — 99.99% (52 min/year downtime)</span></li>
+          <li class="flex gap-2"><span class="text-ed-teal">•</span><span><strong>Latency</strong> — p99 &lt; 500ms sync path</span></li>
+          <li class="flex gap-2"><span class="text-ed-teal">•</span><span><strong>Auditability</strong> — every state change logged</span></li>
+          <li class="flex gap-2"><span class="text-ed-teal">•</span><span><strong>Compliance</strong> — PCI-DSS, SOC 2</span></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-semibold text-gray-500 mb-2 flex items-center gap-2"><span class="w-2 h-2 bg-gray-400 rounded-full"></span>Out of Scope</h3>
+        <ul class="space-y-1.5 text-sm text-gray-600">
+          <li class="flex gap-2"><span>•</span><span>3-D Secure / SCA flow</span></li>
+          <li class="flex gap-2"><span>•</span><span>Multi-currency conversion</span></li>
+          <li class="flex gap-2"><span>•</span><span>Dispute / chargeback management</span></li>
+          <li class="flex gap-2"><span>•</span><span>Merchant onboarding / KYC</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Scale & Capacity Estimation -->
+  <section class="mb-10 bg-ed-amber/5 border border-ed-amber/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">3. Scale &amp; Capacity Estimation</h2>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="bg-white border border-amber-200 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-amber mb-3">Traffic</h3>
+        <ul class="space-y-2 text-sm text-gray-700 font-mono">
+          <li>10K TPS peak, 2K TPS sustained</li>
+          <li>~250M transactions/day</li>
+          <li>Read:Write ratio = 1:4 (write-heavy)</li>
+          <li>Refund rate ~2% of charges</li>
+        </ul>
+      </div>
+      <div class="bg-white border border-teal-200 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-teal mb-3">Storage</h3>
+        <p class="text-sm text-gray-700 font-mono mb-2">Per transaction record ~1KB:</p>
+        <p>$$ \text{Daily} = 250\text{M} \times 1\text{KB} = 250\text{GB/day} $$</p>
+        <p>$$ \text{5yr} = 250\text{GB} \times 365 \times 5 \approx 450\text{TB} $$</p>
+        <p class="text-xs text-gray-500 mt-2">Ledger entries double this (debit + credit) → ~900TB over 5 years. Shard by merchant_id.</p>
+      </div>
+    </div>
+    <div class="mt-4 bg-white border border-gray-200 rounded-lg p-5">
+      <h3 class="font-semibold text-gray-700 mb-3">Bandwidth &amp; Memory</h3>
+      <div class="grid md:grid-cols-2 gap-4 text-sm font-mono text-gray-700">
+        <div>
+          <p class="text-gray-500 text-xs mb-1">INGRESS</p>
+          <p>$$ 10\text{K} \times 1\text{KB} = 10\text{MB/s} \approx 80\text{Mbps} $$</p>
+        </div>
+        <div>
+          <p class="text-gray-500 text-xs mb-1">REDIS IDEMPOTENCY (24h TTL)</p>
+          <p>$$ 10\text{K} \times 86400 \times 100\text{B} \approx 86\text{GB} $$</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. High-Level Design -->
+  <section class="mb-10 bg-indigo-50/20 border border-indigo-100 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">4. High-Level Design (HLD)</h2>
+    <p class="text-gray-700 mb-4">Three lanes: <strong>edge</strong> (auth + idempotency), <strong>core</strong> (state machine + ledger, one ACID tx), <strong>async</strong> (PSP call, webhooks, reconciliation). The core lane never calls the PSP synchronously — it writes intent + outbox and returns.</p>
+    <div class="mermaid">
+flowchart TD
+    subgraph Edge["EDGE LANE"]
+        Client["Client"]
+        WAF["WAF + API Gateway"]
+        AUTH["Auth + Rate Limit"]
+    end
+    subgraph Core["CORE LANE — ACID"]
+        PS["Payment Service"]
+        IDEM[("Idempotency")]
+        LEDGER[("Ledger + Outbox")]
+    end
+    subgraph Async["ASYNC LANE"]
+        BUS["Kafka"]
+        WORKER["Workers"]
+        PSP["PSP Adapter"]
+        HOOK["Webhook Handler"]
+    end
+    Client --> WAF --> AUTH --> PS
+    PS --> IDEM
+    PS -->|"1 tx"| LEDGER
+    LEDGER -->|"relay"| BUS
+    BUS --> WORKER --> PSP
+    PSP --> HOOK --> BUS
+    </div>
+    <div class="mt-3 flex flex-wrap gap-3 text-xs">
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-indigo-500 rounded"></span> Edge (sync, fast)</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-ed-purple rounded"></span> Core (ACID, source of truth)</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-ed-orange rounded"></span> Async (slow, unreliable deps)</span>
+    </div>
+  </section>
+
+  <!-- 5. Read & Write Data Flow -->
+  <section class="mb-10 bg-white border border-gray-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">5. Read &amp; Write Data Flow Traces</h2>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="bg-ed-blue/5 border border-ed-blue/20 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-blue mb-3">Write Flow (charge)</h3>
+        <ol class="space-y-2 text-sm text-gray-700 list-decimal list-inside">
+          <li>Client POST /charges with idempotency key</li>
+          <li>Gateway auth + rate limit</li>
+          <li>Payment Service checks idempotency store</li>
+          <li>If key exists → return cached response</li>
+          <li>Else BEGIN TX: insert payment row (PENDING) + debit + credit + outbox row</li>
+          <li>COMMIT — return 202 Accepted with payment_id</li>
+          <li>Outbox relay publishes to Kafka</li>
+          <li>Worker consumes → calls PSP → updates state</li>
+          <li>Webhook from PSP → update state (AUTHORIZED/DECLINED)</li>
+        </ol>
+      </div>
+      <div class="bg-ed-orange/5 border border-ed-orange/20 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-orange mb-3">Read Flow (status)</h3>
+        <ol class="space-y-2 text-sm text-gray-700 list-decimal list-inside">
+          <li>Client GET /charges/{id}</li>
+          <li>Gateway auth</li>
+          <li>Payment Service reads from read replica</li>
+          <li>If state is terminal → return</li>
+          <li>If PENDING &gt; 30s → query PSP adapter</li>
+          <li>Cache result in Redis (TTL 60s)</li>
+          <li>Return state + ledger summary</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. Database Schema -->
+  <section class="mb-10 bg-indigo-50 border border-indigo-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">6. Core Entities &amp; Database Schema</h2>
+    <p class="text-gray-700 mb-4">PostgreSQL for ledger (ACID is the product). DynamoDB for idempotency keys (TTL native). Redis for hot cache.</p>
+    <div class="bg-gray-900 text-gray-100 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+<pre>payments (
+  id            UUID PRIMARY KEY,
+  merchant_id   UUID NOT NULL,
+  amount_cents  BIGINT NOT NULL,
+  currency      CHAR(3) NOT NULL,
+  state         VARCHAR(20) NOT NULL,  -- PENDING|AUTHORIZED|CAPTURED|SETTLED|DECLINED|REFUNDED
+  idempotency_key VARCHAR(100) NOT NULL,
+  psp_charge_id VARCHAR(100),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(merchant_id, idempotency_key)
+) PARTITION BY RANGE (created_at);
+
+ledger_entries (
+  id            BIGSERIAL PRIMARY KEY,
+  payment_id    UUID NOT NULL REFERENCES payments(id),
+  account_id    UUID NOT NULL,
+  debit_cents   BIGINT NOT NULL DEFAULT 0,
+  credit_cents  BIGINT NOT NULL DEFAULT 0,
+  version       INT NOT NULL,           -- OCC
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK(debit_cents &lt;&gt; credit_cents),   -- one or the other
+  CHECK(debit_cents &gt;= 0 AND credit_cents &gt;= 0)
+);
+
+outbox_events (
+  id            BIGSERIAL PRIMARY KEY,
+  aggregate_id  UUID NOT NULL,
+  event_type    VARCHAR(50) NOT NULL,
+  payload       JSONB NOT NULL,
+  status        VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  published_at  TIMESTAMPTZ
+);
+
+accounts (
+  id            UUID PRIMARY KEY,
+  merchant_id   UUID NOT NULL,
+  type          VARCHAR(20) NOT NULL,   -- ASSET|LIABILITY|EQUITY|REVENUE|EXPENSE
+  balance_cents BIGINT NOT NULL DEFAULT 0  -- derived, not source of truth
+);</pre>
+    </div>
+    <p class="text-xs text-gray-500 mt-3 font-mono">Partition payments by created_at (monthly). Shard ledger_entries by merchant_id. Balance is derived via SUM, cached in accounts table, reconciled nightly.</p>
+  </section>
+
+  <!-- 7. API Design -->
+  <section class="mb-10 bg-indigo-50 border border-indigo-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">7. API Design &amp; Data Contract</h2>
+    <div class="space-y-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="bg-ed-blue text-white text-xs font-mono px-2 py-0.5 rounded">POST</span>
+          <code class="text-sm font-mono">/v1/charges</code>
+        </div>
+        <p class="text-xs text-gray-500 mb-2 font-mono">Header: Idempotency-Key: {uuid}</p>
+        <pre class="text-xs font-mono text-gray-700 bg-gray-50 p-3 rounded">Request: { amount_cents, currency, merchant_id, card_token }
+Response 202: { payment_id, state: "PENDING" }</pre>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="bg-ed-teal text-white text-xs font-mono px-2 py-0.5 rounded">GET</span>
+          <code class="text-sm font-mono">/v1/charges/{payment_id}</code>
+        </div>
+        <pre class="text-xs font-mono text-gray-700 bg-gray-50 p-3 rounded">Response 200: { payment_id, state, amount_cents, created_at, psp_charge_id }</pre>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="bg-ed-pink text-white text-xs font-mono px-2 py-0.5 rounded">POST</span>
+          <code class="text-sm font-mono">/v1/charges/{payment_id}/refund</code>
+        </div>
+        <pre class="text-xs font-mono text-gray-700 bg-gray-50 p-3 rounded">Request: { amount_cents? }  // full if omitted
+Response 202: { refund_id, state: "PENDING" }</pre>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="bg-gray-700 text-white text-xs font-mono px-2 py-0.5 rounded">WEBHOOK</span>
+          <code class="text-sm font-mono">/v1/webhooks/psp</code>
+        </div>
+        <pre class="text-xs font-mono text-gray-700 bg-gray-50 p-3 rounded">Header: X-PSP-Signature: {hmac}
+Body: { event_type, charge_id, state }</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. Distributed Coordination -->
+  <section class="mb-10 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">8. Distributed Coordination &amp; State Management</h2>
+    <p class="text-gray-700 mb-4">No Raft needed in the hot path — PostgreSQL ACID is the coordination primitive. For distributed locks (reconciliation, shard rebalancing) use Redis Redlock with fencing tokens.</p>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <h3 class="font-semibold text-ed-purple mb-2">State Machine</h3>
+        <div class="mermaid">
+stateDiagram-v2
+    [*] --> PENDING
+    PENDING --> AUTHORIZED: PSP approve
+    PENDING --> DECLINED: PSP decline
+    PENDING --> FAILED: PSP timeout
+    AUTHORIZED --> CAPTURED: capture call
+    AUTHORIZED --> VOIDED: void
+    CAPTURED --> SETTLED: settlement
+    CAPTURED --> REFUNDED: refund
+    SETTLED --> REFUNDED: refund
+    DECLINED --> [*]
+    FAILED --> [*]
+    REFUNDED --> [*]
+    VOIDED --> [*]
+        </div>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <h3 class="font-semibold text-ed-purple mb-2">Outbox Relay Coordination</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li><strong>Leader election</strong> — one relay per partition, Kafka consumer group</li>
+          <li><strong>Lock</strong> — SELECT FOR UPDATE SKIP LOCKED batch 100</li>
+          <li><strong>At-least-once</strong> — consumers must be idempotent on event_id</li>
+          <li><strong>DLQ</strong> — after 3 retries, move to dead-letter topic</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. Sharding -->
+  <section class="mb-10 bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">9. Partitioning &amp; Database Scaling</h2>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div>
+        <h3 class="font-semibold text-ed-teal mb-3">Shard Key: merchant_id</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li><strong>Why</strong> — all transactions for a merchant on one shard → ledger joins are local</li>
+          <li><strong>Hot merchants</strong> — split by merchant_id + created_at (composite)</li>
+          <li><strong>Reshard</strong> — Vitess-style vindex, online schema change</li>
+          <li><strong>Read replicas</strong> — 1 writer + 5 readers per shard</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-semibold text-ed-blue mb-3">Partitioning</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li><strong>payments</strong> — RANGE partition by created_at (monthly)</li>
+          <li><strong>ledger_entries</strong> — HASH partition by merchant_id (16 shards)</li>
+          <li><strong>outbox_events</strong> — same as ledger, co-located</li>
+          <li><strong>Retention</strong> — archive &gt; 2yr to S3 cold storage</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10. Consistent Hashing -->
+  <section class="mb-10 bg-ed-pink/5 border border-ed-pink/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">10. Consistent Hashing &amp; Ring Mechanics</h2>
+    <p class="text-gray-700 mb-4">Used for Kafka partition assignment and shard routing. 128 virtual nodes per physical node minimizes movement on reshard.</p>
+    <div class="mermaid">
+flowchart LR
+    subgraph Ring["Hash Ring (SHA-256 mod 2^256)"]
+        N1["vnode 0x12"]
+        N2["vnode 0x4F"]
+        N3["vnode 0xA3"]
+        N4["vnode 0xE1"]
+    end
+    M1["merchant_id hash"] -->|"clockwise"| N2
+    M2["merchant_id hash"] -->|"clockwise"| N4
+    </div>
+    <div class="mt-3 flex flex-wrap gap-3 text-xs">
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-ed-pink rounded"></span> vnodes (128 per physical)</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-ed-teal rounded"></span> Key lookup (clockwise)</span>
+    </div>
+  </section>
+
+  <!-- 11. Caching -->
+  <section class="mb-10 bg-indigo-50 border border-indigo-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">11. Caching Topology &amp; Invalidation</h2>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <h3 class="font-semibold text-indigo-700 mb-2">Layers</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li><strong>L1</strong> — in-process LRU (Caffeine, 10K entries, 60s TTL)</li>
+          <li><strong>L2</strong> — Redis cluster (ElastiCache, 86GB, 5min TTL)</li>
+          <li><strong>L3</strong> — Aurora read replica</li>
+        </ul>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <h3 class="font-semibold text-indigo-700 mb-2">Invalidation</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li><strong>Cache-aside</strong> — lazy load on read miss</li>
+          <li><strong>Write-through</strong> — update cache on state change</li>
+          <li><strong>TTL jitter</strong> — 300s ± 30s to avoid thundering herd</li>
+          <li><strong>Versioned keys</strong> — payment:{id}:v{version}</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12. Async Processing -->
+  <section class="mb-10 bg-ed-orange/5 border border-ed-orange/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">12. Asynchronous Processing &amp; Message Queues</h2>
+    <p class="text-gray-700 mb-4">Kafka (MSK) with 128 partitions by merchant_id. Topics: <code>payments.requests</code> → <code>payments.validated</code> → <code>payments.authorized</code> → <code>payments.ledgered</code> → <code>payments.settled</code>.</p>
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-xs font-mono text-ed-orange mb-1">TOPIC 1</div>
+        <p class="font-semibold text-sm">payments.requests</p>
+        <p class="text-xs text-gray-600 mt-1">Raw charge requests, 128 partitions by merchant_id</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-xs font-mono text-ed-orange mb-1">TOPIC 2</div>
+        <p class="font-semibold text-sm">payments.authorized</p>
+        <p class="text-xs text-gray-600 mt-1">PSP-approved, triggers ledger entry + notification</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-xs font-mono text-ed-orange mb-1">DLQ</div>
+        <p class="font-semibold text-sm">payments.dlq</p>
+        <p class="text-xs text-gray-600 mt-1">After 3 retries, alert ops + manual triage</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13. LLD Sequence & Code -->
+  <section class="mb-10 bg-ed-sky/5 border border-ed-sky/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">13. Low-Level Component Design (LLD)</h2>
+    <div class="mermaid mb-6">
+sequenceDiagram
+    participant C as Client
+    participant GW as Gateway
+    participant PS as PaymentService
+    participant DB as PostgreSQL
+    participant R as Relay
+    participant K as Kafka
+    participant W as Worker
+    participant PSP as PSP
+    C->>GW: POST /charges (Idempotency-Key)
+    GW->>PS: processCharge(req)
+    PS->>DB: BEGIN TX
+    PS->>DB: SELECT idempotency WHERE key
+    alt key exists
+        DB-->>PS: cached response
+        PS-->>C: 200 cached
+    else new
+        PS->>DB: INSERT payment (PENDING)
+        PS->>DB: INSERT debit + credit + outbox
+        PS->>DB: COMMIT
+        PS-->>C: 202 Accepted
+        R->>DB: SELECT FOR UPDATE SKIP LOCKED
+        R->>K: publish PaymentRequested
+        K->>W: consume
+        W->>PSP: charge(card, amount)
+        PSP-->>W: authorized
+        W->>DB: UPDATE payment SET state=AUTHORIZED
+        W->>K: publish PaymentAuthorized
+    end
+    </div>
+
+    <h3 class="font-semibold text-ed-sky mb-3">Java — Idempotent Payment Service</h3>
+    <div class="bg-gray-900 text-gray-100 rounded-lg p-4 font-mono text-sm overflow-x-auto mb-4">
+<pre>@Service
+@Transactional
+public class PaymentService {
+    private final PaymentRepository payments;
+    private final LedgerRepository ledger;
+    private final OutboxRepository outbox;
+
+    public ChargeResponse charge(ChargeRequest req, String idempotencyKey) {
+        // 1. Idempotency check
+        Optional&lt;Payment&gt; existing = payments.findByIdempotencyKey(idempotencyKey);
+        if (existing.isPresent()) {
+            return ChargeResponse.cached(existing.get());
+        }
+        // 2. Create payment in PENDING
+        Payment p = Payment.newPending(req, idempotencyKey);
+        payments.save(p);
+        // 3. Double-entry ledger (debit merchant, credit clearing)
+        ledger.save(LedgerEntry.debit(p.getMerchantAccount(), req.getAmountCents()));
+        ledger.save(LedgerEntry.credit(p.getClearingAccount(), req.getAmountCents()));
+        // 4. Outbox event (same tx — atomic)
+        outbox.save(OutboxEvent.of("PaymentRequested", p));
+        // 5. COMMIT happens here (annotation-driven)
+        return ChargeResponse.accepted(p);
+    }
+}</pre>
+    </div>
+
+    <h3 class="font-semibold text-ed-sky mb-3">Python — Outbox Relay</h3>
+    <div class="bg-gray-900 text-gray-100 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+<pre>import psycopg2, json
+from kafka import KafkaProducer
+
+producer = KafkaProducer(
+    bootstrap_servers=['msk-1:9092', 'msk-2:9092'],
+    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+)
+
+def relay_loop(conn):
+    while True:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, aggregate_id, event_type, payload
+                FROM outbox_events
+                WHERE status = 'PENDING'
+                ORDER BY id
+                FOR UPDATE SKIP LOCKED
+                LIMIT 100
+            """)
+            batch = cur.fetchall()
+            for row in batch:
+                event_id, agg_id, etype, payload = row
+                producer.send('payments.requests', {
+                    'event_id': event_id,
+                    'aggregate_id': str(agg_id),
+                    'type': etype,
+                    'payload': payload
+                })
+                cur.execute(
+                    "UPDATE outbox_events SET status='PUBLISHED', published_at=NOW() WHERE id=%s",
+                    (event_id,)
+                )
+        conn.commit()
+        time.sleep(0.5)  # poll interval</pre>
+    </div>
+  </section>
+
+  <!-- 14. Resiliency -->
+  <section class="mb-10">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">14. Resiliency &amp; Failure Mitigations</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-red-50 border border-red-200 rounded-lg p-5">
+        <h3 class="font-semibold text-red-700 mb-2">⚡ PSP Timeout</h3>
+        <p class="text-sm text-gray-700">PSP doesn't respond within 30s. <strong>Mitigation</strong>: mark payment as PENDING, retry with exponential backoff (3 attempts). If still failing, move to manual review queue. Never auto-decline — the charge may have succeeded.</p>
+      </div>
+      <div class="bg-ed-orange/5 border border-ed-orange/15 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-orange mb-2">⚡ Kafka Lag</h3>
+        <p class="text-sm text-gray-700">Consumer can't keep up. <strong>Mitigation</strong>: alert at &gt;10K lag, auto-scale consumers, increase partition count. Idempotent consumers mean we can scale freely.</p>
+      </div>
+      <div class="bg-red-50 border border-red-200 rounded-lg p-5">
+        <h3 class="font-semibold text-red-700 mb-2">⚡ DB Primary Down</h3>
+        <p class="text-sm text-gray-700">Aurora failover (typically &lt;30s). <strong>Mitigation</strong>: circuit breaker on writes, queue incoming requests in Kafka, replay after failover. Reads continue on replicas.</p>
+      </div>
+      <div class="bg-ed-orange/5 border border-ed-orange/15 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-orange mb-2">⚡ Duplicate Webhook</h3>
+        <p class="text-sm text-gray-700">PSP sends same webhook twice. <strong>Mitigation</strong>: idempotency on webhook event_id, state machine rejects invalid transitions (AUTHORIZED → AUTHORIZED is no-op).</p>
+      </div>
+      <div class="bg-red-50 border border-red-200 rounded-lg p-5">
+        <h3 class="font-semibold text-red-700 mb-2">⚡ Network Partition</h3>
+        <p class="text-sm text-gray-700">Split brain between regions. <strong>Mitigation</strong>: Aurora Global DB with writer in one region, regional affinity. Failover via Route 53 health checks.</p>
+      </div>
+      <div class="bg-ed-orange/5 border border-ed-orange/15 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-orange mb-2">⚡ Hot Merchant</h3>
+        <p class="text-sm text-gray-700">One merchant dominates traffic. <strong>Mitigation</strong>: split shard by merchant_id + date, rate limit per merchant, dedicated shard for top-10 merchants.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 15. Security -->
+  <section class="mb-10 bg-white border border-gray-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">15. Security, Auth &amp; Data Protection</h2>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div>
+        <h3 class="font-semibold text-gray-700 mb-3">PCI-DSS Compliance</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li>• <strong>Tokenization</strong> — card data never touches our servers, PSP holds PAN</li>
+          <li>• <strong>KMS</strong> — encrypt PII at rest (AES-256-GCM)</li>
+          <li>• <strong>TLS 1.3</strong> — all in-transit, HSTS preload</li>
+          <li>• <strong>WAF</strong> — AWS WAF + Shield, OWASP Top 10 rules</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-semibold text-gray-700 mb-3">Auth &amp; Rate Limiting</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li>• <strong>OAuth2</strong> — client_credentials grant for merchants</li>
+          <li>• <strong>Scope</strong> — <code>charges:write</code>, <code>charges:read</code></li>
+          <li>• <strong>Rate limit</strong> — 100 req/s per merchant, token bucket in Redis</li>
+          <li>• <strong>Idempotency</strong> — required on all POST, UUID v4</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 16. Observability -->
+  <section class="mb-10 bg-green-50 border border-green-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">16. Observability, Monitoring &amp; Alerting</h2>
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="bg-white border border-green-200 rounded-lg p-4">
+        <h3 class="font-semibold text-green-700 mb-2">Metrics (Prometheus)</h3>
+        <ul class="text-sm text-gray-700 space-y-1">
+          <li>• payment_duration_seconds (histogram)</li>
+          <li>• payment_state_total (counter by state)</li>
+          <li>• psp_error_rate (gauge)</li>
+          <li>• kafka_consumer_lag (gauge)</li>
+        </ul>
+      </div>
+      <div class="bg-white border border-green-200 rounded-lg p-4">
+        <h3 class="font-semibold text-green-700 mb-2">Logs (Loki)</h3>
+        <ul class="text-sm text-gray-700 space-y-1">
+          <li>• Structured JSON, trace_id correlation</li>
+          <li>• 30-day hot, 1yr cold (S3)</li>
+          <li>• No PII in logs (PCI requirement)</li>
+        </ul>
+      </div>
+      <div class="bg-white border border-green-200 rounded-lg p-4">
+        <h3 class="font-semibold text-green-700 mb-2">Alerts (PagerDuty)</h3>
+        <ul class="text-sm text-gray-700 space-y-1">
+          <li>• p99 &gt; 500ms for 5 min → P2</li>
+          <li>• error rate &gt; 1% for 2 min → P1</li>
+          <li>• Kafka lag &gt; 10K → P3</li>
+          <li>• DB failover triggered → P1</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 17. Trade-offs -->
+  <section class="mb-10 bg-amber-50 border border-amber-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">17. Technical Trade-Off &amp; CAP Matrix</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-amber-100">
+          <tr>
+            <th class="text-left p-3 font-semibold">Decision</th>
+            <th class="text-left p-3 font-semibold">Option A</th>
+            <th class="text-left p-3 font-semibold">Option B</th>
+            <th class="text-left p-3 font-semibold">Choice &amp; Why</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+          <tr class="bg-white">
+            <td class="p-3 font-medium">Ledger DB</td>
+            <td class="p-3">PostgreSQL (ACID)</td>
+            <td class="p-3">DynamoDB (AP)</td>
+            <td class="p-3"><strong>A</strong> — money requires CP, ACID is the product</td>
+          </tr>
+          <tr class="bg-white">
+            <td class="p-3 font-medium">PSP call</td>
+            <td class="p-3">Sync in request</td>
+            <td class="p-3">Async via outbox</td>
+            <td class="p-3"><strong>B</strong> — PSP is slow/unreliable, don't block</td>
+          </tr>
+          <tr class="bg-white">
+            <td class="p-3 font-medium">Idempotency</td>
+            <td class="p-3">Redis only</td>
+            <td class="p-3">Redis + DB unique</td>
+            <td class="p-3"><strong>B</strong> — Redis can lose data, DB is durable</td>
+          </tr>
+          <tr class="bg-white">
+            <td class="p-3 font-medium">Event delivery</td>
+            <td class="p-3">CDC (Debezium)</td>
+            <td class="p-3">Outbox pattern</td>
+            <td class="p-3"><strong>B</strong> — outbox is explicit, CDC couples to WAL</td>
+          </tr>
+          <tr class="bg-white">
+            <td class="p-3 font-medium">Multi-region</td>
+            <td class="p-3">Active-passive</td>
+            <td class="p-3">Active-active</td>
+            <td class="p-3"><strong>B</strong> — Capital One pattern, regional affinity</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 18. Interview Pitch Script -->
+  <section class="mb-10 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">18. The Interview Pitch Script</h2>
+    <div class="bg-white border border-gray-200 rounded-lg p-5 font-mono text-sm text-gray-700 leading-relaxed">
+      <p class="mb-3"><span class="text-ed-purple font-semibold">[0:00 — Setup]</span> "I'll design a payment processing system for 10K TPS. Before I dive in, let me confirm scope: are we handling card-present, card-not-present, or both? And should I include refunds and reconciliation?"</p>
+      <p class="mb-3"><span class="text-ed-purple font-semibold">[2:00 — Requirements]</span> "The functional core is: charge, refund, webhook, reconcile. Non-functional: money is never lost or duplicated, p99 &lt; 500ms, 99.99% availability. I'll assume PCI-DSS compliance is required."</p>
+      <p class="mb-3"><span class="text-ed-purple font-semibold">[5:00 — HLD]</span> "I'll use a three-lane architecture. Edge lane handles auth and idempotency — fast, stateless. Core lane owns the truth: state machine plus double-entry ledger in one ACID transaction. Async lane handles the slow, unreliable stuff — PSP calls, webhooks, reconciliation. The key insight is: never block on the PSP synchronously. Write intent plus outbox, return 202, let workers handle the rest."</p>
+      <p class="mb-3"><span class="text-ed-purple font-semibold">[10:00 — Deep dive]</span> "For the ledger, PostgreSQL ACID is the product. Every money movement is two entries — debit and credit — written atomically with an outbox row. Balances are derived, never stored as a mutable column. The outbox relay polls with FOR UPDATE SKIP LOCKED and publishes to Kafka. Consumers are idempotent on event_id, so at-least-once delivery is safe."</p>
+      <p><span class="text-ed-purple font-semibold">[15:00 — Trade-offs]</span> "I chose PostgreSQL over DynamoDB because money requires CP. I chose outbox over CDC because it's explicit and doesn't couple to the WAL. For multi-region, I'd follow Capital One's active-active pattern — Aurora Global DB for sync replication, MSK MirrorMaker2 for async Kafka, Route 53 for failover."</p>
+    </div>
+  </section>
+
+  <!-- 19. Pushbacks -->
+  <section class="mb-10 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">19. Handling Interviewer Pushbacks</h2>
+    <div class="space-y-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <p class="font-semibold text-ed-purple mb-2">Q: "What if the outbox relay crashes after publishing but before marking PUBLISHED?"</p>
+        <p class="text-sm text-gray-700">"Consumers are idempotent on event_id, so a duplicate publish is harmless — they'll see the same event_id and no-op. The relay re-fetches PENDING rows on restart and republishes. At-least-once semantics, exactly-once effect."</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <p class="font-semibold text-ed-purple mb-2">Q: "How do you handle a hot merchant that dominates one shard?"</p>
+        <p class="text-sm text-gray-700">"Three options: (1) split the shard by merchant_id plus created_at composite key, (2) rate limit the merchant at the gateway, (3) provision a dedicated shard for top-10 merchants. I'd start with rate limiting, then split if sustained."</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <p class="font-semibold text-ed-purple mb-2">Q: "What if the PSP double-charges due to their own retry?"</p>
+        <p class="text-sm text-gray-700">"We send a unique request_id to the PSP on every charge. If they retry, they should use the same request_id. If they don't honor idempotency, we reconcile nightly against their settlement report and issue automatic refunds for duplicates."</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <p class="font-semibold text-ed-purple mb-2">Q: "Why not use TigerBeetle or a purpose-built ledger DB?"</p>
+        <p class="text-sm text-gray-700">"TigerBeetle is purpose-built for this — it's 1M TPS, ACID, append-only. If I'm greenfield and ledger-only, I'd use it. But PostgreSQL gives me flexibility: JSONB for metadata, standard SQL for reporting, mature ecosystem. At 10K TPS, Postgres is fine. At 1M TPS, I'd migrate the ledger to TigerBeetle."</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <p class="font-semibold text-ed-purple mb-2">Q: "How do you ensure exactly-once across the PSP and your ledger?"</p>
+        <p class="text-sm text-gray-700">"You can't — the PSP is an external system. You get at-least-once delivery with idempotent receivers. We use a state machine: PENDING → AUTHORIZED is a valid transition, AUTHORIZED → AUTHORIZED is a no-op. The idempotency key at our API plus the request_id at the PSP gives us effective exactly-once."</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 20. Advanced Accordions -->
+  <section class="mb-10">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">20. Advanced Concept Deep Dives</h2>
+    <div class="space-y-3">
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-4">
+        <summary class="font-semibold text-indigo-700 flex items-center gap-2"><span class="chevron">▶</span> Two-Phase Commit vs Saga</summary>
+        <div class="mt-3 text-sm text-gray-700">
+          <p class="mb-2">2PC is a blocking protocol — if the coordinator dies, participants are stuck. Sagas break a distributed transaction into a sequence of local ACID transactions with compensating actions. For payments, we use orchestration sagas: the payment service is the orchestrator, each step (auth, capture, settle) is a local tx, and failures trigger compensating transactions (void, refund).</p>
+          <p><strong>Why not 2PC?</strong> PSPs don't support XA. Kafka doesn't support XA. The outbox pattern gives us the same guarantee without blocking.</p>
+        </div>
+      </details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-4">
+        <summary class="font-semibold text-indigo-700 flex items-center gap-2"><span class="chevron">▶</span> OCC vs Pessimistic Locking for Ledger</summary>
+        <div class="mt-3 text-sm text-gray-700">
+          <p class="mb-2">Optimistic Concurrency Control (OCC) uses a version column — if the version changed, retry. Pessimistic locking uses SELECT FOR UPDATE. For the ledger, we use OCC on the account balance: <code>UPDATE accounts SET balance = balance + X, version = version + 1 WHERE id = ? AND version = ?</code>. If 0 rows affected, retry with backoff.</p>
+          <p><strong>Why OCC?</strong> Low contention on per-account writes, no lock held during PSP call, simpler deadlock story.</p>
+        </div>
+      </details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-4">
+        <summary class="font-semibold text-indigo-700 flex items-center gap-2"><span class="chevron">▶</span> Reconciliation as the Safety Net</summary>
+        <div class="mt-3 text-sm text-gray-700">
+          <p class="mb-2">No distributed system guarantees exactly-once across external boundaries. Reconciliation is the nightly safety net: download PSP settlement report, compare to our ledger, flag mismatches. Three categories: (1) we have it, PSP doesn't → we overcharged, refund. (2) PSP has it, we don't → we missed, create entry. (3) Amount mismatch → manual review.</p>
+          <p><strong>SLA</strong>: 99.99% of transactions reconcile within $0.01. Anything else triggers a P2 alert.</p>
+        </div>
+      </details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-4">
+        <summary class="font-semibold text-indigo-700 flex items-center gap-2"><span class="chevron">▶</span> Cell-Based Architecture (Capital One)</summary>
+        <div class="mt-3 text-sm text-gray-700">
+          <p class="mb-2">Capital One's pattern: group services into cells, each cell is self-contained (compute, data, messaging). Shuffle-sharding assigns each merchant to a random cell. If a cell goes bad (poison pill), only its merchants are affected. Blast radius is bounded.</p>
+          <p><strong>Why?</strong> At 99.99% availability, a single bad deploy can burn your error budget. Cells isolate failures.</p>
+        </div>
+      </details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-4">
+        <summary class="font-semibold text-indigo-700 flex items-center gap-2"><span class="chevron">▶</span> Idempotency Key Design</summary>
+        <div class="mt-3 text-sm text-gray-700">
+          <p class="mb-2">The idempotency key is a client-generated UUID v4. We store it in a unique constraint on (merchant_id, idempotency_key). On retry, the DB unique violation is caught and we return the cached response. The key must be stable across retries — clients should use a deterministic key per logical operation, not a random one per HTTP attempt.</p>
+          <p><strong>TTL</strong>: 24h in Redis, permanent in DB (for audit). After 24h, the same key can be reused for a new logical operation — but that's a client bug.</p>
+        </div>
+      </details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-4">
+        <summary class="font-semibold text-indigo-700 flex items-center gap-2"><span class="chevron">▶</span> Webhook Signature Verification</summary>
+        <div class="mt-3 text-sm text-gray-700">
+          <p class="mb-2">PSP sends <code>X-PSP-Signature: t=timestamp,v1= hmac_sha256(timestamp.body, secret)</code>. We verify by recomputing the HMAC with our shared secret. If valid, process. If invalid, reject with 400. Prevents webhook spoofing.</p>
+          <p><strong>Replay protection</strong>: reject if timestamp is &gt; 5 min old. Store processed event_ids in Redis (7 day TTL) to detect duplicates.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <footer class="border-t border-gray-200 pt-6 text-center text-xs text-gray-500 font-mono">
+    CAPITAL ONE GPN · SYSTEM DESIGN PREP · Payment Processing System · Generated with career-tools-sysdesign-generator
+  </footer>
+
+</div>
+</body>
+</html>

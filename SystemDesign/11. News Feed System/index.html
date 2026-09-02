@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: News Feed System — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] hero-glow pointer-events-none"></div>
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">SD</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">News Feed System</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">System Design Workbook</span>
+      </div>
+    </div>
+    <a href="../README.md" class="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">&larr; Back to System Design Hub</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Architectural Study Guide</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">High Scale &bull; Distributed Systems</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+      <span class="gradient-text">News Feed System</span>
+    </h1>
+    <p class="text-gray-600 text-base max-w-3xl leading-relaxed">
+      Comprehensive architectural deep-dive covering high-level data flow, data models, edge case failure modes, scaling strategies, and interview trade-off defenses.
+    </p>
+  </div>
+</div>
+
+<!-- CONTENT MAIN -->
+<main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+  <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm prose prose-blue max-w-none space-y-6">
+    <h1 class="text-2xl font-black text-gray-900 border-b border-gray-200 pb-3 mb-4 mt-6">Chapter 11: Design a News Feed System</h1>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Introduction</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A <strong class="text-gray-900 font-bold">news feed system</strong> displays a constantly updating list of posts (status updates, photos, videos, and links) from a user’s connections. Examples include Facebook’s news feed, Instagram’s feed, and Twitter’s timeline. This chapter explores the design of a scalable news feed system.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 1: Understanding the Problem</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Requirements</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Platform:</strong> The system supports both web and mobile apps.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Features:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Users can publish posts.</li>
+<li>Users can view posts from friends in their news feed.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Sorting:</strong> Feeds are sorted in <strong class="text-gray-900 font-bold">reverse chronological order</strong> for simplicity.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Scale:</strong></p>
+<li>Users can have up to 5,000 friends.</li>
+<li>10 million daily active users (DAU).</li>
+<li>Feeds may include text, images, and videos.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 2: High-Level Design</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Overview</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The design includes two main flows:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Feed Publishing:</strong> A user publishes a post, which is written to the database and propagated to their friends’ feeds.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">News Feed Building:</strong> A user retrieves their news feed by aggregating posts from friends in reverse chronological order.</p>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">News Feed APIs</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Feed Publishing API:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Endpoint:</strong> <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">POST /v1/me/feed</code></li>
+<li><strong class="text-gray-900 font-bold">Params:</strong> <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">content</code> (post text) and <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">auth_token</code> (authentication).</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">News Feed Retrieval API:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Endpoint:</strong> <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">GET /v1/me/feed</code></li>
+<li><strong class="text-gray-900 font-bold">Params:</strong> <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">auth_token</code> (authentication).</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Feed Publishing</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/feed-publishing.png" alt="Feed Publishing" width="400"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">User Interaction:</strong> The user publishes a post via the feed publishing API.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Load Balancer:</strong> Distributes traffic to web servers.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Web Servers:</strong> Authenticate requests and redirect to services.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Post Service:</strong> Stores the post in the database and cache.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">5. <strong class="text-gray-900 font-bold">Fanout Service:</strong> Propagates the post to friends’ news feeds in the cache.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">6. <strong class="text-gray-900 font-bold">Notification Service:</strong> Sends notifications to friends.</p>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">News Feed Building</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/news-feed-building.png" alt="News Feed Building" width="400"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">User Interaction:</strong> The user requests their news feed via the retrieval API.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Load Balancer:</strong> Distributes traffic to web servers.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Web Servers:</strong> Forward requests to the news feed service.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">News Feed Service:</strong> Fetches post IDs from the news feed cache and retrieves complete post details from the database or cache.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 3: Design Deep Dive</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Feed Publishing Deep Dive</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Web Servers:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Authenticate users using <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">auth_token</code>.</li>
+<li>Enforce rate limits to prevent spam.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Fanout Service:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Fanout on Write:</strong> Push posts to friends’ feeds at write time.</li>
+<li><strong class="text-gray-900 font-bold">Pros:</strong> Real-time updates, fast feed retrieval.</li>
+<li><strong class="text-gray-900 font-bold">Cons:</strong> Resource-intensive for users with many friends.</li>
+<li><strong class="text-gray-900 font-bold">Fanout on Read:</strong> Pull posts at read time.</li>
+<li><strong class="text-gray-900 font-bold">Pros:</strong> Efficient for inactive users.</li>
+<li><strong class="text-gray-900 font-bold">Cons:</strong> Slower feed retrieval.</li>
+<li><strong class="text-gray-900 font-bold">Hybrid Approach:</strong> Use a push model for most users and a pull model for high-connection users (e.g., celebrities).</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/feed-publishing-deep-dive.png" alt="Feed Publishing Deep Dive" width="500"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The <strong class="text-gray-900 font-bold">fanout service</strong> works as following:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Fetch Friend IDs:</strong> Retrieve the friend list from a graph database.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Filter Friends from Cache:</strong> Access user settings in the cache to exclude certain friends (e.g., muted friends or selective sharing preferences).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Send to Message Queue:</strong> Send the filtered friend list along with the new post ID to a message queue for processing.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Fanout Workers:</strong> Workers retrieve data from the message queue and update the news feed cache. The cache stores <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]"><post_id, user_id></code> mappings instead of full user and post objects to save memory.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">5. <strong class="text-gray-900 font-bold">Store in News Feed Cache:</strong> Append new post IDs to the friends’ news feed cache. A configurable limit ensures that only recent posts are stored, as most users focus on the latest content, keeping cache memory consumption manageable.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/fanout-service.png" alt="Fanout Service" width="500"></p>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">News Feed Retrieval Deep Dive</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Cache Architecture</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The cache is divided into five layers:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">News Feed Cache:</strong> Stores post IDs for quick retrieval.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Content Cache:</strong> Stores post details (popular posts in hot cache).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Social Graph Cache:</strong> Stores user relationship data.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Action Cache:</strong> Tracks user actions (likes, replies, shares).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">5. <strong class="text-gray-900 font-bold">Counter Cache:</strong> Maintains counts for likes, replies, followers, etc.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/cache-architecture.png" alt="Cache Architecture" width="500"></p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Key Optimizations</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Scaling</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Database Scaling:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Horizontal scaling and sharding.</li>
+<li>Use of read replicas for high-traffic queries.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Stateless Web Tier:</strong> Keep web servers stateless to enable horizontal scaling.</p>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Caching</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. Store frequently accessed data in memory.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. Use cache layers to reduce latency and database load.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Reliability</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Consistent Hashing:</strong> Distribute requests evenly across servers.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Message Queues:</strong> Decouple system components and buffer traffic.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Monitoring</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. Track key metrics like QPS (queries per second) and latency.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. Monitor cache hit rates and adjust configurations accordingly.</p>
+  </div>
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>System Design Interactive Study Suite &bull; AntiGravity IDE</p>
+</footer>
+</body>
+</html>

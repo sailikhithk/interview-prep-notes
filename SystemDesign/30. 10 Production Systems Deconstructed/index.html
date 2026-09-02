@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10 Production Systems Deconstructed — Staff System Design Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' },
+        notion: { 50:'#fdf8f6', 600:'#ea580c', 900:'#7c2d12' },
+        slack: { 50:'#fdf4ff', 600:'#a855f7', 900:'#581c87' },
+        shopify: { 50:'#f0fdf4', 600:'#16a34a', 900:'#14532d' },
+        google: { 50:'#fef2f2', 600:'#dc2626', 900:'#7f1d1d' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#a855f7,#ea580c); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+.nav-tab.active { border-color:#2563eb; color:#2563eb; background-color:#eff6ff; font-weight:700; }
+.sys-card.active { border-color:#2563eb; box-shadow: 0 0 0 2px #bfdbfe; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[400px] hero-glow pointer-events-none"></div>
+
+<!-- NAVIGATION -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-indigo-500/20">PS</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">Production Systems Lab</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">10 Battle-Tested Architectures</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-4 text-xs font-medium">
+      <a href="#case-studies" class="text-gray-600 hover:text-indigo-600 transition-colors font-bold text-indigo-600">The 10 Systems</a>
+      <a href="#production-simulators" class="text-gray-600 hover:text-indigo-600 transition-colors">Interactive Simulators</a>
+      <a href="#interview-secrets" class="text-gray-600 hover:text-indigo-600 transition-colors">Interview Traps</a>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-6xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Real-World Case Studies</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+      <span class="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded">Notion &bull; Slack &bull; Shopify &bull; YouTube &bull; GFS &bull; Quora</span>
+    </div>
+    <h1 class="text-3xl sm:text-5xl font-black tracking-tight mb-4">
+      How 10 Flagship Systems <span class="gradient-text">Actually Run in Production</span>
+    </h1>
+    <p class="text-gray-600 text-base sm:text-lg max-w-3xl leading-relaxed mb-6">
+      Tutorials show the clean happy-path. Production engineering is about the brutal trade-offs: losing foreign keys when sharding Postgres, handling 1M WebSocket reconnect storms, and isolating merchant scripts with WebAssembly.
+    </p>
+
+    <!-- Quick Stat Badges -->
+    <div class="flex flex-wrap gap-3">
+      <div class="bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2">
+        <span class="text-[10px] text-gray-400 uppercase font-bold block">Notion RDS Partition</span>
+        <span class="text-sm font-mono font-bold text-orange-600">32 Postgres Shards</span>
+      </div>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2">
+        <span class="text-[10px] text-gray-400 uppercase font-bold block">Quora Scaling</span>
+        <span class="text-sm font-mono font-bold text-blue-600">100k+ MySQL QPS</span>
+      </div>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2">
+        <span class="text-[10px] text-gray-400 uppercase font-bold block">Slack Edge Concurrency</span>
+        <span class="text-sm font-mono font-bold text-purple-600">10M+ WebSockets</span>
+      </div>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2">
+        <span class="text-[10px] text-gray-400 uppercase font-bold block">GFS Chunk Sizing</span>
+        <span class="text-sm font-mono font-bold text-emerald-600">64MB Large Chunks</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main class="max-w-6xl mx-auto px-6 py-10 space-y-12">
+
+  <!-- ========================================== -->
+  <!-- SECTION 1: THE 10 PRODUCTION SYSTEMS TABS -->
+  <!-- ========================================== -->
+  <section id="case-studies" class="space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div>
+        <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Interactive Architecture Explorer</span>
+        <h2 class="text-2xl font-black text-gray-900">Select a Production System to Dissect</h2>
+      </div>
+      <span class="text-xs text-gray-500">Click any system to load its architecture, trade-offs, and failure defenses</span>
+    </div>
+
+    <!-- 10 System Selector Grid -->
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5" id="system-selector-grid">
+      <button onclick="selectSystem(1)" id="btn-sys-1" class="sys-btn active p-3 rounded-xl border border-indigo-600 bg-indigo-50/80 text-left transition-all">
+        <span class="text-[10px] font-mono font-bold text-indigo-700 block">01. Notion</span>
+        <span class="text-xs font-bold text-gray-900 line-clamp-1">Postgres Sharding</span>
+      </button>
+      <button onclick="selectSystem(2)" id="btn-sys-2" class="sys-btn p-3 rounded-xl border border-gray-200 bg-white hover:border-gray-300 text-left transition-all">
+        <span class="text-[10px] font-mono font-bold text-blue-600 block">02. Quora</span>
+        <span class="text-xs font-bold text-gray-900 line-clamp-1">100k+ MySQL QPS</span>
+      </button>
+      <button onclick="selectSystem(3)" id="btn-sys-3" class="sys-btn p-3 rounded-xl border border-gray-200 bg-white hover:border-gray-300 text-left transition-all">
+        <span class="text-[10px] font-mono font-bold text-emerald-600 block">03. Shopify APIs</span>
+        <span class="text-xs font-bold text-gray-900 line-clamp-1">GraphQL Multi-Tenant</span>
+      </button>
+      <button onclick="selectSystem(4)" id="btn-sys-4" class="sys-btn p-3 rounded-xl border border-gray-200 bg-white hover:border-gray-300 text-left transition-all">
+        <span class="text-[10px] font-mono font-bold text-emerald-600 block">04. Shopify Checkout</span>
+        <span class="text-xs font-bold text-gray-900 line-clamp-1">Wasm Sandboxing</span>
+      </button>
+      <button onclick="selectSystem(5)" id="btn-sys-5" class="sys-btn p-3 rounded-xl border border-gray-200 bg-white hover:border-gray-300 text-left transition-all">
+        <span class="text-[10px] font-mono font-bold text-rose-600 block">05. Interview Traps</span>
+        <span class="text-xs font-bold text-gray-900 line-clamp-1">7 Deadly Mistakes</span>
+      </button>
+      <button onclick="selectSystem(6)" id="btn-sys-6" class="sys-btn p-3 rounded-xl border border-gray-200 bg-white hover:border-gray-300 text-left transition-all">
+        <span class="text-[10px] font-mono font-bold text-red-600 block">06. YouTube</span>
+        <span class="text-xs font-bold text-gray-900 line-clamp-1">Video Transcoding</span>
+      </button>
+      <button onclick="selectSystem(7)" id="btn-sys-7" class="sys-btn p-3 rounded-xl border border-gray-200 bg-white hover:border-gray-300 text-left transition-all">
+        <span class="text-[10px] font-mono font-bold text-red-600 block">07. Google GFS</span>
+        <span class="text-xs font-bold text-gray-900 line-clamp-1">Commodity Hardware</span>
+      </button>
+      <button onclick="selectSystem(8)" id="btn-sys-8" class="sys-btn p-3 rounded-xl border border-gray-200 bg-white hover:border-gray-300 text-left transition-all">
+        <span class="text-[10px] font-mono font-bold text-indigo-600 block">08. Scale Math</span>
+        <span class="text-xs font-bold text-gray-900 line-clamp-1">Latency Numbers</span>
+      </button>
+      <button onclick="selectSystem(9)" id="btn-sys-9" class="sys-btn p-3 rounded-xl border border-gray-200 bg-white hover:border-gray-300 text-left transition-all">
+        <span class="text-[10px] font-mono font-bold text-purple-600 block">09. Slack</span>
+        <span class="text-xs font-bold text-gray-900 line-clamp-1">Flannel Edge Cache</span>
+      </button>
+      <button onclick="selectSystem(10)" id="btn-sys-10" class="sys-btn p-3 rounded-xl border border-gray-200 bg-white hover:border-gray-300 text-left transition-all">
+        <span class="text-[10px] font-mono font-bold text-purple-600 block">10. URL Shortener</span>
+        <span class="text-xs font-bold text-gray-900 line-clamp-1">Billion-Scale Keys</span>
+      </button>
+    </div>
+
+    <!-- Active System Detail Container -->
+    <div id="active-system-detail" class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+      <!-- Injected by JavaScript -->
+    </div>
+  </section>
+
+  <!-- ========================================== -->
+  <!-- SECTION 2: INTERACTIVE PRODUCTION SIMULATORS -->
+  <!-- ========================================== -->
+  <section id="production-simulators" class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-200">
+      <div>
+        <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Production Failure Lab</span>
+        <h2 class="text-2xl font-black text-gray-900">Battle-Tested Failure Simulators</h2>
+        <p class="text-xs sm:text-sm text-gray-500 mt-1">Simulate real production crises and observe the architectural defense mechanism.</p>
+      </div>
+      <!-- Tab Controls -->
+      <div class="flex flex-wrap gap-1.5 p-1 bg-gray-100 rounded-xl border border-gray-200 self-start">
+        <button onclick="switchLab('notion_routing')" id="tab-notion_routing" class="nav-tab active px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-700 hover:text-indigo-600 transition-all">Notion Shard Routing</button>
+        <button onclick="switchLab('slack_storm')" id="tab-slack_storm" class="nav-tab px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-700 hover:text-indigo-600 transition-all">Slack Reconnect Storm</button>
+        <button onclick="switchLab('wasm_sandbox')" id="tab-wasm_sandbox" class="nav-tab px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-700 hover:text-indigo-600 transition-all">Shopify Wasm Isolation</button>
+      </div>
+    </div>
+
+    <!-- LAB 1: NOTION ROUTING -->
+    <div id="lab-notion_routing" class="lab-content space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="space-y-4">
+          <div class="bg-orange-50 border border-orange-200 rounded-xl p-4">
+            <h4 class="text-xs font-bold text-orange-900 uppercase">Notion Routing Principle</h4>
+            <p class="text-xs text-orange-800 mt-1 leading-relaxed">
+              Every block, page, and collection belongs to a <strong>Workspace ID</strong>. The routing proxy computes <code class="font-mono bg-orange-100 px-1 py-0.5 rounded">hash(workspace_id) % 32</code> to find the physical Postgres RDS instance.
+            </p>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+            <label class="text-xs font-bold text-gray-700 block">Workspace ID / UUID:</label>
+            <input type="text" id="notion-ws-input" value="acme-corp-workspace-uuid-9481" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-mono">
+            <button onclick="simulateNotionRoute()" class="w-full py-2 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all">
+              Route to Physical Shard &rarr;
+            </button>
+          </div>
+        </div>
+
+        <div class="md:col-span-2 bg-gray-900 rounded-xl p-5 text-white flex flex-col justify-between space-y-4">
+          <div class="flex items-center justify-between text-xs border-b border-gray-800 pb-3 font-mono">
+            <span class="text-gray-400">Total Physical Shards: <strong class="text-white">32 RDS Instances</strong></span>
+            <span class="text-gray-400">Target Shard: <strong class="text-orange-400" id="notion-shard-target">Shard #--</strong></span>
+          </div>
+          <div class="grid grid-cols-8 gap-1.5 py-2" id="notion-shards-grid">
+            <!-- 32 Shards rendered by JS -->
+          </div>
+          <div class="bg-black/60 rounded-lg p-3 text-[11px] font-mono text-gray-300 h-20 overflow-y-auto" id="notion-log">
+            <p class="text-gray-500">&gt; Enter Workspace ID and click "Route to Physical Shard".</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LAB 2: SLACK RECONNECT STORM -->
+    <div id="lab-slack_storm" class="lab-content hidden space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="space-y-4">
+          <div class="bg-purple-50 border border-purple-200 rounded-xl p-4">
+            <h4 class="text-xs font-bold text-purple-900 uppercase">The Reconnect Storm Problem</h4>
+            <p class="text-xs text-purple-800 mt-1 leading-relaxed">
+              When office Wi-Fi drops and 10,000 employees reconnect simultaneously, a naive system fetches full channel history from MySQL, crushing the database pool.
+            </p>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+            <label class="text-xs font-bold text-gray-700 block">Reconnect Strategy:</label>
+            <div class="flex flex-col gap-2 text-xs">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="slack_mode" value="naive" checked>
+                <span><strong>Naive Full Fetch</strong> (No jitter, DB fetch)</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="slack_mode" value="flannel">
+                <span><strong>Flannel Delta Sync + Jitter</strong></span>
+              </label>
+            </div>
+            <button onclick="runSlackReconnect()" class="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all">
+              Simulate 10,000 Reconnects &rarr;
+            </button>
+          </div>
+        </div>
+
+        <div class="md:col-span-2 bg-gray-900 rounded-xl p-5 text-white flex flex-col justify-between space-y-4">
+          <div class="grid grid-cols-2 gap-4 text-center font-mono">
+            <div class="bg-gray-800 p-4 rounded-xl border border-gray-700">
+              <span class="text-gray-400 block text-xs mb-1">Backend DB Load</span>
+              <span id="slack-db-load" class="text-2xl font-bold text-purple-400">0 QPS</span>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-xl border border-gray-700">
+              <span class="text-gray-400 block text-xs mb-1">Reconnect Latency</span>
+              <span id="slack-reconnect-lat" class="text-2xl font-bold text-emerald-400">0ms</span>
+            </div>
+          </div>
+          <div class="bg-black/60 rounded-lg p-3 text-[11px] font-mono text-gray-300 h-24 overflow-y-auto" id="slack-log">
+            <p class="text-gray-500">&gt; Ready for Slack reconnect storm simulation.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LAB 3: SHOPIFY WASM ISOLATION -->
+    <div id="lab-wasm_sandbox" class="lab-content hidden space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="space-y-4">
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+            <h4 class="text-xs font-bold text-emerald-900 uppercase">Shopify Script Sandboxing</h4>
+            <p class="text-xs text-emerald-800 mt-1 leading-relaxed">
+              Merchants can upload custom Ruby/JS discount scripts. Running them directly in the checkout web process can trigger infinite loops or OOM crashes.
+            </p>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+            <label class="text-xs font-bold text-gray-700 block">Execution Environment:</label>
+            <div class="flex flex-col gap-2 text-xs">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="wasm_env" value="unsandboxed" checked>
+                <span><strong>Unsandboxed Native VM</strong> (Shared process)</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="wasm_env" value="wasm">
+                <span><strong>Wasm Sandbox (5ms / 10MB limit)</strong></span>
+              </label>
+            </div>
+            <button onclick="runWasmTest()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all">
+              Execute Runaway Merchant Script &rarr;
+            </button>
+          </div>
+        </div>
+
+        <div class="md:col-span-2 bg-gray-900 rounded-xl p-5 text-white flex flex-col justify-between space-y-4">
+          <div class="grid grid-cols-2 gap-4 text-center font-mono">
+            <div class="bg-gray-800 p-4 rounded-xl border border-gray-700">
+              <span class="text-gray-400 block text-xs mb-1">Checkout Pod Status</span>
+              <span id="wasm-pod-status" class="text-xl font-bold text-emerald-400">HEALTHY</span>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-xl border border-gray-700">
+              <span class="text-gray-400 block text-xs mb-1">Script Execution Time</span>
+              <span id="wasm-exec-time" class="text-xl font-bold text-white">0ms</span>
+            </div>
+          </div>
+          <div class="bg-black/60 rounded-lg p-3 text-[11px] font-mono text-gray-300 h-24 overflow-y-auto" id="wasm-log">
+            <p class="text-gray-500">&gt; Click execute to run simulated buggy merchant script (while(true) loop).</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================== -->
+  <!-- SECTION 3: 7 DEADLY INTERVIEW MISTAKES -->
+  <!-- ========================================== -->
+  <section id="interview-secrets" class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+    <div class="border-b border-gray-200 pb-4">
+      <span class="text-xs font-bold text-rose-600 uppercase tracking-wider">Staff Bar Anti-Patterns</span>
+      <h2 class="text-2xl font-black text-gray-900">The 7 Mistakes That Sink System Design Interviews</h2>
+      <p class="text-xs sm:text-sm text-gray-500 mt-1">Review the exact pitfalls that cause senior candidates to get down-leveled or rejected.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="bg-rose-50/50 border border-rose-200 rounded-xl p-4">
+        <span class="text-xs font-bold text-rose-700 block mb-1">Mistake 1: Silent Whiteboard Drawing</span>
+        <p class="text-xs text-gray-700 leading-relaxed">
+          Spending 10 minutes silently connecting boxes without vocalizing trade-offs. <strong>Fix:</strong> Treat the interviewer as a tech lead peer. Say: <em>"I'm considering Redis vs Memcached here; given we need sorted sets for ranking, I'm choosing Redis."</em>
+        </p>
+      </div>
+
+      <div class="bg-rose-50/50 border border-rose-200 rounded-xl p-4">
+        <span class="text-xs font-bold text-rose-700 block mb-1">Mistake 2: Premature Micro-Optimization</span>
+        <p class="text-xs text-gray-700 leading-relaxed">
+          Diving immediately into Raft consensus or Bloom filters before establishing basic API contracts and end-to-end data flow. <strong>Fix:</strong> Follow the 4-step interview timeline strictly.
+        </p>
+      </div>
+
+      <div class="bg-rose-50/50 border border-rose-200 rounded-xl p-4">
+        <span class="text-xs font-bold text-rose-700 block mb-1">Mistake 3: The "Happy Path" Blindspot</span>
+        <p class="text-xs text-gray-700 leading-relaxed">
+          Assuming databases never crash, caches never expire simultaneously, and network partitions don't happen. <strong>Fix:</strong> Proactively bring up failure modes: <em>"Here is how we handle cache stampedes and outbox CDC dual-write divergence."</em>
+        </p>
+      </div>
+
+      <div class="bg-rose-50/50 border border-rose-200 rounded-xl p-4">
+        <span class="text-xs font-bold text-rose-700 block mb-1">Mistake 4: Hand-Waving Security &amp; Auth</span>
+        <p class="text-xs text-gray-700 leading-relaxed">
+          Labeling a box "Auth Middleware" without knowing token revocation strategies, mTLS across services, or rate limiting at the API Gateway.
+        </p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>Production Systems Deep-Dive Workbook &bull; AntiGravity IDE System Design Suite</p>
+</footer>
+
+<!-- JAVASCRIPT DATA & LOGIC -->
+<script>
+// ========================================================
+// THE 10 PRODUCTION SYSTEMS FULL DATASET
+// ========================================================
+const PRODUCTION_SYSTEMS = {
+  1: {
+    num: "01",
+    company: "Notion",
+    title: "How Notion Sharded Monolithic Postgres",
+    tag: "Database Sharding & Data Partitioning",
+    color: "orange",
+    problem: "Notion began as a monolithic PostgreSQL instance on AWS RDS. As block data exploded into billions of JSON records, single-node CPU, disk I/O, and connection limits saturated.",
+    architecture: `
+graph TD
+  Client[Notion Client Web/App] --> Router[Notion API Gateway & Shard Router]
+  
+  subgraph Routing Layer
+    Router -->|hash workspace_id % 32| ShardMap[Shard Map Engine]
+  end
+  
+  subgraph 32 Physical AWS RDS Postgres Shards
+    ShardMap --> RDS0[RDS Shard 0]
+    ShardMap --> RDS1[RDS Shard 1]
+    ShardMap --> RDS31[RDS Shard 31]
+  end
+  
+  subgraph User Shard Matrix
+    Router -->|hash user_id % 8| UserShard[User Metadata RDS Shards]
+  end
+
+  style Router fill:#fff7ed,stroke:#ea580c,stroke-width:2px;
+  style RDS0 fill:#eff6ff,stroke:#2563eb,stroke-width:1.5px;
+  style RDS1 fill:#eff6ff,stroke:#2563eb,stroke-width:1.5px;
+  style RDS31 fill:#eff6ff,stroke:#2563eb,stroke-width:1.5px;
+    `,
+    mechanism: "Partitioned by <strong>Workspace ID</strong> into 32 physical Postgres RDS shards. Workspace pages and blocks live together on the same shard, allowing single-shard relational queries. Maintained a secondary routing table for User accounts.",
+    costs: [
+      "<strong>Foreign Key Constraints Died:</strong> Postgres cannot enforce foreign keys across physical DB instances. Referential integrity had to be managed entirely in Node.js application logic.",
+      "<strong>No Cross-Shard ACID Transactions:</strong> Moving a block or workspace across shards requires application-level two-phase commit (2PC) or Sagas.",
+      "<strong>Resharding Complexity:</strong> Doubling shards from 32 to 64 requires continuous logical replication and zero-downtime cutover pipelines."
+    ],
+    interviewDefense: "When an interviewer asks <em>'Why not just use Cassandra or DynamoDB for Notion blocks?'</em>, respond: Notion's rich document tree requires complex block sorting, parent-child updates, and relational queries within a workspace. Sharding PostgreSQL preserved relational semantics within a workspace boundary while scaling storage horizontally."
+  },
+  2: {
+    num: "02",
+    company: "Quora",
+    title: "How Quora Scaled MySQL to 100k+ Queries Per Second",
+    tag: "Relational Scaling & Multi-Tier Caching",
+    color: "blue",
+    problem: "Quora handles massive read QPS on questions, answers, upvotes, and user feeds. Monolithic relational queries saturated disk reads and lock contention on MySQL.",
+    architecture: `
+graph TD
+  Client[Web / Mobile Client] --> LB[HAProxy / L7 Load Balancer]
+  LB --> Web[Quora Application Servers]
+  
+  Web -->|1. Check Key| Memcached[Distributed Memcached Tier]
+  Web -->|2. Cache Miss| Proxy[Query Router / Read Replica Pool]
+  
+  Proxy --> PrimaryDB[(MySQL Primary - Writes)]
+  Proxy --> ReadReplica1[(MySQL Replica 1 - Reads)]
+  Proxy --> ReadReplica2[(MySQL Replica 2 - Reads)]
+  
+  PrimaryDB -.->|Binlog Replication| ReadReplica1
+  PrimaryDB -.->|Binlog Replication| ReadReplica2
+
+  style Memcached fill:#ecfdf5,stroke:#059669,stroke-width:2px;
+  style PrimaryDB fill:#eff6ff,stroke:#2563eb,stroke-width:2px;
+    `,
+    mechanism: "Multi-tier caching with Memcached cluster in front of heavily sharded MySQL instances. Used consistent hashing for Memcached keys and automated read-replica load balancing with replica lag monitoring.",
+    costs: [
+      "<strong>Replication Lag Stale Reads:</strong> Users upvoting an answer would sometimes see the old count on immediate page reload.",
+      "<strong>Cache Invalidation Floods:</strong> Updating a viral question required thousands of cache key evictions across memcached shards."
+    ],
+    interviewDefense: "Defend read-your-own-writes by routing requests to the Primary MySQL database for 3-5 seconds immediately following any user write, while serving general read traffic from replicas."
+  },
+  3: {
+    num: "03",
+    company: "Shopify APIs",
+    title: "How Shopify Scaled Their GraphQL APIs & Tech Stack",
+    tag: "API Architecture & GraphQL Federation",
+    color: "emerald",
+    problem: "Managing millions of independent merchant store API requests across web, POS, and third-party apps with low latency and tight rate limiting.",
+    architecture: `
+graph TD
+  Client[App / POS / Storefront] --> Gateway[Shopify Edge API Gateway]
+  
+  subgraph Edge Rate Limiting & Auth
+    Gateway --> TokenBucket[Distributed Token Bucket Redis Cluster]
+  end
+  
+  subgraph Core API Tier
+    Gateway --> GraphQL[GraphQL Engine]
+    GraphQL --> CoreMonolith[Shopify Core - Rails Modular Monolith]
+    GraphQL --> StorefrontService[Storefront Renderer - Go]
+  end
+
+  style Gateway fill:#f0fdf4,stroke:#16a34a,stroke-width:2px;
+  style TokenBucket fill:#fef3c7,stroke:#d97706,stroke-width:1.5px;
+    `,
+    mechanism: "Migrated from REST to GraphQL to eliminate over-fetching. Implemented multi-tenant cost-based rate limiting (calculating query complexity score based on nested fields and connections) rather than raw request counts.",
+    costs: [
+      "<strong>Query Complexity Attacks:</strong> Malicious or poorly written third-party GraphQL queries with 5 levels of nested connections could freeze server workers. Required AST static analysis to reject expensive queries before execution.",
+      "<strong>Caching Difficulties:</strong> GraphQL POST requests cannot be natively cached by standard HTTP edge CDNs like GET requests."
+    ],
+    interviewDefense: "Explain GraphQL query complexity scoring: assign points to every object/connection, calculate total score in the API Gateway AST parser, and reject queries exceeding 1,000 cost points with HTTP 400 before DB execution."
+  },
+  4: {
+    num: "04",
+    company: "Shopify Checkout",
+    title: "The Shopify Checkout: Wasm Sandboxing & Pod Isolation",
+    tag: "Security Sandboxing & High-Concurrency Isolation",
+    color: "emerald",
+    problem: "During Black Friday flash sales, merchants run custom Ruby/JS discount scripts. A buggy merchant script with an infinite loop or memory leak could crash shared checkout pods.",
+    architecture: `
+graph TD
+  Buyer[Flash Sale Buyer] --> Pod[Isolated Merchant Pod]
+  
+  subgraph Pod Execution Sandbox
+    Pod --> WasmRunner[WebAssembly (Wasm) Micro-Runtime]
+    WasmRunner -->|Strict Limits: 5ms CPU, 10MB RAM| Script[Merchant Custom Discount Logic]
+    Pod --> EphemeralCart[(In-Memory Redis Cart & Reservation)]
+  end
+  
+  Pod --> PaymentWorker[Payment Gateway Orchestrator]
+
+  style WasmRunner fill:#ecfdf5,stroke:#059669,stroke-width:2px;
+  style Pod fill:#eff6ff,stroke:#2563eb,stroke-width:1.5px;
+    `,
+    mechanism: "Compiled custom merchant discount logic into <strong>WebAssembly (Wasm)</strong> bytecode executed inside isolated lightweight runtimes with strict CPU instruction counters (5ms max) and memory bounds (10MB max).",
+    costs: [
+      "<strong>Compilation Overhead:</strong> Merchant scripts must be pre-compiled to Wasm and distributed to edge pods.",
+      "<strong>Restricted APIs:</strong> Wasm sandboxes cannot make arbitrary network calls or file system operations."
+    ],
+    interviewDefense: "Highlight tenant isolation: combine physical Cell/Pod architecture with in-process Wasm sandboxing to guarantee that a 100x traffic spike on Kylie Cosmetics never impacts Allbirds checkout availability."
+  },
+  5: {
+    num: "05",
+    company: "System Design Pitfalls",
+    title: "The Mistakes That Sink System Design Interviews",
+    tag: "Interview Strategy & Evaluation Rubrics",
+    color: "rose",
+    problem: "Senior and Staff candidates frequently fail design interviews not from lack of knowledge, but from poor pacing, silent drawing, buzzword bingo, and ignoring failure modes.",
+    architecture: `
+graph LR
+  Step1[Step 1: Clarify Scope 5m] --> Step2[Step 2: High Level API & Schema 10m]
+  Step2 --> Step3[Step 3: Deep Dive & Bottlenecks 20m]
+  Step3 --> Step4[Step 4: Failure Modes & Wrap Up 10m]
+  
+  style Step1 fill:#eff6ff,stroke:#2563eb,stroke-width:2px;
+  style Step3 fill:#fff7ed,stroke:#ea580c,stroke-width:2px;
+  style Step4 fill:#fef2f2,stroke:#dc2626,stroke-width:2px;
+    `,
+    mechanism: "Strict 4-step interview timeline execution. Continuous vocalization of architectural trade-offs rather than silent diagramming.",
+    costs: [
+      "<strong>The 7 Traps:</strong> 1) Jumping to solutions without scale math. 2) Over-engineering Raft consensus for simple CRUD. 3) Ignoring dual-write divergence. 4) Buzzword dropping. 5) Silent whiteboard drawing. 6) Hand-waving auth. 7) Inability to calculate cache RAM.",
+    ],
+    interviewDefense: "Always defend why you did NOT choose a complex technology (e.g., <em>'We don't need Kafka here because our ingestion throughput is 50 QPS and standard PostgreSQL ACID transactions suffice with less operational overhead.'</em>)"
+  },
+  6: {
+    num: "06",
+    company: "YouTube",
+    title: "How YouTube Serves Video at High Quality & Low Latency",
+    tag: "Media Ingestion & Edge CDN Streaming",
+    color: "red",
+    problem: "Ingesting 500+ hours of video uploaded every minute and streaming seamlessly to billions of devices across variable network bandwidths.",
+    architecture: `
+graph TD
+  Upload[User Video Upload] --> Ingest[Direct S3 / GCS Chunked Ingestion]
+  Ingest --> Transcoder[DAG Transcoding Pipeline]
+  
+  subgraph Bitrate Ladders
+    Transcoder --> HLS1080[1080p HLS Chunks .ts]
+    Transcoder --> HLS720[720p HLS Chunks .ts]
+    Transcoder --> HLS480[480p HLS Chunks .ts]
+  end
+  
+  HLS1080 --> Origin[Origin Shield Cache]
+  Origin --> CDN[Global Edge CDN Tier]
+  CDN --> Player[Adaptive Bitrate Video Player]
+
+  style Transcoder fill:#fef2f2,stroke:#dc2626,stroke-width:2px;
+  style CDN fill:#eff6ff,stroke:#2563eb,stroke-width:2px;
+    `,
+    mechanism: "Video chunking into 2-6 second segments encoded across multiple resolutions (Bitrate Ladder via HLS/MPEG-DASH). Clients dynamically adapt stream resolution based on real-time bandwidth telemetry.",
+    costs: [
+      "<strong>Massive Transcoding Compute:</strong> Encoding 8 different resolutions for long videos requires heavy GPU/CPU clusters.",
+      "<strong>CDN Cache Invalidation:</strong> Deleting an uploaded video requires immediate edge CDN purges."
+    ],
+    interviewDefense: "Origin Shield Caching + Request Coalescing: When a viral video drops, prevent 100k edge CDN nodes from simultaneously hitting the origin video storage by placing an intermediate Origin Shield layer."
+  },
+  7: {
+    num: "07",
+    company: "Google",
+    title: "The Google File System (GFS): Designing for Cheap Hardware Failure",
+    tag: "Distributed Storage & Master-Chunkserver Decoupling",
+    color: "red",
+    problem: "Building a multi-petabyte distributed file system across thousands of cheap commodity hard drives that fail continuously on a daily basis.",
+    architecture: `
+graph TD
+  Client[GFS Client] -->|1. Ask chunk location| Master[GFS Master - Metadata in RAM]
+  Master -->|2. Return Chunk Handle & Replicas| Client
+  
+  Client -->|3. Push Data Directly| PrimaryChunk[Primary Chunkserver (64MB Chunk)]
+  PrimaryChunk -->|4. Forward Data Pipeline| Secondary1[Secondary Chunkserver 1]
+  Secondary1 -->|4. Forward Data Pipeline| Secondary2[Secondary Chunkserver 2]
+  
+  Master -.->|Periodic Heartbeats| PrimaryChunk
+  Master -.->|Periodic Heartbeats| Secondary1
+
+  style Master fill:#fef2f2,stroke:#dc2626,stroke-width:2px;
+  style PrimaryChunk fill:#eff6ff,stroke:#2563eb,stroke-width:1.5px;
+    `,
+    mechanism: "Single Master stores all metadata in RAM for speed ($O(1)$ lookups). Data plane is decoupled: clients read and write 64MB chunks directly to Chunkservers in a pipelined chain without passing data through the Master.",
+    costs: [
+      "<strong>Small File Inefficiency:</strong> Storing thousands of 1KB files wastes 64MB chunk pre-allocations and bloats Master RAM.",
+      "<strong>Single Master Bottleneck:</strong> While data bypasses Master, massive file creation surges can saturate Master metadata writes."
+    ],
+    interviewDefense: "Explain why 64MB chunk size was chosen: it drastically reduces the number of chunk handles the Master must hold in RAM, allowing billions of bytes of disk storage to be indexed in a few gigabytes of Master memory."
+  },
+  8: {
+    num: "08",
+    company: "Scale Math",
+    title: "Back of the Envelope Math: Sizing Systems Before Designing",
+    tag: "Capacity Planning & Latency Numbers",
+    color: "indigo",
+    problem: "Committing to an architecture before verifying whether data fits in RAM or exceeds network NIC card bandwidth limits.",
+    architecture: `
+graph LR
+  Math[Input Scale: DAU + Payloads] --> QPS[Peak QPS = DAU * R / 86400 * 3]
+  QPS --> Bandwidth[Bandwidth = Peak QPS * Avg Payload Size]
+  QPS --> Storage[Storage = Daily Ingest * 365 * 5 Years]
+  QPS --> RAM[Cache RAM = Daily Volume * 0.20 80/20 Rule]
+  
+  style Math fill:#eff6ff,stroke:#2563eb,stroke-width:2px;
+  style RAM fill:#fef3c7,stroke:#d97706,stroke-width:2px;
+    `,
+    mechanism: "Memorize the core latency constants: L1 Cache (0.5ns), RAM (100ns), NVMe Read (10µs), HDD Seek (10ms), Cross-DC Roundtrip (100ms).",
+    costs: [
+      "<strong>Over-provisioning hardware:</strong> Buying expensive distributed NoSQL clusters when total 5-year dataset fits in 500GB of PostgreSQL RAM."
+    ],
+    interviewDefense: "Use the 80/20 Pareto rule for Cache Sizing: 20% of the daily read volume generates 80% of total read traffic. Size your Redis cluster RAM to fit this 20% daily working set."
+  },
+  9: {
+    num: "09",
+    company: "Slack",
+    title: "Slack: Delivering Millions of Messages in Real Time",
+    tag: "Edge WebSockets & Flannel Channel Caching",
+    color: "purple",
+    problem: "Delivering instant messages, typing indicators, and presence status across 10M+ concurrent users in millions of corporate channels.",
+    architecture: `
+graph TD
+  Client[Slack Client] --> EdgeGateway[Edge WebSocket Termination Ring]
+  
+  subgraph Edge Caching
+    EdgeGateway --> Flannel[Flannel In-Memory Channel Cache Proxy]
+  end
+  
+  subgraph Core Sharded DB Tier
+    Flannel --> Vitess[Vitess MySQL Cluster]
+    Flannel --> RedisPubSub[Redis Pub/Sub Message Bus]
+  end
+
+  style EdgeGateway fill:#faf5ff,stroke:#a855f7,stroke-width:2px;
+  style Flannel fill:#ecfdf5,stroke:#059669,stroke-width:2px;
+    `,
+    mechanism: "Created <strong>Flannel</strong>, an edge caching proxy that loads active channel membership and message pointers into memory. Terminated WebSockets at edge gateway rings to isolate backend databases.",
+    costs: [
+      "<strong>Reconnect Thundering Herd:</strong> Large office disconnects trigger massive parallel sync queries.",
+      "<strong>Large Channel Fan-out:</strong> Posting to an announcement channel with 50,000 users requires careful rate-limited message dispatching."
+    ],
+    interviewDefense: "Explain Delta Sync Tokens: when a client reconnects, it sends its `last_read_message_id`. Flannel returns only the delta messages from RAM instead of querying the MySQL database for full channel history."
+  },
+  10: {
+    num: "10",
+    company: "URL Shortener",
+    title: "Designing a URL Shortener at Billion Scale",
+    tag: "Distributed Sequencers & Base62 Encoding",
+    color: "purple",
+    problem: "Generating unique 7-character short keys for billions of URLs with sub-10ms redirect latency and 100:1 read-to-write ratio.",
+    architecture: `
+graph LR
+  WriteReq[Write: Long URL] --> Sequencer[Twitter Snowflake / Range Sequencer ID]
+  Sequencer --> Base62[Base62 Encoder 62^7 = 3.5 Trillion]
+  Base62 --> DB[(PostgreSQL / DynamoDB Key-Value)]
+  
+  ReadReq[Read: short_id] --> CDN[Edge CDN / Redis Cache]
+  CDN -->|Miss| DB
+  CDN -->|Hit| Redirect[HTTP 301 / 302 Redirect]
+
+  style Sequencer fill:#faf5ff,stroke:#a855f7,stroke-width:2px;
+  style CDN fill:#ecfdf5,stroke:#059669,stroke-width:2px;
+    `,
+    mechanism: "Generate unique 64-bit integers using distributed sequencers (or pre-allocated range ticket servers) and convert the integer to Base62 ($[0-9a-zA-Z]$). 7 characters provides $62^7 \approx 3.52\text{ trillion}$ unique keys.",
+    costs: [
+      "<strong>MD5 Hash Collision Trap:</strong> Hashing long URLs and taking first 7 chars causes collisions requiring recursive salt-and-rehash loops.",
+      "<strong>301 vs 302 Redirect Trade-off:</strong> 301 Permanent Redirect is cached by browser (bypasses shortener, no click analytics); 302 Temporary Redirect hits shortener on every click (enables analytics at higher server load)."
+    ],
+    interviewDefense: "Reject MD5 hash truncation during interviews. Champion auto-incrementing distributed 64-bit integer generation with Base62 encoding to eliminate hash collisions completely with $O(1)$ encoding complexity."
+  }
+};
+
+// RENDER ACTIVE SYSTEM DETAILS
+function selectSystem(id) {
+  document.querySelectorAll('.sys-btn').forEach(b => {
+    b.className = 'sys-btn p-3 rounded-xl border border-gray-200 bg-white hover:border-gray-300 text-left transition-all';
+  });
+  const activeBtn = document.getElementById('btn-sys-' + id);
+  if (activeBtn) {
+    activeBtn.className = 'sys-btn active p-3 rounded-xl border border-indigo-600 bg-indigo-50/80 text-left transition-all';
+  }
+
+  const sys = PRODUCTION_SYSTEMS[id];
+  const container = document.getElementById('active-system-detail');
+
+  container.innerHTML = `
+    <div class="space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-gray-200">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">Case Study ${sys.num}</span>
+            <span class="text-xs font-bold text-gray-500 uppercase">${sys.company}</span>
+          </div>
+          <h3 class="text-2xl font-black text-gray-900 mt-1">${sys.title}</h3>
+        </div>
+        <span class="self-start sm:self-auto text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">${sys.tag}</span>
+      </div>
+
+      <!-- Problem & Context -->
+      <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
+        <h4 class="text-xs font-bold text-gray-900 uppercase tracking-wider mb-1">Production Challenge</h4>
+        <p class="text-xs sm:text-sm text-gray-700 leading-relaxed">${sys.problem}</p>
+      </div>
+
+      <!-- Mermaid Diagram -->
+      <div class="bg-white border border-gray-200 rounded-xl p-5">
+        <h4 class="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Architectural Data Flow</h4>
+        <div class="mermaid flex justify-center py-2">
+          ${sys.architecture}
+        </div>
+      </div>
+
+      <!-- Core Mechanism -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-indigo-50/60 border border-indigo-200 rounded-xl p-4">
+          <h4 class="text-xs font-bold text-indigo-900 uppercase tracking-wider mb-1.5">Core Technical Mechanism</h4>
+          <p class="text-xs sm:text-sm text-indigo-950 leading-relaxed">${sys.mechanism}</p>
+        </div>
+
+        <div class="bg-rose-50/60 border border-rose-200 rounded-xl p-4">
+          <h4 class="text-xs font-bold text-rose-900 uppercase tracking-wider mb-1.5">What It Cost Them (The Trade-offs)</h4>
+          <ul class="text-xs text-rose-950 space-y-1.5 list-disc pl-4 leading-relaxed">
+            ${sys.costs.map(c => `<li>${c}</li>`).join('')}
+          </ul>
+        </div>
+      </div>
+
+      <!-- Staff Interview Defense -->
+      <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4.5">
+        <h4 class="text-xs font-bold text-emerald-900 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+          How to Weaponize This in Senior/Staff Interviews
+        </h4>
+        <p class="text-xs sm:text-sm text-emerald-950 leading-relaxed">${sys.interviewDefense}</p>
+      </div>
+    </div>
+  `;
+
+  // Re-run mermaid parser on dynamic injection
+  mermaid.run();
+}
+
+// LAB SWITCHER
+function switchLab(labId) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.lab-content').forEach(c => c.classList.add('hidden'));
+  document.getElementById('tab-' + labId).classList.add('active');
+  document.getElementById('lab-' + labId).classList.remove('hidden');
+}
+
+// SIMULATOR 1: NOTION SHARD ROUTER
+function initNotionShards() {
+  const grid = document.getElementById('notion-shards-grid');
+  grid.innerHTML = '';
+  for (let i = 0; i < 32; i++) {
+    const div = document.createElement('div');
+    div.id = 'notion-shard-' + i;
+    div.className = 'p-1.5 rounded bg-gray-800 border border-gray-700 text-center text-[9px] font-mono text-gray-400';
+    div.innerText = 'S' + i;
+    grid.appendChild(div);
+  }
+}
+
+function simulateNotionRoute() {
+  const ws = document.getElementById('notion-ws-input').value || 'default';
+  let hash = 0;
+  for (let i = 0; i < ws.length; i++) {
+    hash = ((hash << 5) - hash) + ws.charCodeAt(i);
+    hash |= 0;
+  }
+  const shardId = Math.abs(hash) % 32;
+
+  document.querySelectorAll('[id^="notion-shard-"]').forEach(s => {
+    s.className = 'p-1.5 rounded bg-gray-800 border border-gray-700 text-center text-[9px] font-mono text-gray-400';
+  });
+
+  const targetShard = document.getElementById('notion-shard-' + shardId);
+  if (targetShard) {
+    targetShard.className = 'p-1.5 rounded bg-orange-600 border border-orange-400 text-center text-[9px] font-mono font-bold text-white shadow-md animate-pulse';
+  }
+
+  document.getElementById('notion-shard-target').innerText = `Shard #${shardId} (RDS Node)`;
+  document.getElementById('notion-log').innerHTML = `
+    <p class="text-orange-400">&gt; hash("${ws}") &rarr; ${Math.abs(hash)}</p>
+    <p class="text-emerald-400">&gt; Route mapped to Physical RDS Postgres Shard #${shardId}. All workspace pages, blocks, and collections co-located.</p>
+  `;
+}
+
+// SIMULATOR 2: SLACK RECONNECT
+function runSlackReconnect() {
+  const mode = document.querySelector('input[name="slack_mode"]:checked').value;
+  const dbLoad = document.getElementById('slack-db-load');
+  const lat = document.getElementById('slack-reconnect-lat');
+  const log = document.getElementById('slack-log');
+
+  log.innerHTML = `<p class="text-purple-400">&gt; 10,000 corporate clients disconnected and reconnecting simultaneously...</p>`;
+
+  setTimeout(() => {
+    if (mode === 'naive') {
+      dbLoad.innerText = "9,850 QPS (CRITICAL)";
+      dbLoad.className = "text-2xl font-bold text-rose-500";
+      lat.innerText = "3,400ms (P99)";
+      lat.className = "text-2xl font-bold text-rose-500";
+      log.innerHTML += `<p class="text-rose-500 font-bold">&gt; [THUNDERING HERD] 10,000 clients queried full workspace message histories! MySQL replica CPU at 100%, pool exhausted.</p>`;
+    } else {
+      dbLoad.innerText = "12 QPS (Safe)";
+      dbLoad.className = "text-2xl font-bold text-emerald-400";
+      lat.innerText = "18ms (P99)";
+      lat.className = "text-2xl font-bold text-emerald-400";
+      log.innerHTML += `<p class="text-emerald-400 font-bold">&gt; [FLANNEL SUCCESS] Reconnect Jitter spread requests over 3s. Flannel returned delta messages directly from RAM cache via last_read_message_id token.</p>`;
+    }
+  }, 800);
+}
+
+// SIMULATOR 3: WASM RUNTIME
+function runWasmTest() {
+  const env = document.querySelector('input[name="wasm_env"]:checked').value;
+  const status = document.getElementById('wasm-pod-status');
+  const execTime = document.getElementById('wasm-exec-time');
+  const log = document.getElementById('wasm-log');
+
+  log.innerHTML = `<p class="text-emerald-400">&gt; Executing merchant script with while(true) infinite loop...</p>`;
+
+  setTimeout(() => {
+    if (env === 'unsandboxed') {
+      status.innerText = "POD CRASHED (OOM)";
+      status.className = "text-xl font-bold text-rose-500";
+      execTime.innerText = "10,000ms+ (Timeout)";
+      execTime.className = "text-xl font-bold text-rose-500";
+      log.innerHTML += `<p class="text-rose-500 font-bold">&gt; [UNSANDBOXED COLLAPSE] Runaway script consumed 100% CPU on checkout pod thread pool. Checkout unavailable for all merchants in this cell!</p>`;
+    } else {
+      status.innerText = "HEALTHY & ISOLATED";
+      status.className = "text-xl font-bold text-emerald-400";
+      execTime.innerText = "5.02ms (Terminated)";
+      execTime.className = "text-xl font-bold text-emerald-400";
+      log.innerHTML += `<p class="text-emerald-400 font-bold">&gt; [WASM SANDBOX DEFENSE] Instruction budget exceeded! Wasm runtime killed merchant script at 5ms CPU limit with Memory=4.2MB. Checkout pod remains 100% healthy.</p>`;
+    }
+  }, 800);
+}
+
+// INITIALIZE
+initNotionShards();
+selectSystem(1);
+</script>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: Web Crawler — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] hero-glow pointer-events-none"></div>
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">SD</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">Web Crawler</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">System Design Workbook</span>
+      </div>
+    </div>
+    <a href="../README.md" class="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">&larr; Back to System Design Hub</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Architectural Study Guide</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">High Scale &bull; Distributed Systems</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+      <span class="gradient-text">Web Crawler</span>
+    </h1>
+    <p class="text-gray-600 text-base max-w-3xl leading-relaxed">
+      Comprehensive architectural deep-dive covering high-level data flow, data models, edge case failure modes, scaling strategies, and interview trade-off defenses.
+    </p>
+  </div>
+</div>
+
+<!-- CONTENT MAIN -->
+<main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+  <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm prose prose-blue max-w-none space-y-6">
+    <h1 class="text-2xl font-black text-gray-900 border-b border-gray-200 pb-3 mb-4 mt-6">Chapter 9: Design a Web Crawler</h1>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Introduction</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A <strong class="text-gray-900 font-bold">web crawler</strong>, also known as a spider or robot, is used to discover and collect web content, such as web pages, images, and videos. This chapter focuses on designing a scalable web crawler for <strong class="text-gray-900 font-bold">search engine indexing</strong>.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Applications of Web Crawlers</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Search Engine Indexing:</strong> Collect web pages to create searchable indexes (e.g., Googlebot).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Web Archiving:</strong> Preserve web data for future use (e.g., US Library of Congress).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Web Mining:</strong> Extract knowledge from web data (e.g., financial analysis of shareholder reports).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Web Monitoring:</strong> Detect copyright or trademark infringements.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Design Challenges</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A good web crawler must address:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Scalability:</strong> Handle billions of pages using parallelization.</li>
+<li><strong class="text-gray-900 font-bold">Robustness:</strong> Manage bad HTML, crashes, and malicious links.</li>
+<li><strong class="text-gray-900 font-bold">Politeness:</strong> Avoid overwhelming servers with too many requests.</li>
+<li><strong class="text-gray-900 font-bold">Extensibility:</strong> Support new content types with minimal changes.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 1: Understanding the Problem</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Requirements</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. Crawl <strong class="text-gray-900 font-bold">1 billion web pages per month</strong> (400 pages/second, peak 800 QPS).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. Collect <strong class="text-gray-900 font-bold">HTML-only content</strong>.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. Track new and updated pages.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. Ignore duplicate content.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">5. Store crawled data for <strong class="text-gray-900 font-bold">5 years</strong>, requiring ~30 PB of storage.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 2: High-Level Design</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Components</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><p align="center"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/web-crawler-architecture.png" alt="Web Crawler Architecture" width="700"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></p></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Seed URLs:</strong> Starting points for the crawler.</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Need to selective as a good starting point that a crawler can utilize to traverse as many links as possible.</li>
+<li>Can be based on locality based on different popular website or based on topics.</li>
+<li>Strategies: Categorize by locality or topic (e.g., sports, healthcare).</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">URL Frontier:</strong> Stores URLs to be downloaded.</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Implemented as a <strong class="text-gray-900 font-bold">FIFO queue</strong>.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">HTML Downloader:</strong> Downloads web pages from URLs provided by the URL Frontier.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">DNS Resolver:</strong> Converts URLs to IP addresses.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">5. <strong class="text-gray-900 font-bold">Content Parser:</strong> Validates and parses web pages.</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Discards malformed pages.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">6. <strong class="text-gray-900 font-bold">Content Seen?:</strong> Checks for duplicate content using hash comparisons (compare the hash values of the two web pages).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">7. <strong class="text-gray-900 font-bold">Content Storage:</strong> Stores HTML pages on disk (popular content in memory to reduce latency).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">8. <strong class="text-gray-900 font-bold">URL Extractor:</strong> Extracts new links from parsed pages.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">9. <strong class="text-gray-900 font-bold">URL Filter:</strong> Excludes blacklisted or erroneous URLs.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">10. <strong class="text-gray-900 font-bold">URL Seen?</strong> Tracks visited URLs to avoid duplication.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">11. <strong class="text-gray-900 font-bold">URL Storage:</strong> Stores already visited URLs.</p>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Workflow</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. Add <strong class="text-gray-900 font-bold">Seed URLs</strong> to the URL Frontier.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">HTML Downloader</strong> fetches URLs and resolves their IPs via the DNS Resolver.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Content Parser</strong> validates and passes content to the "Content Seen?" component.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. If the content is new, extract links via the <strong class="text-gray-900 font-bold">URL Extractor</strong>.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">5. Filter and add unique links to the URL Frontier.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 3: Deep Dive into Key Components</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">DFS/BFS</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li> The web can be though of as a directed graph where web pages are nodes and hyperlinks (URLs) as edges.</li>
+<li> BFS is usually used for graph traversal as the depth can be be very deep thus DFS is not ideal.</li>
+<li> Standard BFS does not take the priority of a URL into consideration, not every page has the same level of quality and importance.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">URL Frontier</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Politeness:</strong></li>
+<li>Ensure only one request per host at a time. Add a dealy b/w two download tasks.</li>
+<li>Use a mapping from hostnames to queues and worker (download) threads.</li>
+<li>Each downloader thread has a separate FIFO queue and only downloads URLs from that queue.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/politeness.png" alt="Politeness" width="500"></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Queue router:</strong> Ensures that each queue (b1, b2, … bn) only contains URLs from the same host.</li>
+<li><strong class="text-gray-900 font-bold">Mapping table:</strong> It maps each host to a queue.</li>
+<li><strong class="text-gray-900 font-bold">Queue selector:</strong> Each worker thread is mapped to a FIFO queue, and it only downloads URLs from that queue. The queue selection logic is done by the Queue selector.</li>
+<li><strong class="text-gray-900 font-bold">Worker thread 1 to N.</strong> A worker thread downloads web pages sequentially from the same host. A delay can be added between two download tasks.</li>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Priority:</strong></li>
+<li>Assign higher priority to important pages (e.g., by PageRank or update frequency).</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/prioritizer.png" alt="Politeness" width="500"></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Prioritizer:</strong> It takes URLs as input and computes the priorities.</li>
+<li><strong class="text-gray-900 font-bold">Queue f1 to fn:</strong> Each queue has an assigned priority. Queues with high priority are selected with higher probability.</li>
+<li><strong class="text-gray-900 font-bold">Queue selector:</strong> Randomly choose a queue with a bias towards queues with higher priority.</li>
+<li><strong class="text-gray-900 font-bold">Front queues:</strong> manage prioritization</li>
+<li><strong class="text-gray-900 font-bold">Back queues:</strong> manage politeness</li>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Freshness:</strong> Recrawl based on update history or importance.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">HTML Downloader</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Robots.txt Compliance:</strong> Respect rules in robots.txt files.</li>
+<li><strong class="text-gray-900 font-bold">Performance Optimizations:</strong></li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. Distributed crawling using multiple servers.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. Use a <strong class="text-gray-900 font-bold">DNS cache</strong> to avoid repeated lookups.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. Geographically distribute crawl servers for faster downloads.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. Use a short timeout to avoid slow or unresponsive servers.</p>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Robustness</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Consistent Hashing:</strong> Distribute load among servers effectively.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Error Handling:</strong> Prevent system crashes from exceptions.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Data Validation:</strong> Ensure content integrity.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Extensibility</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Add modules for new content types (e.g., PNG downloader, web monitor).</li>
+<li>Example: Plug in a module to monitor web content for copyright violations.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/extensibility.png" alt="Politeness" width="600"></p>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Avoiding Problematic Content</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Duplicate Content:</strong> Detect using hash comparisons.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Spider Traps:</strong> Avoid infinite loops with techniques like URL length limits.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Data Noise:</strong> Filter irrelevant content like ads or spam.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 4: Wrap Up</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Key Takeaways</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. Web crawlers must balance scalability, robustness, politeness, and extensibility.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Politeness</strong> prevents overloading servers, while <strong class="text-gray-900 font-bold">priority</strong> ensures important pages are crawled first.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. Efficient storage and error handling are crucial for handling large-scale crawling.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Additional Considerations</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Server-Side Rendering:</strong> Handle dynamic content generated by JavaScript or AJAX.</li>
+<li><strong class="text-gray-900 font-bold">Anti-Spam Measures:</strong> Exclude low-quality or irrelevant pages.</li>
+<li><strong class="text-gray-900 font-bold">Database Sharding:</strong> Scale the data layer using replication and sharding.</li>
+<li><strong class="text-gray-900 font-bold">Horizontal Scaling:</strong> Use stateless servers to scale crawl jobs efficiently.</li>
+<li><strong class="text-gray-900 font-bold">Analytics:</strong> Collect and analyze data for insights.</li>
+</ul>
+  </div>
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>System Design Interactive Study Suite &bull; AntiGravity IDE</p>
+</footer>
+</body>
+</html>

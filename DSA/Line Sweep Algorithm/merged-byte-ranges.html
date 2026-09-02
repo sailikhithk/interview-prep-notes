@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Merged Byte Ranges &mdash; Capital One GPN Interview Guide</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = { theme: { extend: { colors: { 'ed-pink': '#db2777', 'ed-blue': '#2563eb', 'ed-teal': '#0d9488', 'ed-amber': '#d97706', 'ed-sky': '#0284c7', 'ed-purple': '#7c3aed', 'ed-orange': '#ea580c' }, fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } } } };
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .chevron { transition: transform 0.2s; }
+  details[open] .chevron { transform: rotate(90deg); }
+  pre.mono { white-space: pre; }
+  .tok-kw { color: #c084fc; } .tok-ty { color: #fbbf24; } .tok-fn { color: #60a5fa; } .tok-nm { color: #fb923c; } .tok-str { color: #f472b6; } .tok-cm { color: #94a3b8; font-style: italic; }
+  .legend-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+<main class="max-w-5xl mx-auto px-4 py-6 md:py-10 space-y-4">
+
+<header class="bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl p-6 md:p-8 shadow-lg">
+  <div class="flex items-center gap-2 text-sm text-gray-300 mb-2">
+    <span class="bg-amber-500 text-white px-2 py-0.5 rounded-full text-xs font-bold">MEDIUM</span>
+    <span class="text-gray-400">&middot;</span>
+    <span>Capital One GPN &middot; Senior Lead Software Engineer</span>
+  </div>
+  <h1 class="text-3xl md:text-4xl font-extrabold">Merged Byte Ranges (Chunked Upload)</h1>
+  <p class="text-gray-300 mt-2 text-sm md:text-base">Interval merging &middot; Line Sweep &middot; Time O(n&sup2;) optimal / O(n&sup2; log n) brute &middot; Space O(n)</p>
+</header>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <h2 class="text-xl md:text-2xl font-bold text-gray-900 mb-3">1. Problem Statement</h2>
+  <div class="text-gray-700 text-sm md:text-base space-y-3">
+    <p>A user is uploading a big file to your server in chunks. Each chunk is an inclusive byte interval <span class="mono bg-gray-100 px-1 rounded">[l, r]</span> (1-based). After each received chunk, return the current set of <strong>merged consecutive byte ranges</strong> received so far. Chunks may overlap or fully duplicate previous chunks.</p>
+    <p>Given a list of <span class="mono bg-gray-100 px-1 rounded">chunks</span> where <span class="mono">chunks[i] = [l, r]</span>, return a list where the i-th element is the merged list of consecutive ranges after processing chunks 0 through i.</p>
+    <div class="bg-gray-100 rounded-lg p-3 mt-3">
+      <p class="font-semibold text-gray-800 mb-1">Example:</p>
+      <p class="mono text-sm">chunks = [[1,3], [5,7], [2,5], [8,10]]</p>
+      <p class="text-xs text-gray-600 mt-1">After [1,3]: [[1,3]]. After [5,7]: [[1,3],[5,7]]. After [2,5]: merges [1,3]+[2,5]+[5,7] = [[1,7]]. After [8,10]: [[1,7],[8,10]] (adjacent, merges to [[1,10]]).</p>
+    </div>
+  </div>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details open>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">2. Pattern Recognition</h2><span class="chevron text-ed-pink text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-pink/5 border border-ed-pink/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong class="text-ed-pink">Signal words:</strong> "inclusive interval [l, r]", "merged consecutive byte ranges", "overlap or fully duplicate", "after each received chunk". This is a <strong>streaming interval merge</strong> problem &mdash; you maintain a normalized set of non-overlapping, non-adjacent intervals and update it incrementally.</p>
+    <p><strong class="text-ed-pink">When to reach for this pattern:</strong> Whenever a problem asks you to maintain merged intervals under insertions. The key invariant is: keep the interval list sorted, non-overlapping, and non-adjacent at all times. Each new chunk merges into this list.</p>
+    <p><strong class="text-ed-pink">Key insight:</strong> "Consecutive" means adjacent intervals merge too &mdash; [1,3] and [4,6] merge into [1,6] because they're consecutive (no gap). The merge condition is <span class="mono">start &le; prev_end + 1</span>, not <span class="mono">start &le; prev_end</span>. The +1 is what captures "consecutive".</p>
+    <ul class="space-y-1 ml-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>"Merged consecutive ranges" &rarr; adjacent intervals (gap of 1) merge</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>"After each chunk" &rarr; streaming, output after every insertion</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>Maintain sorted non-overlapping invariant &rarr; incremental merge</span></li>
+    </ul>
+    <p class="pt-2"><strong class="text-ed-pink">Approaches considered before settling on incremental merge:</strong></p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-ed-pink/10 text-ed-pink"><tr>
+          <th class="text-left px-3 py-2 font-semibold">Approach</th>
+          <th class="text-left px-3 py-2 font-semibold">Description</th>
+          <th class="text-left px-3 py-2 font-semibold">Time / Space</th>
+          <th class="text-left px-3 py-2 font-semibold">Notes (flaws or why proceed)</th>
+        </tr></thead>
+        <tbody class="text-gray-700">
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">Re-sort + merge from scratch</td><td class="px-3 py-2">After each chunk, sort all seen intervals and merge. (v0 in Section 10.)</td><td class="px-3 py-2 mono">O(n&sup2; log n) / O(n)</td><td class="px-3 py-2"><span class="text-amber-700">Valid but slow:</span> Re-sorts all previous chunks every time. Works but wastes time re-merging intervals that were already merged.</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">Incremental merge into sorted list</td><td class="px-3 py-2">Keep intervals sorted + non-overlapping. Each new chunk: copy intervals before, merge overlapping/touching, copy after. (v_final in Section 10.)</td><td class="px-3 py-2 mono">O(n&sup2;) / O(n)</td><td class="px-3 py-2"><span class="text-emerald-700 font-semibold">Chosen:</span> Avoids re-sorting. Each insertion scans the merged list once. Meets n &le; 1000 constraint cleanly.</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">Balanced BST (e.g., sortedcontainers)</td><td class="px-3 py-2">Store intervals in a balanced BST keyed by start. Find overlapping intervals in O(log n + k).</td><td class="px-3 py-2 mono">O(n log n) / O(n)</td><td class="px-3 py-2"><span class="text-red-600">Rejected:</span> Over-engineered for n &le; 1000. Python's <span class="mono">sortedcontainers</span> isn't in the standard library. The linear scan in v_final is simpler and fast enough.</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">Interval tree</td><td class="px-3 py-2">Build an interval tree for O(log n) overlap queries.</td><td class="px-3 py-2 mono">O(n log n) / O(n)</td><td class="px-3 py-2"><span class="text-red-600">Rejected:</span> Same over-engineering concern. Interval trees are for when you need to query many overlapping intervals against a static set. Here we merge on every insert.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="text-gray-600 text-xs pt-1">The point of the table is to show you weighed alternatives. In an interview, saying "I considered a balanced BST but n &le; 1000 makes the linear scan simpler and fast enough" proves you understand the <em>why</em>, not just the <em>how</em>.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">3. Pattern Blueprint</h2><span class="chevron text-ed-blue text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-blue-50 border border-blue-200 rounded-xl p-4 md:p-6">
+    <ul class="space-y-2 text-gray-700 text-sm">
+      <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span><span>Maintain <span class="mono">intervals</span> = sorted, non-overlapping, non-adjacent list. Initially empty.</span></li>
+      <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span><span>For each new chunk <span class="mono">[left, right]</span>:</span></li>
+      <li class="flex gap-3 ml-6"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span><span><strong>Copy before:</strong> Append all intervals with <span class="mono">end + 1 &lt; left</span> (strictly before, no touch).</span></li>
+      <li class="flex gap-3 ml-6"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span><span><strong>Merge:</strong> Expand <span class="mono">[merged_left, merged_right]</span> over all intervals with <span class="mono">start &le; merged_right + 1</span> (overlap or touch).</span></li>
+      <li class="flex gap-3 ml-6"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">5</span><span><strong>Copy after:</strong> Append the merged interval, then all remaining intervals.</span></li>
+      <li class="flex gap-3 ml-6"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">6</span><span>Append a <strong>copy</strong> of <span class="mono">intervals</span> to <span class="mono">result</span> (snapshot after this chunk).</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">4. How to Think About It</h2><span class="chevron text-ed-blue text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-blue/5 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p>The key insight is the <strong>invariant</strong>: <span class="mono">intervals</span> is always kept sorted, non-overlapping, and non-adjacent. If you maintain this, each new chunk only affects a contiguous slice of the list &mdash; the intervals that overlap or touch it.</p>
+    <p>The merge condition <span class="mono">start &le; merged_right + 1</span> is what captures "consecutive". If the new chunk ends at 5 and an existing interval starts at 6, they're consecutive (no gap), so they merge into [..., 6]. Without the +1, you'd leave [1,5] and [6,10] separate when they should be [1,10].</p>
+    <p>The three-phase scan (copy before, merge, copy after) is a single pass through the sorted list. You don't re-sort &mdash; the list is already sorted, and the new chunk merges into its correct position.</p>
+    <p>The <strong>snapshot copy</strong> at the end is critical: <span class="mono">result.append([iv[:] for iv in intervals])</span>. If you append <span class="mono">intervals</span> directly, later mutations corrupt earlier snapshots. The <span class="mono">iv[:]</span> copies each interval so future merges don't affect past results.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">5. Real-World Analogy</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong class="text-ed-teal">Booking seats in a theater:</strong> A theater has seats 1 to N. People book ranges of consecutive seats. After each booking, you want to show the current "occupied blocks" &mdash; adjacent bookings merge into one block.</p>
+    <p>If person A books seats 1-3 and person B books seats 4-6, the occupied block is 1-6 (consecutive, no gap). If person C then books seat 8, the blocks are [1-6, 8-8] &mdash; seat 7 is still free, so they don't merge.</p>
+    <p><strong class="text-ed-teal">Mapping:</strong></p>
+    <ul class="space-y-1 ml-4">
+      <li><strong>[l, r]</strong> = a booking of seats l through r</li>
+      <li><strong>merged ranges</strong> = current occupied blocks (adjacent bookings merge)</li>
+      <li><strong>overlap</strong> = two bookings sharing seats</li>
+      <li><strong>consecutive (touch)</strong> = bookings with no gap between them (seat 3 and seat 4)</li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">6. Build Your Intuition</h2><span class="chevron text-ed-amber text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-amber/5 border border-ed-amber/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p>Trace <span class="mono">chunks = [[1,3], [5,7], [2,5], [8,10]]</span> by hand:</p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-amber-100 text-amber-700"><tr>
+          <th class="text-left px-3 py-2">Step</th>
+          <th class="text-left px-3 py-2">New chunk</th>
+          <th class="text-left px-3 py-2">intervals before</th>
+          <th class="text-left px-3 py-2">Action</th>
+          <th class="text-left px-3 py-2">intervals after</th>
+        </tr></thead>
+        <tbody class="text-gray-700 mono">
+          <tr class="border-t"><td class="px-3 py-2">1</td><td class="px-3 py-2">[1,3]</td><td class="px-3 py-2">[]</td><td class="px-3 py-2">Insert [1,3]</td><td class="px-3 py-2">[[1,3]]</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">2</td><td class="px-3 py-2">[5,7]</td><td class="px-3 py-2">[[1,3]]</td><td class="px-3 py-2">5 &gt; 3+1, no merge &rarr; append</td><td class="px-3 py-2">[[1,3],[5,7]]</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">3</td><td class="px-3 py-2">[2,5]</td><td class="px-3 py-2">[[1,3],[5,7]]</td><td class="px-3 py-2">2&le;3+1 merge [1,3]; 5&le;5+1 merge [5,7] &rarr; [1,7]</td><td class="px-3 py-2">[[1,7]]</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">4</td><td class="px-3 py-2">[8,10]</td><td class="px-3 py-2">[[1,7]]</td><td class="px-3 py-2">8&le;7+1 (consecutive!) merge &rarr; [1,10]</td><td class="px-3 py-2">[[1,10]]</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="pt-2 text-emerald-700 font-semibold">Final result: [[[1,3]], [[1,3],[5,7]], [[1,7]], [[1,10]]]</p>
+    <p class="text-xs text-gray-600">Note step 4: [8,10] and [1,7] are <em>consecutive</em> (8 = 7+1), so they merge into [1,10]. Without the +1 in the merge condition, they'd stay separate.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details open>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">7. Interactive Visualization</h2><span class="chevron text-ed-pink text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-pink/5 border border-ed-pink/15 rounded-xl p-4 md:p-6">
+    <div class="flex flex-wrap gap-2 mb-4">
+      <button id="mbr-play" class="bg-ed-pink text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-pink-700" style="min-height:44px">Play</button>
+      <button id="mbr-pause" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-300" style="min-height:44px">Pause</button>
+      <button id="mbr-step" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-300" style="min-height:44px">Step</button>
+      <button id="mbr-reset" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-300" style="min-height:44px">Reset</button>
+    </div>
+    <div class="flex flex-wrap items-center gap-2 mb-4 text-sm">
+      <label class="font-semibold text-gray-700">chunks:</label>
+      <input id="mbr-chunks" type="text" value="1,3;5,7;2,5;8,10" class="w-56 px-2 py-1 border border-gray-300 rounded text-sm mono" style="min-height:44px">
+    </div>
+    <div class="flex items-center gap-4 mb-4 text-sm">
+      <span class="text-gray-600">Step: <span id="mbr-step-num" class="mono font-bold text-gray-900">0</span></span>
+      <span class="text-gray-600">Status: <span id="mbr-status" class="mono font-bold text-ed-pink">ready</span></span>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+      <div class="text-xs text-gray-500 mb-1">Current merged intervals:</div>
+      <div id="mbr-intervals" class="flex flex-wrap gap-2 mb-3"></div>
+      <div class="text-xs text-gray-500 mb-1">Snapshots (result after each chunk):</div>
+      <div id="mbr-snapshots" class="text-xs mono text-gray-600 max-h-32 overflow-y-auto"></div>
+    </div>
+    <div class="bg-gray-900 text-gray-100 rounded-lg p-3 max-h-48 overflow-y-auto mono text-xs">
+      <div id="mbr-log"></div>
+    </div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">8. How It Works (Step by Step)</h2><span class="chevron text-ed-sky text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-sky/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <div class="flex gap-3"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span><span><strong>Initialize</strong> <span class="mono">intervals = []</span> (sorted, non-overlapping, non-adjacent) and <span class="mono">result = []</span>.</span></div>
+    <div class="flex gap-3"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span><span>For each chunk <span class="mono">[left, right]</span>: build <span class="mono">new_intervals</span> by scanning <span class="mono">intervals</span> in three phases.</span></div>
+    <div class="flex gap-3 ml-6"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span><span><strong>Phase 1 (copy before):</strong> While <span class="mono">intervals[i].end + 1 &lt; left</span>, the interval is strictly before the new chunk (no touch). Copy it as-is.</span></div>
+    <div class="flex gap-3 ml-6"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span><span><strong>Phase 2 (merge):</strong> While <span class="mono">intervals[i].start &le; merged_right + 1</span>, the interval overlaps or touches the growing merged range. Expand <span class="mono">merged_left = min(...)</span>, <span class="mono">merged_right = max(...)</span>.</span></div>
+    <div class="flex gap-3 ml-6"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">5</span><span><strong>Phase 3 (copy after):</strong> Append the merged <span class="mono">[merged_left, merged_right]</span>, then copy all remaining intervals.</span></div>
+    <div class="flex gap-3"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">6</span><span><strong>Snapshot:</strong> Append <span class="mono">[iv[:] for iv in intervals]</span> to <span class="mono">result</span> &mdash; a deep copy of the current state.</span></div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">9. Dry Run</h2><span class="chevron text-ed-amber text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-amber-50 border border-amber-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p>Input: <span class="mono">chunks = [[1,3], [5,7], [2,5], [8,10]]</span></p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-amber-100 text-amber-700"><tr>
+          <th class="text-left px-3 py-2">Chunk</th>
+          <th class="text-left px-3 py-2">Phase 1 (copy before)</th>
+          <th class="text-left px-3 py-2">Phase 2 (merge)</th>
+          <th class="text-left px-3 py-2">Phase 3 (copy after)</th>
+          <th class="text-left px-3 py-2">intervals</th>
+        </tr></thead>
+        <tbody class="text-gray-700 mono">
+          <tr class="border-t"><td class="px-3 py-2">[1,3]</td><td class="px-3 py-2">(none)</td><td class="px-3 py-2">merged=[1,3]</td><td class="px-3 py-2">(none)</td><td class="px-3 py-2">[[1,3]]</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">[5,7]</td><td class="px-3 py-2">[1,3] (3+1=4 &lt; 5)</td><td class="px-3 py-2">merged=[5,7]</td><td class="px-3 py-2">(none)</td><td class="px-3 py-2">[[1,3],[5,7]]</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">[2,5]</td><td class="px-3 py-2">(none, 1&le;2+1)</td><td class="px-3 py-2">[1,3] merges (1&le;5+1), [5,7] merges (5&le;4+1? 5&le;5 yes) &rarr; [1,7]</td><td class="px-3 py-2">(none)</td><td class="px-3 py-2">[[1,7]]</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">[8,10]</td><td class="px-3 py-2">(none, 1&le;8+1)</td><td class="px-3 py-2">[1,7] merges (1&le;11, 8&le;7+1=8 yes) &rarr; [1,10]</td><td class="px-3 py-2">(none)</td><td class="px-3 py-2">[[1,10]]</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="pt-2 text-emerald-700 font-semibold">Result: [[[1,3]], [[1,3],[5,7]], [[1,7]], [[1,10]]]</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details open>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">10. From Brute Force to Optimal &mdash; Every Decision &amp; Why</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+  <div class="mt-5 space-y-5">
+    <div class="bg-red-500/5 border border-red-500/15 rounded-xl p-4 md:p-5">
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+        <h3 class="font-bold text-red-500 text-sm md:text-base">v0 &mdash; Brute Force: re-sort + merge from scratch each time</h3>
+        <div class="flex gap-2">
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700 border border-red-200">Time: O(n&sup2; log n)</span>
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">Space: O(n)</span>
+        </div>
+      </div>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def solution_bruteforce(chunks):
+    seen = []
+    answer = []
+    for left, right in chunks:
+        seen.append([left, right])
+        seen.sort()
+        merged = []
+        for cur_left, cur_right in seen:
+            if not merged or cur_left > merged[-1][1] + 1:
+                merged.append([cur_left, cur_right])
+            else:
+                merged[-1][1] = max(merged[-1][1], cur_right)
+        answer.append([iv[:] for iv in merged])
+    return answer</pre>
+      <p class="text-gray-700 text-sm mt-2"><strong class="text-red-500">Flaw:</strong> After each chunk, it re-sorts ALL chunks seen so far and re-merges from scratch. The sort is O(k log k) per chunk, giving O(n&sup2; log n) total. Works correctly but wastes time re-merging intervals that were already merged.</p>
+    </div>
+    <div class="bg-emerald-50 border border-emerald-300 rounded-xl p-4 md:p-5">
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+        <h3 class="font-bold text-emerald-700 text-sm md:text-base">v_final &mdash; Incremental merge into sorted list</h3>
+        <div class="flex gap-2">
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">Time: O(n&sup2;)</span>
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">Space: O(n)</span>
+        </div>
+      </div>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def solution(chunks):
+    intervals = []
+    result = []
+    for left, right in chunks:
+        new_intervals = []
+        i = 0
+        n = len(intervals)
+        while i &lt; n and intervals[i][1] + 1 &lt; left:
+            new_intervals.append(intervals[i])
+            i += 1
+        merged_left, merged_right = left, right
+        while i &lt; n and intervals[i][0] &lt;= merged_right + 1:
+            merged_left = min(merged_left, intervals[i][0])
+            merged_right = max(merged_right, intervals[i][1])
+            i += 1
+        new_intervals.append([merged_left, merged_right])
+        while i &lt; n:
+            new_intervals.append(intervals[i])
+            i += 1
+        intervals = new_intervals
+        result.append([iv[:] for iv in intervals])
+    return result</pre>
+      <p class="text-gray-700 text-sm mt-2"><strong class="text-emerald-700">Why final:</strong> Maintains the sorted non-overlapping invariant. Each insertion scans the merged list once (O(n)), giving O(n&sup2;) total. No re-sorting. This is the version used in Section 20.</p>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-gray-100 text-gray-700"><tr>
+          <th class="text-left px-3 py-2 font-semibold">Version</th>
+          <th class="text-left px-3 py-2 font-semibold">Edge case that forced it</th>
+          <th class="text-left px-3 py-2 font-semibold">Enhancement added</th>
+        </tr></thead>
+        <tbody class="text-gray-700">
+          <tr class="border-t"><td class="px-3 py-2 mono">v0</td><td class="px-3 py-2">None &mdash; most direct (collect, sort, merge)</td><td class="px-3 py-2">Re-sort + full merge each step</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 mono">v_final</td><td class="px-3 py-2">Wasteful re-sorting &mdash; v0 re-sorts already-merged intervals</td><td class="px-3 py-2">Maintain sorted invariant; each new chunk merges into its slice via 3-phase scan</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-indigo-700 text-sm">
+      <strong>Principle:</strong> Every line of complexity was earned by a specific input the previous version failed on. Here, the "failure" was wasteful re-sorting, not a wrong answer. The invariant (sorted, non-overlapping, non-adjacent) eliminates the re-sort because the list is already in merge-ready form.
+    </div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">11. Complexity Deep Dive</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong class="text-ed-teal">Time: O(n&sup2;)</strong> &mdash; For each of n chunks, we scan the current <span class="mono">intervals</span> list once (O(k) where k is the current size). Total: &Sigma;k from 1 to n = O(n&sup2;). No sorting needed because the invariant keeps the list sorted.</p>
+    <p><strong class="text-ed-teal">Space: O(n)</strong> &mdash; The <span class="mono">intervals</span> list holds at most n intervals (if none merge). The <span class="mono">result</span> list holds n snapshots, each O(n), so O(n&sup2;) total for output &mdash; but this is the required output, not auxiliary space. Auxiliary space is O(n).</p>
+    <p><strong class="text-ed-teal">Why not O(n log n)?</strong> A balanced BST (e.g., Python's <span class="mono">sortedcontainers</span>) could give O(n log n) by finding the merge slice in O(log n). But for n &le; 1000, the linear scan is simpler and fast enough. The BST adds complexity (custom key, rebalancing) for no practical benefit at this scale.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">12. Edge Cases &amp; Gotchas</h2><span class="chevron text-ed-orange text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-orange/5 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Adjacent intervals merge (consecutive):</strong> [1,3] and [4,6] merge into [1,6] because 4 = 3+1. Use <span class="mono">start &le; prev_end + 1</span> as the merge condition, NOT <span class="mono">start &le; prev_end</span>.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Duplicate chunks:</strong> If [2,5] arrives again, it's fully inside [1,7] &mdash; the merge phase absorbs it (merged_right stays 7). No change to intervals.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Single-byte chunk:</strong> <span class="mono">[5,5]</span> is valid. It merges with [1,4] (consecutive) or [3,7] (overlap).</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Snapshot copy:</strong> Use <span class="mono">[iv[:] for iv in intervals]</span>, NOT <span class="mono">(iv[:] for iv in intervals)</span> (generator &mdash; not JSON serializable) and NOT <span class="mono">intervals</span> directly (later mutations corrupt earlier snapshots).</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Empty chunks list:</strong> Return <span class="mono">[]</span> &mdash; no chunks, no snapshots.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Chunk fully contains existing:</strong> <span class="mono">[1,10]</span> after <span class="mono">[3,5]</span> &mdash; the merge phase absorbs [3,5] into [1,10].</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">13. Common Mistakes</h2><span class="chevron text-ed-orange text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-orange/5 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Forgetting the +1 (consecutive merge):</strong> Using <span class="mono">start &le; prev_end</span> leaves [1,3] and [4,6] separate. The problem says "consecutive", so use <span class="mono">start &le; prev_end + 1</span>.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Appending a generator:</strong> <span class="mono">result.append(iv[:] for iv in intervals)</span> creates a generator object, not a list. CodeSignal rejects it as "not JSON serializable". Always use list comprehension <span class="mono">[...]</span>.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Not copying snapshots:</strong> <span class="mono">result.append(intervals)</span> appends a reference. Later mutations change all snapshots. Use <span class="mono">[iv[:] for iv in intervals]</span> for a deep copy.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Re-sorting every time (v0 trap):</strong> Works but O(n&sup2; log n). The invariant makes sorting unnecessary &mdash; the list is already sorted.</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">14. Flashcards</h2><span class="chevron text-ed-purple text-xl">&#9654;</span></summary>
+  <div class="mt-5 space-y-3">
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: What is the merge condition for "consecutive" intervals?</summary><p class="mt-2 text-gray-700"><span class="mono">start &le; prev_end + 1</span>. The +1 captures adjacency: [1,3] and [4,6] merge because 4 &le; 3+1. Without the +1, they'd stay separate.</p></details></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: Why append <span class="mono">[iv[:] for iv in intervals]</span> instead of <span class="mono">intervals</span>?</summary><p class="mt-2 text-gray-700">To snapshot the current state. If you append <span class="mono">intervals</span> directly, later mutations (new chunks merging) corrupt all earlier snapshots. <span class="mono">iv[:]</span> copies each interval; the list comprehension creates a new list.</p></details></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: What is the time complexity of the optimal solution?</summary><p class="mt-2 text-gray-700">O(n&sup2;) &mdash; each of n chunks scans the current interval list once (O(k)). Total: &Sigma;k = O(n&sup2;). No sorting because the invariant keeps the list sorted.</p></details></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: What's the invariant maintained by <span class="mono">intervals</span>?</summary><p class="mt-2 text-gray-700">Sorted by start, non-overlapping, non-adjacent. This means each new chunk only affects a contiguous slice &mdash; the intervals that overlap or touch it. No need to re-sort.</p></details></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: What happens with a duplicate chunk?</summary><p class="mt-2 text-gray-700">It's absorbed in the merge phase. <span class="mono">merged_right</span> doesn't grow (the duplicate is inside the existing range), so <span class="mono">intervals</span> stays the same. The snapshot is identical to the previous one.</p></details></div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">15. Where It Is Used (Real World)</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-gray-100 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong>File upload progress tracking:</strong> Exactly the problem statement. A client uploads a large file in chunks (resumable uploads, parallel chunks). The server tracks which byte ranges are received and merges them to show progress and detect completion.</p>
+    <p><strong>Memory allocation tracking:</strong> An OS tracks allocated memory blocks. Allocations and frees create and merge ranges. The free-list is a set of non-overlapping intervals that merge when adjacent blocks are freed.</p>
+    <p><strong>Calendar/booking systems:</strong> Tracking occupied time slots. Adjacent bookings merge into one block. Overlapping bookings (double-booking) are detected by the merge.</p>
+    <p><strong>IP address range management:</strong> CIDR block aggregation. Overlapping or adjacent subnets merge into larger blocks.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">16. Interview Tips</h2><span class="chevron text-ed-purple text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong class="text-ed-purple">Say this first:</strong> "I'll maintain a sorted, non-overlapping, non-adjacent interval list. Each new chunk merges into its slice via a three-phase scan: copy before, merge overlapping/touching, copy after. This gives O(n&sup2;) time, which is optimal for n &le; 1000."</p>
+    <p><strong class="text-ed-purple">Write on the whiteboard first:</strong> The merge condition <span class="mono">start &le; merged_right + 1</span> (the +1 for consecutive) and the snapshot copy <span class="mono">[iv[:] for iv in intervals]</span>. These are the two bugs that cost candidates the round.</p>
+    <p><strong class="text-ed-purple">If asked to optimize:</strong> "A balanced BST (e.g., <span class="mono">sortedcontainers</span>) could find the merge slice in O(log n), giving O(n log n). But for n &le; 1000, the linear scan is simpler and fast enough. I'd only reach for the BST if n were 10&sup5;+."</p>
+    <p><strong class="text-ed-purple">Watch for:</strong> The interviewer testing the +1. They'll give an example with adjacent intervals ([1,3], [4,6]) and expect them to merge. If you use <span class="mono">start &le; prev_end</span>, you fail.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">17. Similar Problems</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-gray-100 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-2">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>LeetCode 56. Merge Intervals</strong> <span class="bg-amber-100 text-amber-700 px-1.5 rounded text-xs">Medium</span> &mdash; one-shot merge of a static interval list (no streaming).</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>LeetCode 57. Insert Interval</strong> <span class="bg-amber-100 text-amber-700 px-1.5 rounded text-xs">Medium</span> &mdash; insert one interval into a sorted non-overlapping list (exactly one step of this problem).</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>LeetCode 352. Data Stream as Disjoint Intervals</strong> <span class="bg-red-100 text-red-700 px-1.5 rounded text-xs">Hard</span> &mdash; streaming version with <span class="mono">addNum</span> and <span class="mono">getIntervals</span>. Closest to this problem.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>LeetCode 1272. Remove Interval</strong> <span class="bg-amber-100 text-amber-700 px-1.5 rounded text-xs">Medium</span> &mdash; the inverse operation (subtract a range from a set of intervals).</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">18. Related Algorithms</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-gray-100 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-2">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>Interval merging:</strong> Combining overlapping or adjacent intervals into a normalized set. Core to scheduling, allocation, and range-tracking problems.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>Line sweep:</strong> A related technique that sorts events (starts and ends) and sweeps left-to-right to compute overlaps, union length, etc. Useful for batch problems; overkill for streaming.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>Incremental data structures:</strong> Maintaining an invariant under insertions (sorted set, heap, balanced BST). The key decision: how much to recompute vs. update incrementally.</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">19. Where This Pattern Meets System Design</h2><span class="chevron text-indigo-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-indigo-50 border border-indigo-200 rounded-xl p-4 md:p-6 text-indigo-700 text-sm space-y-3">
+    <p>In a real file-upload system, this pattern tracks <strong>resumable upload progress</strong>. The client uploads chunks in parallel (possibly out of order, possibly retried). The server merges received ranges to know which bytes are done and which still need to be requested.</p>
+    <p><strong>Scale considerations:</strong></p>
+    <ul class="space-y-1 ml-4">
+      <li>For a 100GB file with 10MB chunks, that's 10,000 chunks &mdash; O(n&sup2;) = 10&sup8; operations, borderline. A BST (O(n log n)) would be safer.</li>
+      <li>Persist the interval list to disk (or a database) so the server can resume after a crash. The snapshot after each chunk is the recovery point.</li>
+      <li>If multiple clients upload the same file (deduplication), merge their interval lists. This is a union operation on two sorted interval lists &mdash; O(n + m).</li>
+      <li>Distributed: shard by byte range. Each shard tracks its own intervals, and a coordinator aggregates progress. The merge is associative, so sharding is clean.</li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">20. Code Solutions</h2><span class="chevron text-ed-sky text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-sky/5 border border-ed-sky/15 rounded-xl p-4 md:p-6">
+    <div class="flex flex-wrap gap-3 mb-4 text-xs">
+      <span class="legend-chip bg-purple-100 text-purple-700"><span class="tok-kw">keyword</span></span>
+      <span class="legend-chip bg-yellow-100 text-yellow-700"><span class="tok-ty">type</span></span>
+      <span class="legend-chip bg-blue-100 text-blue-700"><span class="tok-fn">function</span></span>
+      <span class="legend-chip bg-orange-100 text-orange-700"><span class="tok-nm">number</span></span>
+      <span class="legend-chip bg-pink-100 text-pink-700"><span class="tok-str">string</span></span>
+      <span class="legend-chip bg-gray-200 text-gray-700"><span class="tok-cm">comment</span></span>
+    </div>
+    <h3 class="font-bold text-ed-sky text-sm md:text-base mb-2">Python</h3>
+    <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def solution(chunks):
+    intervals = []
+    result = []
+    for left, right in chunks:
+        new_intervals = []
+        i = 0
+        n = len(intervals)
+        while i &lt; n and intervals[i][1] + 1 &lt; left:
+            new_intervals.append(intervals[i])
+            i += 1
+        merged_left, merged_right = left, right
+        while i &lt; n and intervals[i][0] &lt;= merged_right + 1:
+            merged_left = min(merged_left, intervals[i][0])
+            merged_right = max(merged_right, intervals[i][1])
+            i += 1
+        new_intervals.append([merged_left, merged_right])
+        while i &lt; n:
+            new_intervals.append(intervals[i])
+            i += 1
+        intervals = new_intervals
+        result.append([iv[:] for iv in intervals])
+    return result</pre>
+    <h3 class="font-bold text-ed-sky text-sm md:text-base mb-2 mt-4">Java</h3>
+    <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">import java.util.*;
+
+public class Solution {
+    public List&lt;List&lt;int[]&gt;&gt; solution(int[][] chunks) {
+        List&lt;int[]&gt; intervals = new ArrayList&lt;&gt;();
+        List&lt;List&lt;int[]&gt;&gt; result = new ArrayList&lt;&gt;();
+        for (int[] chunk : chunks) {
+            int left = chunk[0], right = chunk[1];
+            List&lt;int[]&gt; newIntervals = new ArrayList&lt;&gt;();
+            int i = 0, n = intervals.size();
+            while (i &lt; n && intervals.get(i)[1] + 1 &lt; left) {
+                newIntervals.add(intervals.get(i));
+                i++;
+            }
+            int mergedLeft = left, mergedRight = right;
+            while (i &lt; n && intervals.get(i)[0] &lt;= mergedRight + 1) {
+                mergedLeft = Math.min(mergedLeft, intervals.get(i)[0]);
+                mergedRight = Math.max(mergedRight, intervals.get(i)[1]);
+                i++;
+            }
+            newIntervals.add(new int[]{mergedLeft, mergedRight});
+            while (i &lt; n) {
+                newIntervals.add(intervals.get(i));
+                i++;
+            }
+            intervals = newIntervals;
+            List&lt;int[]&gt; snapshot = new ArrayList&lt;&gt;();
+            for (int[] iv : intervals) snapshot.add(iv.clone());
+            result.add(snapshot);
+        }
+        return result;
+    }
+}</pre>
+    <h3 class="font-bold text-ed-sky text-sm md:text-base mb-2 mt-4">C++</h3>
+    <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">#include &lt;vector&gt;
+#include &lt;algorithm&gt;
+
+class Solution {
+public:
+    std::vector&lt;std::vector&lt;std::vector&lt;int&gt;&gt;&gt; solution(std::vector&lt;std::vector&lt;int&gt;&gt;& chunks) {
+        std::vector&lt;std::vector&lt;int&gt;&gt; intervals;
+        std::vector&lt;std::vector&lt;std::vector&lt;int&gt;&gt;&gt; result;
+        for (auto& chunk : chunks) {
+            int left = chunk[0], right = chunk[1];
+            std::vector&lt;std::vector&lt;int&gt;&gt; new_intervals;
+            size_t i = 0, n = intervals.size();
+            while (i &lt; n && intervals[i][1] + 1 &lt; left) {
+                new_intervals.push_back(intervals[i]);
+                i++;
+            }
+            int merged_left = left, merged_right = right;
+            while (i &lt; n && intervals[i][0] &lt;= merged_right + 1) {
+                merged_left = std::min(merged_left, intervals[i][0]);
+                merged_right = std::max(merged_right, intervals[i][1]);
+                i++;
+            }
+            new_intervals.push_back({merged_left, merged_right});
+            while (i &lt; n) {
+                new_intervals.push_back(intervals[i]);
+                i++;
+            }
+            intervals = new_intervals;
+            std::vector&lt;std::vector&lt;int&gt;&gt; snapshot;
+            for (auto& iv : intervals) snapshot.push_back(iv);
+            result.push_back(snapshot);
+        }
+        return result;
+    }
+};</pre>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">21. Follow-Up Questions</h2><span class="chevron text-indigo-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-indigo-50 border border-indigo-200 rounded-xl p-4 md:p-6 text-indigo-700 text-sm space-y-3">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2.5"></span><span><strong>What if n is very large (10&sup6;)?</strong> O(n&sup2;) is too slow. Use a balanced BST (<span class="mono">sortedcontainers</span> in Python, <span class="mono">std::set</span> in C++) to find the merge slice in O(log n), giving O(n log n).</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2.5"></span><span><strong>What if you need to support deletion (chunk removal)?</strong> Harder &mdash; you'd need to split merged intervals. A segment tree or interval tree with lazy propagation would work.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2.5"></span><span><strong>What if chunks arrive out of order?</strong> The solution handles this &mdash; the three-phase scan works regardless of where the new chunk falls in the sorted list.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2.5"></span><span><strong>What if you need to query "is byte X received?"</strong> Binary search the intervals list for the interval containing X. O(log n) per query.</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">22. Quick Reference</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-gray-100 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong>One-line summary:</strong> Maintain sorted non-overlapping non-adjacent intervals. Each new chunk: copy before, merge overlapping/touching (<span class="mono">start &le; merged_right + 1</span>), copy after. Snapshot a deep copy after each chunk. O(n&sup2;) time, O(n) space.</p>
+    <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def solution(chunks):
+    intervals, result = [], []
+    for l, r in chunks:
+        ni, i, n = [], 0, len(intervals)
+        while i &lt; n and intervals[i][1] + 1 &lt; l: ni.append(intervals[i]); i += 1
+        ml, mr = l, r
+        while i &lt; n and intervals[i][0] &lt;= mr + 1:
+            ml, mr = min(ml, intervals[i][0]), max(mr, intervals[i][1]); i += 1
+        ni.append([ml, mr])
+        while i &lt; n: ni.append(intervals[i]); i += 1
+        intervals = ni
+        result.append([iv[:] for iv in intervals])
+    return result</pre>
+  </div>
+</details></section>
+
+</main>
+<footer class="bg-gray-900 text-gray-400 text-center text-xs py-6 mt-8">
+  Generated by dsa-generator skill &middot; Merged Byte Ranges &middot; Capital One GPN Senior Lead Software Engineer
+</footer>
+<script>
+(function(){
+  const chunksInput=document.getElementById('mbr-chunks');
+  const stepEl=document.getElementById('mbr-step-num');
+  const statusEl=document.getElementById('mbr-status');
+  const intervalsEl=document.getElementById('mbr-intervals');
+  const snapshotsEl=document.getElementById('mbr-snapshots');
+  const logEl=document.getElementById('mbr-log');
+  let chunks=[], intervals=[], result=[], stepIdx=0, playing=false, timer=null;
+  function parseChunks(){
+    chunks=chunksInput.value.split(';').map(pair=>{
+      const [l,r]=pair.split(',').map(s=>parseInt(s.trim()));
+      return [l||0, r||0];
+    }).filter(p=>!isNaN(p[0])&&!isNaN(p[1]));
+  }
+  function renderIntervals(ivs, el){
+    el.innerHTML=ivs.length===0?'<span class="text-gray-400 text-xs">(empty)</span>':ivs.map(iv=>`<span class="mono px-2 py-1 rounded bg-ed-teal/20 text-ed-teal text-sm border border-ed-teal/30">[${iv[0]}, ${iv[1]}]</span>`).join('');
+  }
+  function render(){
+    stepEl.textContent=stepIdx;
+    renderIntervals(intervals, intervalsEl);
+    snapshotsEl.innerHTML=result.map((snap,i)=>`<div>After chunk ${i+1} [${chunks[i][0]},${chunks[i][1]}]: [${snap.map(iv=>`[${iv[0]},${iv[1]}]`).join(', ')}]</div>`).join('');
+  }
+  function log(msg){
+    logEl.innerHTML+=`<div>${msg}</div>`;
+    logEl.parentElement.scrollTop=logEl.parentElement.scrollHeight;
+  }
+  function reset(){
+    if(timer){clearInterval(timer);timer=null;}
+    playing=false;statusEl.textContent='ready';statusEl.className='mono font-bold text-ed-pink';
+    parseChunks();intervals=[];result=[];stepIdx=0;logEl.innerHTML='';render();
+  }
+  function mergeStep(left, right){
+    let new_intervals=[];
+    let i=0; const n=intervals.length;
+    while(i<n && intervals[i][1]+1<left){ new_intervals.push(intervals[i]); i++; }
+    let ml=left, mr=right;
+    while(i<n && intervals[i][0]<=mr+1){
+      ml=Math.min(ml, intervals[i][0]);
+      mr=Math.max(mr, intervals[i][1]);
+      i++;
+    }
+    new_intervals.push([ml, mr]);
+    while(i<n){ new_intervals.push(intervals[i]); i++; }
+    intervals=new_intervals;
+    result.push(intervals.map(iv=>iv.slice()));
+    log(`Chunk [${left},${right}] → merged to [${ml},${mr}], intervals: [${intervals.map(iv=>`[${iv[0]},${iv[1]}]`).join(', ')}]`);
+  }
+  function step(){
+    if(stepIdx>=chunks.length){
+      if(timer){clearInterval(timer);timer=null;}
+      playing=false;statusEl.textContent='done';statusEl.className='mono font-bold text-emerald-600';
+      return;
+    }
+    const [l,r]=chunks[stepIdx];
+    stepIdx++;
+    mergeStep(l,r);
+    render();
+  }
+  document.getElementById('mbr-play').onclick=()=>{
+    if(playing)return;
+    if(stepIdx>=chunks.length)reset();
+    playing=true;statusEl.textContent='running';statusEl.className='mono font-bold text-ed-pink';
+    timer=setInterval(()=>{step();if(!playing){clearInterval(timer);timer=null;}},800);
+  };
+  document.getElementById('mbr-pause').onclick=()=>{
+    if(timer){clearInterval(timer);timer=null;}
+    playing=false;statusEl.textContent='paused';statusEl.className='mono font-bold text-amber-600';
+  };
+  document.getElementById('mbr-step').onclick=()=>{
+    if(timer){clearInterval(timer);timer=null;}
+    playing=false;statusEl.textContent='paused';statusEl.className='mono font-bold text-amber-600';
+    step();
+  };
+  document.getElementById('mbr-reset').onclick=reset;
+  chunksInput.onchange=reset;
+  reset();
+})();
+</script>
+<script>
+(function(){
+  const master=/(#[^\n]*|\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b\d+\b)|([A-Za-z_][A-Za-z_0-9]*)/g;
+  const kw=new Set(['def','class','while','if','else','elif','for','return','continue','break','pass','import','from','in','not','and','or','is','None','True','False','lambda','try','except','finally','with','as','yield','global','nonlocal','assert','del','raise','public','private','static','void','int','new','this','const','let','var','function','typeof','instanceof','extends','implements','package','class','interface','enum','struct','vector','std','cout','cin','endl','using','namespace','char','bool','long','double','float','short','unsigned','signed','size_t','include']);
+  const ty=new Set(['str','int','bool','List','Solution','list','dict','set','tuple','float','double','char','long','short','void','auto','string','vector','map','unordered_map','set','unordered_set','pair','Integer','Math','Collections','ArrayList']);
+  function highlight(pre){
+    if(pre.dataset.highlighted)return;
+    const html=pre.innerHTML;
+    let result='';let last=0;let m;
+    master.lastIndex=0;
+    while((m=master.exec(html))!==null){
+      result+=html.slice(last,m.index);
+      if(m[1]){result+=`<span class="tok-cm">${m[1]}</span>`;}
+      else if(m[2]){result+=`<span class="tok-str">${m[2]}</span>`;}
+      else if(m[3]){result+=`<span class="tok-nm">${m[3]}</span>`;}
+      else if(m[4]){
+        const next=html[master.index]||'';
+        if(kw.has(m[4])){result+=`<span class="tok-kw">${m[4]}</span>`;}
+        else if(ty.has(m[4])){result+=`<span class="tok-ty">${m[4]}</span>`;}
+        else if(next==='('){result+=`<span class="tok-fn">${m[4]}</span>`;}
+        else{result+=m[4];}
+      }
+      last=master.lastIndex;
+    }
+    result+=html.slice(last);
+    pre.innerHTML=result;pre.dataset.highlighted='true';
+  }
+  document.querySelectorAll('pre.mono').forEach(highlight);
+})();
+</script>
+</body>
+</html>

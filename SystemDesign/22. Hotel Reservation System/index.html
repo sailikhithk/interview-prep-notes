@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: Hotel Reservation System — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] hero-glow pointer-events-none"></div>
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">SD</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">Hotel Reservation System</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">System Design Workbook</span>
+      </div>
+    </div>
+    <a href="../README.md" class="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">&larr; Back to System Design Hub</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Architectural Study Guide</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">High Scale &bull; Distributed Systems</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+      <span class="gradient-text">Hotel Reservation System</span>
+    </h1>
+    <p class="text-gray-600 text-base max-w-3xl leading-relaxed">
+      Comprehensive architectural deep-dive covering high-level data flow, data models, edge case failure modes, scaling strategies, and interview trade-off defenses.
+    </p>
+  </div>
+</div>
+
+<!-- CONTENT MAIN -->
+<main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+  <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm prose prose-blue max-w-none space-y-6">
+    <h1 class="text-2xl font-black text-gray-900 border-b border-gray-200 pb-3 mb-4 mt-6">Chapter 22: Hotel Reservation System</h1>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Introduction</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In this chapter, we're designing a <strong class="text-gray-900 font-bold">hotel reservation system</strong>, similar to Marriott International.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Applicable to other types of systems as well - Airbnb, flight reservation, movie ticket booking.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 1: Understand the Problem and Establish Design Scope</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Before diving into designing the system, we should ask the interviewer questions to clarify the scope:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>C: What is the scale of the system?</li>
+<li>I: We're building a website for a hotel chain \w 5000 hotels and 1mil rooms</li>
+<li>C: Do customers pay when they make a reservation or when they arrive at the hotel?</li>
+<li>I: They pay in full when making reservations.</li>
+<li>C: Do customers book hotel rooms through the website only? Do we have to support other reservation options such as phone calls?</li>
+<li>I: They make bookings through the website or app only.</li>
+<li>C: Can customers cancel reservations?</li>
+<li>I: Yes</li>
+<li>C: Other things to consider?</li>
+<li>I: Yes, we allow overbooking by 10%. Hotel will sell more rooms than there actually are. Hotels do this in anticipation that clients will cancel bookings.</li>
+<li>C: Since not much time, we'll focus on - show hotel-related page, hotel-room details page, reserve a room, admin panel, support overbooking.</li>
+<li>I: Sounds good.</li>
+<li>I: One more thing - hotel prices change all the time. Assume a hotel room's price changes every day.</li>
+<li>C: OK.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Non-functional requirements**</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Support high concurrency - there might be a lot of customers trying to book the same hotel during peak season.</li>
+<li>Moderate latency - it's ideal to have low latency when a user makes a reservation, but it's acceptable if the system takes a few seconds to process it.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Back-of-the-envelope estimation**</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>5000 hotels and 1mil rooms in total</li>
+<li>Assume 70% of rooms are occupied and average stay duration is 3 days</li>
+<li>Estimated daily reservations - 1mil * 0.7 / 3 = ~240k reservations per day</li>
+<li>Reservations per second - 240k / 10^5 seconds in a day = ~3. Average reservation TPS is low.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Let's estimate the QPS. If we assume that there are three steps to reach the reservation page and there is a 10% conversion rate per page,</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">we can estimate that if there are 3 reservations, then there must be 30 views of reservation page and 300 views of hotel room detail page.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/qps-estimation.png" alt="qps-estimation" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 2: Propose High-Level Design and Get Buy-In</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We'll explore - API Design, Data model, high-level design.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**API Design**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This API Design focuses on the core endpoints (using RESTful practices), we'll need in order to support a hotel reservation system.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A fully-fledged system would require a more extensive API with support for searching for rooms based on lots of criteria, but we won't be focusing on that in this section.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Reason is that they aren't technically challenging, so they're out of scope.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><strong class="text-gray-900 font-bold">Hotel-related API</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">GET /v1/hotels/{id}</code> - get detailed info about a hotel</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">POST /v1/hotels</code> - add a new hotel. Only available to ops</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">PUT /v1/hotels/{id}</code> - update hotel info. Only available to ops</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">DELETE /v1/hotels/{id}</code> - delete a hotel. API is only available to ops</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><strong class="text-gray-900 font-bold">Room-related API</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">GET /v1/hotels/{id}/rooms/{id}</code> - get detailed information about a room</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">POST /v1/hotels/{id}/rooms</code> - Add a room. Only available to ops</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">PUT /v1/hotels/{id}/rooms/{id}</code> - Update room info. Only available to ops</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">DELETE /v1/hotels/{id}/rooms/{id}</code> - Delete a room. Only available to ops</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><strong class="text-gray-900 font-bold">Reservation-related API</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">GET /v1/reservations</code> - get reservation history of current user</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">GET /v1/reservations/{id}</code> - get detailed info about a reservation</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">POST /v1/reservations</code> - make a new reservation</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">DELETE /v1/reservations/{id}</code> - cancel a reservation</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Here's an example request to make a reservation:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>{
+  "startDate":"2021-04-28",
+  "endDate":"2021-04-30",
+  "hotelID":"245",
+  "roomID":"U12354673389",
+  "reservationID":"13422445"
+}</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Note that the <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">reservationID</code> is an idempotency key to avoid double booking. Details explained in [concurrency section](#concurrency-issues)</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Data model**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Before we choose what database to use, let's consider our access patterns.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We need to support the following queries:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>View detailed info about a hotel</li>
+<li>Find available types of rooms given a date range</li>
+<li>Record a reservation</li>
+<li>Look up a reservation or past history of reservations</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">From our estimations, we know the scale of the system is not large, but we need to prepare for traffic surges.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Given this knowledge, we'll choose a relational database because:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Relational DBs work well with read-heavy and less write-heavy systems.</li>
+<li>NoSQL databases are normally optimized for writes, but we know we won't have many as only a fraction of users who visit the site make a reservation.</li>
+<li>Relational DBs provide ACID guarantees. These are important for such a system as without them, we won't be able to prevent problems such as negative balance, double charge, etc.</li>
+<li>Relational DBs can easily model the data as the structure is very clear.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Here is our schema design:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/schema-design.png" alt="schema-design" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Most fields are self-explanatory. Only field worth mentioning is the <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">status</code> field which represents the state machine of a given room:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/status-state-machine.png" alt="status-state-machine" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This data model works well for a system like Airbnb, but not for hotels where users don't reserve a particular room but a room type.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">They reserve a type of room and a room number is chosen at the point of reservation.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This shortcoming will be addressed in the [Improved Data Model](#improved-data-model) section.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**High-level Design**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We've chosen a microservice architecture for this design. It has gained great popularity in recent years:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/high-level-design.png" alt="high-level-design" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Users</strong>: book a hotel room on their phone or computer</li>
+<li><strong class="text-gray-900 font-bold">Admin</strong>: perform administrative functions such as refunding/cancelling a payment, etc</li>
+<li><strong class="text-gray-900 font-bold">CDN</strong>: caches static resources such as JS bundles, images, videos, etc</li>
+<li><strong class="text-gray-900 font-bold">Public API Gateway</strong>: fully-managed service which supports rate limiting, authentication, etc.</li>
+<li><strong class="text-gray-900 font-bold">Internal APIs</strong>: only visible to authorized personnel. Usually protected by a VPN.</li>
+<li><strong class="text-gray-900 font-bold">Hotel service</strong>: provides detailed information about hotels and rooms. Hotel and room data is static, so it can be cached aggressively.</li>
+<li><strong class="text-gray-900 font-bold">Rate service</strong>: provides room rates for different future dates. An interesting note about this domain is that prices depend on how full a hotel is at a given day.</li>
+<li><strong class="text-gray-900 font-bold">Reservation service</strong>: receives reservation requests and reserves hotel rooms. Also tracks room inventory as reservations are made/cancelled.</li>
+<li><strong class="text-gray-900 font-bold">Payment service</strong>: processes payments and updates reservation statuses on success.</li>
+<li><strong class="text-gray-900 font-bold">Hotel management service</strong>: available to authorized personnel only. Allows certain administrative functions for managing and viewing reservations, hotels, etc.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Inter-service communication can be facilitated via a RPC framework, such as gRPC.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 3: Design Deep Dive</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Let's dive deeper into:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Improved data model</li>
+<li>Concurrency issues</li>
+<li>Scalability</li>
+<li>Resolving data inconsistency in microservices</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Improved data model**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">As mentioned in a previous section, we need to amend our API and schema to enable reserving a type of room vs. a particular one.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">For the reservation API, we no longer reserve a <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">roomID</code>, but we reserve a <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">roomTypeID</code>:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>POST /v1/reservations
+{
+  "startDate":"2021-04-28",
+  "endDate":"2021-04-30",
+  "hotelID":"245",
+  "roomTypeID":"12354673389",
+  "roomCount":"3",
+  "reservationID":"13422445"
+}</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Here's the updated schema:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/updated-schema.png" alt="updated-schema" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">room</strong>: contains information about a room</li>
+<li><strong class="text-gray-900 font-bold">room_type_rate</strong>: contains information about prices for a given room type</li>
+<li><strong class="text-gray-900 font-bold">reservation</strong>: records guest reservation data</li>
+<li><strong class="text-gray-900 font-bold">room_type_inventory</strong>: stores inventory data about hotel rooms.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Let's take a look at the <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">room_type_inventory</code> columns as that table is more interesting:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">hotel_id</strong>: id of hotel</li>
+<li><strong class="text-gray-900 font-bold">room_type_id</strong>: id of a room type</li>
+<li><strong class="text-gray-900 font-bold">date</strong>: a single date</li>
+<li><strong class="text-gray-900 font-bold">total_inventory</strong>: total number of rooms minus those that are temporarily taken off the inventory.</li>
+<li><strong class="text-gray-900 font-bold">total_reserved</strong>: total number of rooms booked for given (hotel_id, room_type_id, date)</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">There are alternative ways to design this table, but having one room per (hotel_id, room_type_id, date) enables easy</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">reservation management and easier queries.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The rows in the table are pre-populated using a daily CRON job.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Sample data:</p>
+<div class="text-xs text-gray-700 font-mono py-0.5">| hotel_id | room_type_id | date       | total_inventory | total_reserved |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">|----------|--------------|------------|-----------------|----------------|</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| 211      | 1001         | 2021-06-01 | 100             | 80             |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| 211      | 1001         | 2021-06-02 | 100             | 82             |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| 211      | 1001         | 2021-06-03 | 100             | 86             |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| 211      | 1001         | ...        | ...             |                |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| 211      | 1001         | 2023-05-31 | 100             | 0              |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| 211      | 1002         | 2021-06-01 | 200             | 16             |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| 2210     | 101          | 2021-06-01 | 30              | 23             |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| 2210     | 101          | 2021-06-02 | 30              | 25             |</div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Sample SQL query to check the availability of a type of room:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>SELECT date, total_inventory, total_reserved
+FROM room_type_inventory
+WHERE room_type_id = ${roomTypeId} AND hotel_id = ${hotelId}
+AND date between ${startDate} and ${endDate}</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">How to check availability for a specified number of rooms using that data (note that we support overbooking):</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>if (total_reserved + ${numberOfRoomsToReserve}) <= 110% * total_inventory</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Now let's do some estimation about the storage volume.</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>We have 5000 hotels.</li>
+<li>Each hotel has 20 types of rooms.</li>
+<li>5000 * 20 * 2 (years) * 365 (days) = 73mil rows</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">73 million rows is not a lot of data and a single database server can handle it.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">It makes sense, however, to setup read replication (potentially across different zones) to enable high availability.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Follow-up question - if reservation data is too large for a single database, what would you do?</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Store only current and future reservation data. Reservation history can be moved to cold storage.</li>
+<li>Database sharding - we can shard our data by <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">hash(hotel_id) % servers_cnt</code> as we always select the <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">hotel_id</code> in our queries.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Concurrency issues**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Another important problem to address is double booking.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">There are two issues to address:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Same user clicks on "book" twice</li>
+<li>Multiple users try to book a room at the same time</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Here's a visualization of the first problem:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/double-booking-single-user.png" alt="double-booking-single-user" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">There are two approaches to solving this problem:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Client-side handling - front-end can disable the book button once clicked. If a user disabled javascript, however, they won't see the button becoming grayed out.</li>
+<li>Idemptent API - Add an idempotency key to the API, which enables a user to execute an action once, regardless of how many times the endpoint is invoked:</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/idempotency.png" alt="idempotency" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Here's how this flow works:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>A reservation order is generated once you're in the process of filling in your details and making a booking. The reservation order is generated using a globally unique identifier.</li>
+<li>Submit reservation 1 using the <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">reservation_id</code> generated in the previous step.</li>
+<li>If "complete booking" is clicked a second time, the same <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">reservation_id</code> is sent and the backend detects that this is a duplicate reservation.</li>
+<li>The duplication is avoided by making the <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">reservation_id</code> column have a unique constraint, preventing multiple records with that id being stored in the DB.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/unique-constraint-violation.png" alt="unique-constraint-violation" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">What if there are multiple users making the same reservation?</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/double-booking-multiple-users.png" alt="double-booking-multiple-users" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Let's assume the transaction isolation level is not serializable</li>
+<li>User 1 and 2 attempt to book the same room at the same time.</li>
+<li>Transaction 1 checks if there are enough rooms - there are</li>
+<li>Transaction 2 check if there are enough rooms - there are</li>
+<li>Transaction 2 reserves the room and updates the inventory</li>
+<li>Transaction 1 also reserves the room as it still sees there are 99 <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">total_reserved</code> rooms out of 100.</li>
+<li>Both transactions successfully commit the changes</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This problem can be solved using some form of locking mechanism:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Pessimistic locking</li>
+<li>Optimistic locking</li>
+<li>Database constraints</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Here's the SQL we use to reserve a room:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code># step 1: check room inventory
+SELECT date, total_inventory, total_reserved
+FROM room_type_inventory
+WHERE room_type_id = ${roomTypeId} AND hotel_id = ${hotelId}
+AND date between ${startDate} and ${endDate}
+
+# For every entry returned from step 1
+if((total_reserved + ${numberOfRoomsToReserve}) > 110% * total_inventory) {
+  Rollback
+}
+
+# step 2: reserve rooms
+UPDATE room_type_inventory
+SET total_reserved = total_reserved + ${numberOfRoomsToReserve}
+WHERE room_type_id = ${roomTypeId}
+AND date between ${startDate} and ${endDate}
+
+Commit</code></pre></div>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Option 1: Pessimistic locking</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Pessimistic locking prevents simultaneous updates by putting a lock on a record while it's being updated.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This can be done in MySQL by using the <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">SELECT... FOR UPDATE</code> query, which locks the rows selected by the query until the transaction is committed.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/pessimistic-locking.png" alt="pessimistic-locking" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Pros:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Prevents applications from updating data that is being changed</li>
+<li>Easy to implement and avoids conflict by serializing updates. Useful when there is heavy data contention.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Cons:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Deadlocks may occur when multiple resources are locked.</li>
+<li>This approach is not scalable - if transaction is locked for too long, this has impact on all other transactions trying to access the resource.</li>
+<li>The impact is severe when the query selects a lot of resources and the transaction is long-lived.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The author doesn't recommend this approach due to its scalability issues.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Option 2: Optimistic locking</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Optimistic locking allows multiple users to attempt to update a record at the same time.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">There are two common ways to implement it - version numbers and timestamps. Version numbers are recommended as server clocks can be inaccurate.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/optimistic-locking.png" alt="optimistic-locking" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>A new <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">version</code> column is added to the database table</li>
+<li>Before a user modifies a database row, the version number is read</li>
+<li>When the user updates the row, the version number is increased by 1 and written back to the database</li>
+<li>Database validation prevents the insert if the new version number doesn't exceed the previous one</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Optimistic locking is usually faster than pessimistic locking as we're not locking the database.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Its performance tends to degrade when concurrency is high, however, as that leads to a lot of rollbacks.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Pros:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>It prevents applications from editing stale data</li>
+<li>We don't need to acquire a lock in the database</li>
+<li>Preferred option when data contention is low, ie rarely are there update conflicts</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Cons:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Performance is poor when data contention is high</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Optimistic locking is a good option for our system as reservation QPS is not extremely high.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Option 3: Database constraints</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This approach is very similar to optimistic locking, but the guardrails are implemented using a database constraint:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>CONSTRAINT `check_room_count` CHECK((`total_inventory - total_reserved` >= 0))</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/database-constraint.png" alt="database-constraint" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Pros:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Easy to implement</li>
+<li>Works well when data contention is small</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Cons:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Similar to optimistic locking, performs poorly when data contention is high</li>
+<li>Database constraints cannot be easily version-controlled like application code</li>
+<li>Not all databases support constraints</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This is another good option for a hotel reservation system due to its ease of implementation.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Scalability**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Usually, the load of a hotel reservation system is not high.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">However, the interviewer might ask you how you'd handle a situation where the system gets adopted for a larger, popular travel site such as booking.com</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In that case, QPS can be 1000 times larger.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">When there is such a situation, it is important to understand where our bottlenecks are. All the services are stateless, so they can be easily scaled via replication.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The database, however, is stateful and it's not as obvious how it can get scaled.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">One way to scale it is by implementing database sharding - we can split the data across multiple databases, where each of them contain a portion of the data.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We can shard based on <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">hotel_id</code> as all queries filter based on it.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Assuming, QPS is 30,000, after sharding the database in 16 shards, each shard handles 1875 QPS, which is within a single MySQL cluster's load capacity.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/database-sharding.png" alt="database-sharding" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We can also utilize caching for room inventory and reservations via Redis. We can set TTL so that old data can expire for days which are past.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/inventory-cache.png" alt="inventory-cache" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The way we store an inventory is based on the <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">hotel_id</code>, <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">room_type_id</code> and <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">date</code>:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>key: hotelID_roomTypeID_{date}
+value: the number of available rooms for the given hotel ID, room type ID and date.</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Data consistency happens async and is managed by using a CDC streaming mechanism - database changes are read and applied to a separate system.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Debezium is a popular option for synchronizing database changes with Redis.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Using such a mechanism, there is a possibility that the cache and database are inconsistent for some time.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This is fine in our case because the database will prevent us from making an invalid reservation.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This will cause some issue on the UI as a user would have to refresh the page to see that "there are no more rooms left",</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">but that is something which can happen regardless of this issue if eg a person hesitates a lot before making a reservation.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Caching pros:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Reduced database load</li>
+<li>High performance, as Redis manages data in-memory</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Caching cons:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Maintaining data consistency between cache and DB is hard. We need to consider how the inconsistency impacts user experience.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Data consistency among services**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A monolithic application enables us to use a shared relational database for ensuring data consistency.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In our microservice design, we chose a hybrid approach where some services are separate,</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">but the reservation and inventory APIs are handled by the same servicefor the reservation and inventory APIs.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This is done because we want to leverage the relational database's ACID guarantees to ensure consistency.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">However, the interviewer might challenge this approach as it's not a pure microservice architecture, where each service has a dedicated database:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/microservices-vs-monolith.png" alt="microservices-vs-monolith" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This can lead to consistency issues. In a monolithic server, we can leverage a relational DBs transaction capabilities to implement atomic operations:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/atomicity-monolith.png" alt="atomicity-monolith" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">It's more challenging, however, to guarantee this atomicity when the operation spans across multiple services:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/microservice-non-atomic-operation.png" alt="microservice-non-atomic-operation" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">There are some well-known techniques to handle these data inconsistencies:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Two-phase commit</strong>: a database protocol which guarantees atomic transaction commit across multiple nodes.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">It's not performant, though, since a single node lag leads to all nodes blocking the operation.</p>
+<li><strong class="text-gray-900 font-bold">Saga</strong>: a sequence of local transactions, where compensating transactions are triggered if any of the steps in a workflow fail. This is an eventually consistent approach.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">It's worth noting that addressing data inconsistencies across microservices is a challenging problem, which raise the system complexity.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">It is good to consider whether the cost is worth it, given our more pragmatic approach of encapsulating dependent operations within the same relational database.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 4: Wrap Up</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We presented a design for a hotel reservation system.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">These are the steps we went through:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Gathering requirements and doing back-of-the-envelope calculations to understand the system's scale</li>
+<li>We presented the API Design, Data Model and system architecture in the high-level design</li>
+<li>In the deep dive, we explored alternative database schema designs as requirements changed</li>
+<li>We discussed race conditions and proposed solutions - pessimistic/optimistic locking, database constraints</li>
+<li>Ways to scale the system via database sharding and caching</li>
+<li>Finally we addressed how to handle data consistency issues across multiple microservices</li>
+</ul>
+  </div>
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>System Design Interactive Study Suite &bull; AntiGravity IDE</p>
+</footer>
+</body>
+</html>

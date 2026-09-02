@@ -2,6 +2,10 @@
 
 This log tracks daily study sessions and completed notes.
 
+* [2026-09-02 18:22:00] Reorganized and unified all 36 System Design modules (00 through 35) into dedicated folders, each equipped with comprehensive Markdown documentation (README.md) and interactive visual workbooks (index.html) with real-time architecture diagrams, failure simulators, and trade-off defense guides.
+* [2026-09-02 18:18:00] Created 10 Production Systems Deconstructed Interactive Study Workbook (production-systems-deep-dive.html) covering Notion Postgres Sharding, Quora 100k+ MySQL QPS, Shopify GraphQL & Wasm Sandbox Checkout, YouTube Video Transcoding DAG, Google GFS, Slack Flannel Caching, and Billion-Scale URL Shortener Sequencers with real-time architectural simulators.
+* [2026-08-28 19:39:00] Created System Design Mastery Interactive Workbook (system-design-mastery-interactive.html) with real-time simulators (Fencing Tokens, Outbox CDC, Cache Stampede Singleflight, Rate Limiting), dynamic scale estimation engine, and Senior/Staff interview drills.
+* [2026-08-28 19:32:00] Completed study session on System Design 27-Topic Mastery Matrix, Trade-offs, and Edge-Case Failure Modes
 * [2025-07-02 17:56:27] Completed study session on Trie serialization for Autocomplete systems
 * [2025-07-02 14:13:39] Completed study session on Rate Limiter token bucket implementation
 * [2025-07-03 14:29:44] Completed study session on S3 metadata store and erasure coding

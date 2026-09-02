@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Find Negative Balance Accounts &mdash; Capital One GPN</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = { theme: { extend: { colors: {
+  'ed-pink': '#db2777', 'ed-blue': '#2563eb', 'ed-teal': '#0d9488',
+  'ed-amber': '#d97706', 'ed-sky': '#0284c7', 'ed-purple': '#7c3aed', 'ed-orange': '#ea580c',
+}, fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } } } };
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  details > summary { cursor: pointer; list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  .chevron { transition: transform 0.2s; }
+  details[open] .chevron { transform: rotate(90deg); }
+  pre.mono { white-space: pre; }
+  .tok-kw { color: #c084fc; } .tok-ty { color: #fbbf24; } .tok-fn { color: #60a5fa; }
+  .tok-nm { color: #fb923c; } .tok-str { color: #f472b6; } .tok-cm { color: #94a3b8; font-style: italic; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+<main class="max-w-5xl mx-auto px-4 py-6 md:py-10 space-y-4">
+
+<header class="bg-gradient-to-r from-ed-orange to-gray-900 text-white rounded-2xl p-6 md:p-8 shadow-lg">
+  <div class="flex items-center gap-2 text-sm text-gray-300 mb-2">
+    <span class="bg-ed-amber text-white px-2 py-0.5 rounded-full text-xs font-bold">EASY</span>
+    <span class="text-gray-400">&middot;</span>
+    <span>Capital One GPN &middot; DSA Round</span>
+  </div>
+  <h1 class="text-3xl md:text-4xl font-extrabold">Find Negative Balance Accounts</h1>
+  <p class="text-gray-300 mt-2 text-sm md:text-base">Given a list of account balances, find all accounts with negative balances. Return the account IDs sorted by balance (most negative first). Simple filtering with a twist.</p>
+  <div class="mt-4 flex flex-wrap gap-2 text-xs">
+    <span class="bg-white/10 px-3 py-1 rounded-full">Pattern: Filter + Sort</span>
+    <span class="bg-white/10 px-3 py-1 rounded-full">Time: O(n log n)</span>
+    <span class="bg-white/10 px-3 py-1 rounded-full">Space: O(k)</span>
+    <span class="bg-white/10 px-3 py-1 rounded-full">Language: Java / Python</span>
+  </div>
+</header>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <h2 class="text-xl md:text-2xl font-bold text-gray-900 mb-3">1. Problem Statement</h2>
+  <p class="text-sm text-gray-700 mb-3">Given a list of accounts where each account has an ID and a balance, find all accounts with a negative balance. Return the account IDs sorted by balance in ascending order (most negative first). If no accounts have negative balance, return an empty list.</p>
+  <div class="bg-gray-100/60 rounded-lg p-4 text-sm">
+    <p class="font-semibold mb-2">Input format:</p>
+    <pre class="mono text-xs bg-gray-200 rounded p-2 mt-1">accounts = [
+  {id: "A", balance: 1000},
+  {id: "B", balance: -500},
+  {id: "C", balance: -200},
+  {id: "D", balance: 300},
+  {id: "E", balance: -50}
+]</pre>
+    <p class="font-semibold mt-3 mb-1">Output:</p>
+    <pre class="mono text-xs bg-gray-200 rounded p-2 mt-1">["B", "C", "E"]  // sorted by balance: -500, -200, -50</pre>
+    <p class="font-semibold mt-3 mb-1">Edge cases:</p>
+    <ul class="space-y-1 ml-4 text-sm">
+      <li>&bull; No negative balances &rarr; return empty list</li>
+      <li>&bull; All negative &rarr; return all IDs sorted</li>
+      <li>&bull; Empty input &rarr; return empty list</li>
+      <li>&bull; Tie in balances &rarr; sort by ID alphabetically</li>
+    </ul>
+  </div>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details open><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">2. Pattern Recognition</h2><span class="chevron text-ed-pink">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-pink/5 border border-ed-pink/15 rounded-lg p-4">
+    <p class="text-sm text-gray-800 mb-2"><strong class="text-ed-pink">Why signals:</strong></p>
+    <ul class="text-sm space-y-1">
+      <li>&bull; Filter elements by a condition &rarr; linear scan</li>
+      <li>&bull; Return sorted by a field &rarr; sort after filter</li>
+      <li>&bull; Simple comparison (balance &lt; 0) &rarr; no complex logic</li>
+      <li>&bull; Tie-break by ID &rarr; secondary sort key</li>
+      <li>&bull; Capital One banking domain &rarr; overdraft detection</li>
+    </ul>
+    <p class="text-sm text-gray-800 mt-3"><strong class="text-ed-pink">Core pattern:</strong> Filter (O(n)) + Sort (O(k log k) where k is the number of negatives). Total O(n + k log k). This is a warm-up question that tests basic data processing and sorting.</p>
+  </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">3. Pattern Blueprint</h2><span class="chevron text-ed-blue">&#9654;</span></summary>
+  <div class="mt-3 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg p-4">
+    <p class="text-sm font-semibold mb-2">4-step template:</p>
+    <ol class="space-y-2 text-sm">
+      <li><span class="bg-blue-100 text-blue-700 rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">1</span> Handle edge case: empty input &rarr; return empty list</li>
+      <li><span class="bg-blue-100 text-blue-700 rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">2</span> Filter: iterate through accounts, collect those with balance &lt; 0</li>
+      <li><span class="bg-blue-100 text-blue-700 rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">3</span> Sort: order by balance ascending (most negative first), tie-break by ID alphabetically</li>
+      <li><span class="bg-blue-100 text-blue-700 rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">4</span> Extract and return the IDs</li>
+    </ol>
+  </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">4. How to Think About It</h2><span class="chevron text-ed-blue">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-blue/5 border border-gray-300 rounded-lg p-4 space-y-3">
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">1</span> Is this too simple for an interview?</p>
+      <p class="text-gray-700 ml-8">It is a warm-up. The interviewer uses it to see if you can write clean, correct code quickly. The follow-up questions are where the senior signal comes: scale, concurrency, alerting, production handling.</p>
+    </div>
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">2</span> Filter first or sort first?</p>
+      <p class="text-gray-700 ml-8">Filter first. Sorting only the negatives (k elements) is O(k log k), which is cheaper than sorting all n then filtering O(n log n). If k is small (few negatives), this is much faster.</p>
+    </div>
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">3</span> What about the tie-break?</p>
+      <p class="text-gray-700 ml-8">If two accounts have the same balance, sort by ID alphabetically. This makes the output deterministic. Use a comparator: (a, b) -> a.balance != b.balance ? a.balance - b.balance : a.id.compareTo(b.id).</p>
+    </div>
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">4</span> <span class="text-ed-teal">&rarr;</span> What is the production context?</p>
+      <p class="text-gray-700 ml-8">This is overdraft detection. In production, negative balances trigger alerts, overdraft fees, or fraud investigation. The "find negative accounts" query runs continuously or on a schedule. Think about streaming, alerting, and escalation.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- PLACEHOLDER: Sections 5-22 -->
+
+<!-- 5. Real-World Analogy -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">5. Real-World Analogy</h2><span class="chevron text-ed-teal">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-4 text-sm text-gray-800">
+    <p class="mb-2">Think of a <strong>bouncer at a club checking IDs</strong>. The bouncer goes through the line, checks each person's age (balance), and lets in only those who are underage (negative). Then the underage people line up by height (sort by balance).</p>
+    <p class="mb-2">The filter is the bouncer's check. The sort is the lineup. You do not sort the entire crowd first, you filter first because the bouncer only cares about the underage ones.</p>
+    <p>In banking, this is the overdraft monitor. Every night, the system scans all accounts, flags the negative ones, sorts them by how far underwater they are, and sends the list to the collections team. The most negative accounts get attention first.</p>
+  </div>
+  </details>
+</section>
+
+<!-- 6. Build Your Intuition -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">6. Build Your Intuition</h2><span class="chevron text-ed-amber">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Q: Why filter before sorting?</p>
+      <p class="text-gray-700">If you have 10M accounts and only 100 are negative, filtering first gives you 100 elements to sort (O(100 log 100)). Sorting all 10M first is O(10M log 10M). Filter-first is 100,000x less work.</p>
+    </div>
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-3 text-sm text-ed-teal">
+      <p class="font-semibold mb-1">Q: Is this a streaming or batch problem?</p>
+      <p class="text-gray-800">Both. Batch: run nightly on all accounts. Streaming: maintain a set of negative accounts updated on each transaction. The streaming version uses a min-heap or sorted set for real-time queries.</p>
+    </div>
+    <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Q: What if balances change frequently?</p>
+      <p class="text-gray-700">If balances update every second, re-scanning all accounts is wasteful. Maintain a TreeSet of negative accounts. On each balance update, add or remove from the set. Query is O(1) to get the sorted list.</p>
+    </div>
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-3 text-sm text-ed-teal">
+      <p class="font-semibold mb-1">Q: Why is this question asked at Capital One?</p>
+      <p class="text-gray-800">Overdraft management is a core banking function. Capital One needs engineers who understand that "find negative accounts" is not just a coding exercise, it is the foundation of overdraft fees, alerts, and regulatory reporting.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 7. How It Works (Step by Step) -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">7. How It Works (Step by Step)</h2><span class="chevron text-ed-sky">&#9654;</span></summary>
+  <div class="mt-3 space-y-2 text-sm">
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 1:</strong> Input: [(A, 1000), (B, -500), (C, -200), (D, 300), (E, -50)].</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 2:</strong> Filter: iterate. A: 1000 &ge; 0, skip. B: -500 &lt; 0, keep. C: -200 &lt; 0, keep. D: 300 &ge; 0, skip. E: -50 &lt; 0, keep. Filtered: [(B, -500), (C, -200), (E, -50)].</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 3:</strong> Sort by balance ascending: [(B, -500), (C, -200), (E, -50)]. Already sorted (most negative first).</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 4:</strong> Extract IDs: ["B", "C", "E"]. Return.</div>
+  </div>
+  </details>
+</section>
+
+<!-- 8. Dry Run Table -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">8. Dry Run Table</h2><span class="chevron text-ed-amber">&#9654;</span></summary>
+  <div class="mt-3 overflow-x-auto">
+    <table class="w-full text-xs border border-amber-200 rounded-lg">
+      <thead class="bg-amber-50 text-amber-700">
+        <tr>
+          <th class="p-2 text-left">Account</th>
+          <th class="p-2 text-left">Balance</th>
+          <th class="p-2 text-left">Negative?</th>
+          <th class="p-2 text-left">Action</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200 bg-amber-50/30">
+        <tr><td class="p-2 mono">A</td><td class="p-2">1000</td><td class="p-2 text-emerald-600">No</td><td class="p-2">Skip</td></tr>
+        <tr><td class="p-2 mono">B</td><td class="p-2">-500</td><td class="p-2 text-red-600 font-semibold">Yes</td><td class="p-2">Keep</td></tr>
+        <tr><td class="p-2 mono">C</td><td class="p-2">-200</td><td class="p-2 text-red-600 font-semibold">Yes</td><td class="p-2">Keep</td></tr>
+        <tr><td class="p-2 mono">D</td><td class="p-2">300</td><td class="p-2 text-emerald-600">No</td><td class="p-2">Skip</td></tr>
+        <tr><td class="p-2 mono">E</td><td class="p-2">-50</td><td class="p-2 text-red-600 font-semibold">Yes</td><td class="p-2">Keep</td></tr>
+      </tbody>
+    </table>
+    <p class="text-xs text-gray-500 mt-2">Filtered: [B(-500), C(-200), E(-50)]. Sorted: same. Result: ["B", "C", "E"]</p>
+  </div>
+  </details>
+</section>
+
+<!-- 9. Live Interactive Visualization -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details open><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">9. Live Interactive Visualization</h2><span class="chevron text-ed-pink">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-pink/5 border border-ed-pink/15 rounded-lg p-4">
+    <p class="text-sm text-gray-800 mb-3"><span class="bg-ed-pink/10 text-ed-pink px-2 py-0.5 rounded text-xs font-bold mr-2">INTERACTIVE</span>Add accounts and watch the filter and sort in real time.</p>
+    <div class="mb-3">
+      <label class="text-xs text-gray-600 block mb-1">Accounts (id:balance, comma-separated):</label>
+      <input id="nb-input" type="text" value="A:1000, B:-500, C:-200, D:300, E:-50" class="mono w-full border border-gray-300 rounded-lg p-2 text-sm" placeholder="e.g. A:1000, B:-500, C:-200">
+    </div>
+    <button id="nb-run" class="bg-ed-pink hover:bg-ed-pink/80 text-white px-4 py-1.5 rounded text-sm font-semibold mb-3">Find Negative Accounts</button>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div>
+        <p class="text-xs font-semibold text-gray-600 mb-2">All Accounts:</p>
+        <div id="nb-all" class="space-y-1"></div>
+      </div>
+      <div>
+        <p class="text-xs font-semibold text-gray-600 mb-2">Negative Accounts (sorted):</p>
+        <div id="nb-result" class="space-y-1"></div>
+      </div>
+    </div>
+    <p id="nb-msg" class="text-sm text-gray-700 mt-3"></p>
+  </div>
+  <script>
+    function nbRun() {
+      const raw = document.getElementById('nb-input').value;
+      const accounts = raw.split(',').map(s => {
+        const parts = s.trim().split(':');
+        return { id: parts[0].trim(), balance: parseFloat(parts[1] || '0') };
+      }).filter(a => a.id);
+      const allDiv = document.getElementById('nb-all');
+      const resultDiv = document.getElementById('nb-result');
+      allDiv.innerHTML = '';
+      resultDiv.innerHTML = '';
+      accounts.forEach(a => {
+        const neg = a.balance < 0;
+        allDiv.insertAdjacentHTML('beforeend', '<div class="flex justify-between items-center p-2 rounded ' + (neg ? 'bg-red-50 border border-red-200' : 'bg-emerald-50 border border-emerald-200') + ' text-xs"><span class="mono font-semibold">' + a.id + '</span><span class="mono ' + (neg ? 'text-red-600' : 'text-emerald-600') + '">' + a.balance + '</span></div>');
+      });
+      const negatives = accounts.filter(a => a.balance < 0).sort((a, b) => a.balance !== b.balance ? a.balance - b.balance : a.id.localeCompare(b.id));
+      if (negatives.length === 0) {
+        resultDiv.innerHTML = '<div class="text-gray-400 text-xs p-2">No negative accounts</div>';
+      } else {
+        negatives.forEach(a => {
+          resultDiv.insertAdjacentHTML('beforeend', '<div class="flex justify-between items-center p-2 rounded bg-red-50 border border-red-200 text-xs"><span class="mono font-semibold">' + a.id + '</span><span class="mono text-red-600">' + a.balance + '</span></div>');
+        });
+      }
+      document.getElementById('nb-msg').textContent = 'Found ' + negatives.length + ' negative account(s) out of ' + accounts.length + ' total.';
+    }
+    document.getElementById('nb-run').onclick = nbRun;
+    document.getElementById('nb-input').oninput = nbRun;
+    nbRun();
+  </script>
+  </details>
+</section>
+
+<!-- 10. Complexity Deep Dive -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">10. Complexity Deep Dive</h2><span class="chevron text-ed-teal">&#9654;</span></summary>
+  <div class="mt-3 grid md:grid-cols-2 gap-3">
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-4">
+      <h3 class="font-bold text-ed-teal mb-2">Time Complexity</h3>
+      <p class="text-sm text-gray-800">Filter: O(n) to scan all accounts. Sort: O(k log k) where k is the number of negative accounts. Total: O(n + k log k).</p>
+      <p class="text-sm text-gray-800 mt-2">If k is small (few negatives), this is nearly O(n). If k is close to n (most are negative), it is O(n log n).</p>
+    </div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-4">
+      <h3 class="font-bold text-ed-purple mb-2">Space Complexity</h3>
+      <p class="text-sm text-gray-800">O(k) for the filtered list of negative accounts. The output list also has k elements. No additional data structures needed.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 11. From Brute Force to Optimal -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">11. From Brute Force to Optimal</h2><span class="chevron text-ed-teal">&#9654;</span></summary>
+  <div class="mt-3 grid md:grid-cols-2 gap-3">
+    <div class="bg-red-500/5 border border-red-500/15 rounded-lg p-4 text-red-500">
+      <h3 class="font-bold mb-2">Naive: Sort All Then Filter</h3>
+      <pre class="mono text-xs bg-gray-900 text-gray-100 rounded p-2 mb-2">List<String> findNeg(List<Account> accts) {
+  accts.sort(by balance);
+  return accts.filter(a -> a.balance < 0)
+              .map(a -> a.id);
+}</pre>
+      <p class="text-sm text-gray-800">O(n log n) time. Sorts all n accounts even if only k are negative. Wasteful when k is small.</p>
+    </div>
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-4 text-ed-teal">
+      <h3 class="font-bold mb-2">Optimal: Filter Then Sort</h3>
+      <pre class="mono text-xs bg-gray-900 text-gray-100 rounded p-2 mb-2">List<String> findNeg(List<Account> accts) {
+  return accts.stream()
+    .filter(a -> a.balance < 0)
+    .sorted(by balance, then by id)
+    .map(a -> a.id)
+    .collect(toList());
+}</pre>
+      <p class="text-sm text-gray-800">O(n + k log k) time. Filter first, sort only the negatives. <strong>100,000x faster</strong> when k is small.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 12. Edge Cases & Gotchas -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">12. Edge Cases & Gotchas</h2><span class="chevron text-ed-orange">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Empty input</p>
+      <p class="text-gray-800">No accounts. Return empty list. Do not throw.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">No negative accounts</p>
+      <p class="text-gray-800">All balances &ge; 0. Return empty list. Common in a healthy bank.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">All negative accounts</p>
+      <p class="text-gray-800">Every account is overdrawn. Return all IDs sorted. This is a red flag for the bank.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Tie in balances</p>
+      <p class="text-gray-800">Two accounts with -500. Sort by ID alphabetically for deterministic output. State the tiebreaker.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Zero balance</p>
+      <p class="text-gray-800">Balance == 0 is NOT negative. Do not include. Check balance &lt; 0, not balance &le; 0.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Null accounts or null balances</p>
+      <p class="text-gray-800">Handle null. Either filter out nulls or throw. Clarify with interviewer. In production, null balance is a data integrity issue.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 13. Flashcards -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">13. Flashcards</h2><span class="chevron text-ed-purple">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q1: What is the time complexity?</summary>
+      <p class="text-sm text-gray-800 mt-2">O(n + k log k) where n is total accounts and k is negative accounts. Filter is O(n), sort is O(k log k).</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q2: Why filter before sort?</summary>
+      <p class="text-sm text-gray-800 mt-2">Sorting only k elements is O(k log k) vs sorting all n is O(n log n). When k is small, filter-first is much faster.</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q3: How do you handle ties in balance?</summary>
+      <p class="text-sm text-gray-800 mt-2">Sort by balance ascending, then by ID alphabetically. Comparator: (a, b) -> a.balance != b.balance ? a.balance - b.balance : a.id.compareTo(b.id).</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q4: Is zero balance negative?</summary>
+      <p class="text-sm text-gray-800 mt-2">No. Zero is not negative. Use balance &lt; 0, not balance &le; 0. This is a common off-by-one trap.</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q5: How would you make this real-time?</summary>
+      <p class="text-sm text-gray-800 mt-2">Maintain a TreeSet of negative accounts. On each balance update, add or remove from the set. Query returns the sorted list in O(k) iteration.</p>
+    </details>
+  </div>
+  </details>
+</section>
+
+<!-- 14. Where It Is Used (Real World) -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">14. Where It Is Used (Real World)</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <div class="bg-amber-100 border border-amber-300 text-amber-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Overdraft Detection (Capital One, Chase, Bank of America)</p>
+      <p class="text-gray-800">Every bank runs this query nightly or continuously. Negative accounts trigger overdraft fees, alerts to the customer, and escalation to collections.</p>
+    </div>
+    <div class="bg-gray-100 border border-gray-300 text-gray-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Margin Call Detection (Brokerage)</p>
+      <p class="text-gray-800">In trading accounts, negative margin balance triggers a margin call. The system finds all accounts below the maintenance margin and notifies the trader to deposit more funds.</p>
+    </div>
+    <div class="bg-rose-100 border border-rose-300 text-rose-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Fraud Flagging</p>
+      <p class="text-gray-800">Sudden negative balance on a credit card may indicate fraud. The system flags these for immediate review and potential card freeze.</p>
+    </div>
+    <div class="bg-indigo-100 border border-indigo-300 text-indigo-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Regulatory Reporting</p>
+      <p class="text-gray-800">Banks must report overdraft statistics to regulators (OCC, FDIC). The "find negative accounts" query feeds compliance reports.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 15. Common Mistakes -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">15. Common Mistakes</h2><span class="chevron text-ed-orange">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-orange/5 border border-ed-orange/15 rounded-lg p-4">
+    <ul class="text-sm space-y-2">
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Using &le; 0 instead of &lt; 0.</strong> Zero is not negative. Include only strictly negative balances.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Sorting before filtering.</strong> O(n log n) instead of O(n + k log k). Filter first.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Not handling ties.</strong> Two accounts with -500. Define a tiebreaker (by ID) for deterministic output.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Returning balances instead of IDs.</strong> Read the problem. It asks for IDs, not balances or account objects.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Not handling null or empty input.</strong> Return empty list, do not throw.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Using double for balance.</strong> Use BigDecimal for money. Precision errors cause false negatives.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Not mentioning the production context.</strong> This is overdraft detection. Senior engineers connect the coding problem to the business function.</li>
+    </ul>
+  </div>
+  </details>
+</section>
+
+<!-- 16. Interview Tips -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">16. Interview Tips</h2><span class="chevron text-ed-purple">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-4">
+    <ul class="text-sm space-y-2">
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Code it quickly and correctly.</strong> This is a warm-up. Do not overthink. Filter, sort, extract IDs.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Use streams (Java) or list comprehension (Python).</strong> Shows language fluency. One-liner if appropriate.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>State the complexity.</strong> O(n + k log k). Explain why filter-first is better than sort-first.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Handle edge cases.</strong> Empty input, no negatives, ties, zero balance. State each.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Use BigDecimal.</strong> If the interviewer asks why, explain floating-point precision for money.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Pivot to production immediately.</strong> "This is overdraft detection. In production I would maintain a sorted set of negative accounts updated on each transaction, trigger alerts, and feed the compliance reporting pipeline." This is the senior signal.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Mention the business impact.</strong> Overdraft fees are a revenue stream. Fraud detection. Regulatory compliance. Show you understand why this matters.</li>
+    </ul>
+  </div>
+  </details>
+</section>
+
+<!-- 17. Similar Problems to Practice -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">17. Similar Problems to Practice</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Filter Elements by Condition</strong> &mdash; generic pattern</span>
+      <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-bold">EASY</span>
+    </div>
+    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Top K Frequent Elements</strong> (LeetCode 347) &mdash; filter + sort</span>
+      <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-bold">EASY</span>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Kth Largest Element</strong> (LeetCode 215) &mdash; partial sort</span>
+      <span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-bold">MEDIUM</span>
+    </div>
+    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Move Zeroes</strong> (LeetCode 283) &mdash; in-place filter</span>
+      <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-bold">EASY</span>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Design a Leaderboard</strong> (LeetCode 1244) &mdash; sorted set maintenance</span>
+      <span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-bold">MEDIUM</span>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 18. Related Algorithms -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">18. Related Algorithms</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 grid md:grid-cols-2 gap-2 text-sm">
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Filter (Linear Scan)</strong> &mdash; O(n) pass to select elements by condition</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Sort</strong> &mdash; O(k log k) ordering of filtered elements</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Comparator</strong> &mdash; multi-key sort (balance, then ID)</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>TreeSet</strong> &mdash; maintained sorted set for real-time queries</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Stream API</strong> &mdash; filter + sorted + map + collect pipeline</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>BigDecimal</strong> &mdash; exact decimal for financial balances</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Quickselect</strong> &mdash; if only top-k negatives needed, O(n) average</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Counting Sort</strong> &mdash; if balances are bounded integers, O(n)</div>
+  </div>
+  </details>
+</section>
+
+<!-- 19. Where This Pattern Meets System Design -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">19. Where This Pattern Meets System Design</h2><span class="chevron text-indigo-600">&#9654;</span></summary>
+  <div class="mt-3 bg-indigo-50 border border-indigo-200 rounded-lg p-4 text-indigo-700 text-sm space-y-3">
+    <div>
+      <p class="font-semibold mb-1">In-memory list &rarr; Database query on sharded accounts</p>
+      <p class="text-gray-800">Production has millions of accounts across shards. A full scan is too slow. Run the query per shard in parallel, merge results. Or maintain a materialized view of negative accounts updated by triggers.</p>
+    </div>
+    <div>
+      <p class="font-semibold mb-1">Batch query &rarr; Streaming overdraft monitor</p>
+      <p class="text-gray-800">Each transaction publishes an event to Kafka. A stream processor (Flink) tracks balances and emits "account went negative" events. The alerting service subscribes and triggers notifications in real time.</p>
+    </div>
+    <div>
+      <p class="font-semibold mb-1">Simple list &rarr; Alerting and escalation pipeline</p>
+      <p class="text-gray-800">Negative accounts feed an alerting pipeline: send SMS/email to customer, assess overdraft fee, flag for fraud review if pattern is suspicious, escalate to collections after N days. The "find negative" query is the entry point.</p>
+    </div>
+    <div>
+      <p class="font-semibold mb-1">One-time query &rarr; Compliance reporting</p>
+      <p class="text-gray-800">Regulators require daily/weekly overdraft statistics. The negative accounts list feeds a reporting job that aggregates by region, customer type, and severity. Stored in a data warehouse for historical analysis.</p>
+    </div>
+    <div>
+      <p class="font-semibold mb-1">Single currency &rarr; Multi-currency balances</p>
+      <p class="text-gray-800">Accounts may hold multiple currencies. "Negative" must consider the converted total. Use real-time FX rates. The filter becomes: sum(balance_i * fx_rate_i) &lt; 0. More complex but same pattern.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 20. Code Solutions -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">20. Code Solutions</h2><span class="chevron text-ed-sky">&#9654;</span></summary>
+  <div class="mt-3 space-y-4">
+    <div>
+      <h3 class="font-bold text-ed-sky mb-2">Java</h3>
+      <pre class="mono bg-gray-900 text-gray-100 rounded-lg p-3 text-xs overflow-x-auto"><span class="tok-kw">import</span> java.math.BigDecimal;
+<span class="tok-kw">import</span> java.util.*;
+<span class="tok-kw">import</span> java.util.stream.Collectors;
+
+<span class="tok-kw">class</span> <span class="tok-ty">Account</span> {
+    <span class="tok-kw">final</span> <span class="tok-ty">String</span> id;
+    <span class="tok-kw">final</span> <span class="tok-ty">BigDecimal</span> balance;
+    <span class="tok-fn">Account</span>(<span class="tok-ty">String</span> id, <span class="tok-ty">BigDecimal</span> balance) { <span class="tok-kw">this</span>.id = id; <span class="tok-kw">this</span>.balance = balance; }
+}
+
+<span class="tok-kw">public class</span> <span class="tok-ty">NegativeBalanceFinder</span> {
+
+    <span class="tok-kw">public static</span> <span class="tok-ty">List</span>&lt;<span class="tok-ty">String</span>&gt; <span class="tok-fn">findNegativeAccounts</span>(<span class="tok-ty">List</span>&lt;<span class="tok-ty">Account</span>&gt; accounts) {
+        <span class="tok-kw">if</span> (accounts == <span class="tok-kw">null</span> || accounts.<span class="tok-fn">isEmpty</span>()) {
+            <span class="tok-kw">return</span> Collections.<span class="tok-fn">emptyList</span>();
+        }
+
+        <span class="tok-kw">return</span> accounts.<span class="tok-fn">stream</span>()
+            .<span class="tok-fn">filter</span>(a -> a.balance.<span class="tok-fn">compareTo</span>(BigDecimal.ZERO) &lt; <span class="tok-nm">0</span>)
+            .<span class="tok-fn">sorted</span>((a, b) -> {
+                <span class="tok-kw">int</span> cmp = a.balance.<span class="tok-fn">compareTo</span>(b.balance);
+                <span class="tok-kw">return</span> cmp != <span class="tok-nm">0</span> ? cmp : a.id.<span class="tok-fn">compareTo</span>(b.id);
+            })
+            .<span class="tok-fn">map</span>(a -> a.id)
+            .<span class="tok-fn">collect</span>(Collectors.<span class="tok-fn">toList</span>());
+    }
+
+    <span class="tok-kw">public static void</span> <span class="tok-fn">main</span>(<span class="tok-ty">String</span>[] args) {
+        <span class="tok-ty">List</span>&lt;<span class="tok-ty">Account</span>&gt; accts = Arrays.<span class="tok-fn">asList</span>(
+            <span class="tok-kw">new</span> <span class="tok-fn">Account</span>(<span class="tok-str">"A"</span>, <span class="tok-kw">new</span> <span class="tok-fn">BigDecimal</span>(<span class="tok-str">"1000"</span>)),
+            <span class="tok-kw">new</span> <span class="tok-fn">Account</span>(<span class="tok-str">"B"</span>, <span class="tok-kw">new</span> <span class="tok-fn">BigDecimal</span>(<span class="tok-str">"-500"</span>)),
+            <span class="tok-kw">new</span> <span class="tok-fn">Account</span>(<span class="tok-str">"C"</span>, <span class="tok-kw">new</span> <span class="tok-fn">BigDecimal</span>(<span class="tok-str">"-200"</span>)),
+            <span class="tok-kw">new</span> <span class="tok-fn">Account</span>(<span class="tok-str">"D"</span>, <span class="tok-kw">new</span> <span class="tok-fn">BigDecimal</span>(<span class="tok-str">"300"</span>)),
+            <span class="tok-kw">new</span> <span class="tok-fn">Account</span>(<span class="tok-str">"E"</span>, <span class="tok-kw">new</span> <span class="tok-fn">BigDecimal</span>(<span class="tok-str">"-50"</span>))
+        );
+        <span class="tok-ty">System</span>.out.<span class="tok-fn">println</span>(<span class="tok-fn">findNegativeAccounts</span>(accts)); <span class="tok-cm">// [B, C, E]</span>
+    }
+}</pre>
+    </div>
+    <div>
+      <h3 class="font-bold text-ed-sky mb-2">Python</h3>
+      <pre class="mono bg-gray-900 text-gray-100 rounded-lg p-3 text-xs overflow-x-auto"><span class="tok-kw">from</span> decimal <span class="tok-kw">import</span> Decimal
+<span class="tok-kw">from</span> dataclasses <span class="tok-kw">import</span> dataclass
+
+<span class="tok-kw">@dataclass</span>
+<span class="tok-kw">class</span> <span class="tok-ty">Account</span>:
+    id: <span class="tok-ty">str</span>
+    balance: Decimal
+
+<span class="tok-kw">def</span> <span class="tok-fn">find_negative_accounts</span>(accounts: <span class="tok-ty">list</span>[Account]) -> <span class="tok-ty">list</span>[<span class="tok-ty">str</span>]:
+    <span class="tok-kw">if not</span> accounts:
+        <span class="tok-kw">return</span> []
+
+    negatives = [a <span class="tok-kw">for</span> a <span class="tok-kw">in</span> accounts <span class="tok-kw">if</span> a.balance &lt; Decimal(<span class="tok-str">"0"</span>)]
+    negatives.<span class="tok-fn">sort</span>(key=<span class="tok-kw">lambda</span> a: (a.balance, a.id))
+    <span class="tok-kw">return</span> [a.id <span class="tok-kw">for</span> a <span class="tok-kw">in</span> negatives]
+
+<span class="tok-cm"># Test</span>
+accts = [
+    Account(<span class="tok-str">"A"</span>, Decimal(<span class="tok-str">"1000"</span>)),
+    Account(<span class="tok-str">"B"</span>, Decimal(<span class="tok-str">"-500"</span>)),
+    Account(<span class="tok-str">"C"</span>, Decimal(<span class="tok-str">"-200"</span>)),
+    Account(<span class="tok-str">"D"</span>, Decimal(<span class="tok-str">"300"</span>)),
+    Account(<span class="tok-str">"E"</span>, Decimal(<span class="tok-str">"-50"</span>)),
+]
+<span class="tok-fn">print</span>(<span class="tok-fn">find_negative_accounts</span>(accts))  <span class="tok-cm"># ['B', 'C', 'E']</span></pre>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 21. Follow-Up Questions -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">21. Follow-Up Questions</h2><span class="chevron text-indigo-600">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How would you handle 100M accounts across multiple shards?</summary>
+      <p class="text-sm text-gray-800 mt-2">Run the query per shard in parallel. Each shard returns its negative accounts. Merge the sorted lists using a k-way merge. Or maintain a materialized view updated by transaction triggers.</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How would you make this real-time?</summary>
+      <p class="text-sm text-gray-800 mt-2">Maintain a TreeSet of negative accounts. On each transaction, update the balance. If balance crosses zero, add or remove from the set. Query returns the sorted set in O(k). Updates are O(log n).</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: What if you only need the top N most negative?</summary>
+      <p class="text-sm text-gray-800 mt-2">Use a min-heap of size N. Iterate accounts, if balance &lt; 0 and heap size &lt; N, add. If heap full and balance &lt; heap root, replace. O(n log N) time, O(N) space. Better than O(n + k log k) when N is small.</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How do you alert on new negative accounts?</summary>
+      <p class="text-sm text-gray-800 mt-2">Stream processor (Flink) watches the transaction event stream. When an account balance crosses from positive to negative, emit an alert event. The alerting service sends SMS/email and creates a ticket.</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How do you handle multi-currency accounts?</summary>
+      <p class="text-sm text-gray-800 mt-2">Convert all balances to a base currency using real-time FX rates. The filter checks the converted total. Cache FX rates with a TTL. For performance, precompute the converted balance on each transaction.</p>
+    </details>
+  </div>
+  </details>
+</section>
+
+<!-- 22. Quick Reference -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details open><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">22. Quick Reference</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 grid md:grid-cols-2 gap-3">
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Pattern</p>
+      <p class="text-gray-800">Filter + Sort (filter-first)</p>
+    </div>
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-3 text-sm text-ed-teal">
+      <p class="font-semibold mb-1">Complexity</p>
+      <p>O(n + k log k) time, O(k) space</p>
+    </div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3 text-sm text-ed-purple">
+      <p class="font-semibold mb-1">Filter Condition</p>
+      <p class="text-gray-800">balance &lt; 0 (strictly, zero is NOT negative)</p>
+    </div>
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+      <p class="font-semibold mb-1">Sort Order</p>
+      <p class="text-gray-800">Balance ascending (most negative first), tie-break by ID</p>
+    </div>
+    <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-3 text-sm text-ed-amber">
+      <p class="font-semibold mb-1">Edge Cases</p>
+      <p class="text-gray-800">Empty input, no negatives, all negative, ties, zero balance, null</p>
+    </div>
+    <div class="bg-ed-pink/5 border border-ed-pink/15 rounded-lg p-3 text-sm text-ed-pink">
+      <p class="font-semibold mb-1">Senior Signal</p>
+      <p class="text-gray-800">Overdraft detection: streaming, alerting, compliance, multi-currency</p>
+    </div>
+  </div>
+  <div class="mt-3 bg-gray-900 text-gray-100 rounded-lg p-3">
+    <p class="text-xs font-semibold text-gray-400 mb-1">Core code shape:</p>
+    <pre class="mono text-xs">List<String> findNegativeAccounts(List<Account> accounts) {
+  if (accounts == null || accounts.isEmpty()) return emptyList();
+  return accounts.stream()
+    .filter(a -> a.balance.compareTo(ZERO) < 0)
+    .sorted((a, b) -> a.balance != b.balance
+      ? a.balance.compareTo(b.balance)
+      : a.id.compareTo(b.id))
+    .map(a -> a.id)
+    .collect(toList());
+}</pre>
+  </div>
+  </details>
+</section>
+
+</main>
+</body>
+</html>

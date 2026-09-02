@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: Google Drive — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] hero-glow pointer-events-none"></div>
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">SD</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">Google Drive</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">System Design Workbook</span>
+      </div>
+    </div>
+    <a href="../README.md" class="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">&larr; Back to System Design Hub</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Architectural Study Guide</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">High Scale &bull; Distributed Systems</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+      <span class="gradient-text">Google Drive</span>
+    </h1>
+    <p class="text-gray-600 text-base max-w-3xl leading-relaxed">
+      Comprehensive architectural deep-dive covering high-level data flow, data models, edge case failure modes, scaling strategies, and interview trade-off defenses.
+    </p>
+  </div>
+</div>
+
+<!-- CONTENT MAIN -->
+<main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+  <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm prose prose-blue max-w-none space-y-6">
+    <h1 class="text-2xl font-black text-gray-900 border-b border-gray-200 pb-3 mb-4 mt-6">Chapter 15: Design Google Drive</h1>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Introduction</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Google Drive is a cloud-based file storage and synchronization service that allows users to store, access, and share files from various devices. This chapter discusses designing a scalable system with the following features:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">File Upload and Download</strong></li>
+<li><strong class="text-gray-900 font-bold">File Sync Across Devices</strong></li>
+<li><strong class="text-gray-900 font-bold">File Sharing</strong></li>
+<li><strong class="text-gray-900 font-bold">File Revision History</strong></li>
+<li><strong class="text-gray-900 font-bold">Notifications for Edits, Deletes, and Shares</strong></li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 1: Understanding the Problem</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Key Requirements</h3>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Functional Requirements:</h4>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Upload and download files.</li>
+<li>Sync files across multiple devices.</li>
+<li>Maintain file revisions.</li>
+<li>Enable file sharing with permissions.</li>
+<li>Send notifications on file edits, deletions, and shares.</li>
+</ul>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Non-Functional Requirements:</h4>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Reliability:</strong> Data loss is unacceptable.</li>
+<li><strong class="text-gray-900 font-bold">Fast Sync Speed:</strong> Avoid user impatience with delayed syncing.</li>
+<li><strong class="text-gray-900 font-bold">Bandwidth Efficiency:</strong> Minimize unnecessary data usage.</li>
+<li><strong class="text-gray-900 font-bold">Scalability:</strong> Handle 10 million daily active users (DAU).</li>
+<li><strong class="text-gray-900 font-bold">High Availability:</strong> Operate seamlessly during server failures or network issues.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Constraints and Assumptions</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Users get <strong class="text-gray-900 font-bold">10 GB free space</strong>.</li>
+<li>Maximum file size: <strong class="text-gray-900 font-bold">10 GB</strong>.</li>
+<li>Average file upload size: <strong class="text-gray-900 font-bold">500 KB</strong>.</li>
+<li>Upload frequency: <strong class="text-gray-900 font-bold">2 files per day per user</strong>.</li>
+<li>Total storage required: <strong class="text-gray-900 font-bold">500 PB</strong>.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 2: High-Level Design</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Single-Server Setup</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A basic setup includes:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Web Server:</strong> Handles uploads and downloads.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Metadata Database:</strong>  to keep track of metadata like user data, login info, files info/</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Storage Directory:</strong> Holds files organized by namespaces.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/namespaces.png" alt="Namespaces" width="400" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>A web server and a directory called drive/ is set up as the root directory to store uploaded files.</li>
+<li>Under drive/ directory, there is a list of directories called namespaces.</li>
+<li>Each namespace contains all the uploaded files for that user.</li>
+<li>Each file or folder can be uniquely identified by joining the namespace and the relative path.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This design serves as a starting point but is inadequate for scaling.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">APIs</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Upload a file to Google Drive:</strong> Two types of uploads are supported</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Simple upload: Used when file size is small.</li>
+<li>Resumable upload:</li>
+<li>Endpoint: https://api.example.com/files/upload?uploadType=resumable</li>
+<li>Send the initial request to retrieve the resumable URL.</li>
+<li>Upload the data and monitor upload state</li>
+<li>If upload is disturbed, resume the upload.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Download a file from Google Drive:</strong> To download a file</p>
+<li> Endpoint: https://api.example.com/files/download</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Get file revisions:</strong></p>
+<li>Endpoint: https://api.example.com/files/list_revisions</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Moving to Distributed Systems</h3>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Improvements:</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Sharding:</strong> Split storage across servers based on <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">user_id</code>.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Amazon S3:</strong> Use S3 for scalable and redundant file storage with cross-region replication.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/replication.png" alt="Replication" width="600" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Load Balancer:</strong> Distribute traffic across multiple web servers.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Metadata Database Replication:</strong> Ensure availability through database sharding and replication.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Sync Conflicts:</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">For a large storage system like Google Drive, sync conflicts happen from time to time.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">When two users modify the same file or folder at the same time, a conflict happens.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:5rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/sync-conflicts.png" alt="Sync Conflicts" width="600" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>In the example user 1 and user 2 tries to update the same file at the same time, but user 1’s file is processed by our system first.</li>
+<li>User 1’s update operation goes through, but, user 2 gets a sync conflict.</li>
+<li>The system presents both copies of the same file: user 2’s local copy and the latest version from the server.</li>
+<li>User 2 has the option to merge both files or override one version with the other.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Improved design</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:5rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/high-level-design.png" alt="High Level Design" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">User Interaction:</strong>: Users access the application via browser or mobile app.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Block Servers:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Files are split into <strong class="text-gray-900 font-bold">4 MB blocks</strong> (maximum size) and assigned unique hash values.</li>
+<li>Blocks are stored independently in cloud storage (e.g., Amazon S3).</li>
+<li>File reconstruction involves joining blocks in a specific order.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Cloud Storage:</strong> Blocks are stored in cloud storage for scalability and redundancy.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Cold Storage:</strong> Inactive files are moved to cold storage to reduce costs.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">5. <strong class="text-gray-900 font-bold">Load Balancer:</strong> Distributes requests evenly among API servers to ensure efficient operation.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">6. <strong class="text-gray-900 font-bold">API Servers:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Handle user authentication, profile management, and file metadata updates.</li>
+<li>Manage all non-uploading workflows.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">7. <strong class="text-gray-900 font-bold">Metadata Database and Cache:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Stores metadata for users, files, blocks, and versions.</li>
+<li>Frequently accessed metadata is cached for faster retrieval.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">8. <strong class="text-gray-900 font-bold">Notification Service:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>A <strong class="text-gray-900 font-bold">publisher/subscriber system</strong> that notifies clients about file changes (add, edit, delete).</li>
+<li>Ensures clients can pull the latest updates.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">9. <strong class="text-gray-900 font-bold">Offline Backup Queue:</strong> Temporarily stores file change information for offline clients to sync when back online.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 3: Design Deep Dive</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Metadata Database</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A highly simplified is shown below version as it only includes the most important tables and fields.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Schema Design:</h4>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">User Table:</strong> Stores user profiles and preferences.</li>
+<li><strong class="text-gray-900 font-bold">File Table:</strong> Maintains file metadata (e.g., size, name, path).</li>
+<li><strong class="text-gray-900 font-bold">Block Table:</strong> Tracks file blocks for reconstructing files.</li>
+<li><strong class="text-gray-900 font-bold">File Version Table:</strong> Stores file revision history.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:5rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/metadata-database.png" alt="Metadata Database " width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">File Upload Flow</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">File Upload:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>File is split into blocks, compressed, and encrypted by the block server.</li>
+<li>Blocks are uploaded to block servers and stored in S3.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Metadata Upload:</strong></p>
+<li>Client sends metadata to the API server.</li>
+<li>Metadata is stored in the database with status <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">pending</code>.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Completion:</strong></p>
+<li>S3 triggers a callback to update the file status to <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">uploaded</code>.</li>
+<li>Notification service informs relevant users.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:5rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/upload-flow.png" alt="Upload Flow " width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">File Sync</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Delta Sync:</strong> Transfer only modified blocks instead of the entire file.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:2rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/delta-sync.png" alt="Delta Sync" width="400" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Compression:</strong> Blocks are compressed using compression algorithms depending on file types.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Conflict Resolution:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>First processed version wins.</li>
+<li>Conflicting versions are saved separately for user resolution.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:5rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/file-sync.png" alt="File Synce " width="400" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">File Download Flow</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Download flow is triggered when a file is added or edited elsewhere. There are two ways a client can know:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>If client A is online while a file is changed by another client, notification service will inform client A.</li>
+<li>If client A is offline while a file is changed by another client, data will be saved to the cache. When the offline client is online again, it pulls the latest changes.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Once a client knows a file is changed, it first requests metadata via API servers, then</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">downloads blocks to construct the file.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Trigger:</strong> Notification service informs the client of file updates.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Metadata Fetch:</strong> Client retrieves updated metadata via API.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Block Download:</strong> Client downloads updated blocks from block servers and reconstructs the file.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/download-flow.png" alt="Upload Flow " width="600" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Notification Service</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Purpose:</strong> Keeps clients updated about file changes.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Mechanism:</strong> Implements <strong class="text-gray-900 font-bold">long polling</strong> for asynchronous notifications.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Example:</strong> When a file is added, edited, or deleted, notifications are pushed to all relevant clients.</p>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Storage Optimization</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">De-duplication:</strong> Remove duplicate blocks at the account level using hash-based comparisons.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Versioning Strategy:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Limit the number of saved revisions.</li>
+<li>Prioritize recent versions for frequently edited files.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Cold Storage:</strong> Move rarely accessed files to cheaper storage solutions (e.g., Amazon S3 Glacier).</p>
+</ul>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Failure Handling</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Load Balancer Failure:</strong> Secondary load balancer becomes active.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Block Server Failure:</strong> Pending tasks are reassigned to other servers.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Metadata Database Failure:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Promote a slave node to master.</li>
+<li>Redirect traffic to remaining replicas.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Cloud Storage Failure:</strong> Use cross-region replication to fetch unavailable files.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">5. <strong class="text-gray-900 font-bold">Notification Service Failure:</strong> Clients reconnect to alternative servers.</p>
+</ul>
+  </div>
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>System Design Interactive Study Suite &bull; AntiGravity IDE</p>
+</footer>
+</body>
+</html>

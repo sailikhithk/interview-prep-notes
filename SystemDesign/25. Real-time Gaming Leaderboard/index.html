@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: Real-time Gaming Leaderboard — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] hero-glow pointer-events-none"></div>
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">SD</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">Real-time Gaming Leaderboard</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">System Design Workbook</span>
+      </div>
+    </div>
+    <a href="../README.md" class="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">&larr; Back to System Design Hub</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Architectural Study Guide</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">High Scale &bull; Distributed Systems</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+      <span class="gradient-text">Real-time Gaming Leaderboard</span>
+    </h1>
+    <p class="text-gray-600 text-base max-w-3xl leading-relaxed">
+      Comprehensive architectural deep-dive covering high-level data flow, data models, edge case failure modes, scaling strategies, and interview trade-off defenses.
+    </p>
+  </div>
+</div>
+
+<!-- CONTENT MAIN -->
+<main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+  <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm prose prose-blue max-w-none space-y-6">
+    <h1 class="text-2xl font-black text-gray-900 border-b border-gray-200 pb-3 mb-4 mt-6">Chapter 25: Real-time Gaming Leaderboard</h1>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Introduction</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We are going to design a <strong class="text-gray-900 font-bold">leaderboard</strong> for an online mobile game:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/leaderboard.png" alt="leaderboard" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 1: Understand the Problem and Establish Design Scope</h2>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>C: How is the score calculated for the leaderboard?</li>
+<li>I: User gets a point whenever they win a match.</li>
+<li>C: Are all players included in the leaderboard?</li>
+<li>I: Yes</li>
+<li>C: Is there a time segment, associated with the leaderboard?</li>
+<li>I: Each month, a new tournament starts which starts a new leaderboard.</li>
+<li>C: Can we assume we only care about top 10 users?</li>
+<li>I: We want to display top 10 users, along with position of specific user. If time permits, we can discuss showing users around particular user in the leaderboard.</li>
+<li>C: How many users are in a tournament?</li>
+<li>I: 5mil DAU and 25mil MAU</li>
+<li>C: How many matches are played on average during a tournament?</li>
+<li>I: Each player plays 10 matches per day on average</li>
+<li>C: How do we determine the rank if two players have the same score?</li>
+<li>I: Their rank is the same in that case. If time permits, we can discuss breaking ties.</li>
+<li>C: Does the leaderboard need to be real-time?</li>
+<li>I: Yes, we want to present real-time results or as close as possible to real-time. It is not okay to present batched result history.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Functional requirements**</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Display top 10 players on leaderboard</li>
+<li>Show a user's specific rank</li>
+<li>Display users which are four places above and below given user (bonus)</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Non-functional requirements**</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Real-time updates on scores</li>
+<li>Score update is reflected on the leaderboard in real-time</li>
+<li>General scalability, availability, reliability</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Back-of-the-envelope estimation**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">With 50mil DAU, if the game has an even distribution of players during a 24h period, we'd have an average of 50 users per second.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">However, since distribution is typically uneven, we can estimate that the peak online users would be 250 users per second.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">QPS for users scoring a point - given 10 games per day on average, 50 users/s * 10 = 500 QPS. Peak QPS = 2500.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">QPS for fetching the top 10 leaderboard - assuming users open that once a day on average, QPS is 50.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 2: Propose High-Level Design and Get Buy-In</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**API Design**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The first API we need is one to update a user's score:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>POST /v1/scores</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This API takes two params - <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">user_id</code> and <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">points</code> scored for winning a game.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This API should only be accessible to game servers, not end clients.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Next one is for getting the top 10 players of the leaderboard:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>GET /v1/scores</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Example response:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>{
+  "data": [
+    {
+      "user_id": "user_id1",
+      "user_name": "alice",
+      "rank": 1,
+      "score": 12543
+    },
+    {
+      "user_id": "user_id2",
+      "user_name": "bob",
+      "rank": 2,
+      "score": 11500
+    }
+  ],
+  ...
+  "total": 10
+}</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">You can also get the score of a particular user:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>GET /v1/scores/{:user_id}</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Example response:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>{
+    "user_info": {
+        "user_id": "user5",
+        "score": 1000,
+        "rank": 6,
+    }
+}</code></pre></div>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**High-level architecture**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/high-level-architecture.png" alt="high-level-architecture" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>When a player wins a game, client sends a request to the game service</li>
+<li>Game service validates if win is valid and calls the leaderboard service to update the player's score</li>
+<li>Leaderboard service updates the user's score in the leaderboard store</li>
+<li>Player makes a call to leaderboard service to fetch leaderboard data, eg top 10 players and given player's rank</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">An alternative design which was considered is the client updating their score directly within the leaderboard service:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/alternative-design.png" alt="alternative-design" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This option is not secure as it's susceptible to man-in-the-middle attacks. Players can put a proxy and change their score as they please.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">One additional caveat is that for games, where the game logic is managed by the server, cliets don't need to call the server explicitly to record their win.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Servers do it automatically for them based on the game logic.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">One additional consideration is whether we should put a message queue between the game server and the leaderboard service. This would be useful if other services are interested in game results, but that is not an explicit requirement in the interview so far, hence it's not included in the design:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/message-queue-based-comm.png" alt="message-queue-based-comm" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Data models**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Let's discuss the options we have for storing leaderboard data - relational DBs, Redis, NoSQL.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The NoSQL solution is discussed in the deep dive section.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Relational database solution</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">If the scale doesn't matter and we don't have that many users, a relational DB serves our quite well.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We can start from a simple leaderboard table, one for each month (personal note - this doesn't make sense. You can just add a <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">month</code> column and avoid the headache of maintaining new tables each month):</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/leaderboard-table.png" alt="leaderboard-table" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">There is additional data to include in there, but that is irrelevant to the queries we'd run, so it's omitted.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">What happens when a user wins a point?</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/user-wins-point.png" alt="user-wins-point" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">If a user doesn't exist in the table yet, we need to insert them first:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>INSERT INTO leaderboard (user_id, score) VALUES ('mary1934', 1);</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">On subsequent calls, we'd just update their score:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>UPDATE leaderboard set score=score + 1 where user_id='mary1934';</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">How do we find the top players of a leaderboard?</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/find-leaderboard-position.png" alt="find-leaderboard-position" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We can run the following query:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>SELECT (@rownum := @rownum + 1) AS rank, user_id, score
+FROM leaderboard
+ORDER BY score DESC;</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This is not performant though as it makes a table scan to order all records in the database table.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We can optimize it by adding an index on <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">score</code> and using the <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">LIMIT</code> operation to avoid scanning everything:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>SELECT (@rownum := @rownum + 1) AS rank, user_id, score
+FROM leaderboard
+ORDER BY score DESC
+LIMIT 10;</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This approach, however, doesn't scale well if the user is not at the top of the leaderboard and you'd want to locate their rank.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Redis solution</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We want to find a solution, which works well even for millions of players without having to fallback on complex database queries.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Redis is an in-memory data store, which is fast as it works in-memory and has a suitable data structure to serve our needs - sorted set.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A sorted set is a data structure similar to sets in programming languages, which allows you to keep a data structure sorted by a given criteria.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Internally, it is implemented using a hash-map to maintain mapping between key (user_id) and value (score) and a skip list which maps scores to users in sorted order:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/sorted-set.png" alt="sorted-set" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">How does a skip list work?</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>It is a linked list which allows for fast search</li>
+<li>It consists of a sorted linked list and multi-level indexes</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/skip-list.png" alt="skip-list" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This structure enables us to quickly search for specific values when the data set is large enough.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In the example below (64 nodes), it requires traversing 62 nodes in a base linked list to find the given value and 11 nodes in the skip-list case:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/skip-list-performance.png" alt="skip-list-performance" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Sorted sets are more performant than relational databases as the data is kept sorted at all times at the price of O(logN) add and find operation.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In contract, here's an example nested query we need to run to find the rank of a given user in a relational DB:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>SELECT *,(SELECT COUNT(*) FROM leaderboard lb2
+WHERE lb2.score >= lb1.score) RANK
+FROM leaderboard lb1
+WHERE lb1.user_id = {:user_id};</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">What operations do we need to operate our leaderboard in Redis?</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">ZADD</strong> - insert the user into the set if they don't exist. Otherwise, update the score. O(logN) time complexity.</li>
+<li><strong class="text-gray-900 font-bold">ZINCRBY</strong> - increment the score of a user by given amount. If user doesn't exist, score starts at zero. O(logN) time complexity.</li>
+<li><strong class="text-gray-900 font-bold">ZRANGE/ZREVRANGE</strong> - fetch a range of users, sorted by their score. We can specify order (ASC/DESC), offset and result size. O(logN+M) time complexity where M is result size.</li>
+<li><strong class="text-gray-900 font-bold">ZRANK/ZREVRANK</strong> - Fetch the position (rank) of given user in ASC/DESC order. O(logN) time complexity.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">What happens when a user scores a point?</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>ZINCRBY leaderboard_feb_2021 1 'mary1934'</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">There's a new leaderboard created every month while old ones are moved to historical storage.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">What happens when a user fetches top 10 players?</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>ZREVRANGE leaderboard_feb_2021 0 9 WITHSCORES</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Example result:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>[(user2,score2),(user1,score1),(user5,score5)...]</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">What about user fetching their leaderboard position?</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/leaderboard-position-of-user.png" alt="leaderboard-position-of-user" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This can be easily achieved by the following query, given that we know a user's leaderboard position:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>ZREVRANGE leaderboard_feb_2021 357 365</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A user's position can be fetched using <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">ZREVRANK <user-id></code>.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Let's explore what our storage requirements are:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Assuming worst-case scenario of all 25mil MAU participating in the game for a given month</li>
+<li>ID is 24-character string and score is 16-bit integer, we need 26 bytes * 25mil = ~650MB of storage</li>
+<li>Even if we double the storage cost due to the overhead of the skip list, this would still easily fit in a modern redis cluster</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Another non-functional requirement to consider is supporting 2500 updates per second. This is well within a single Redis server's capabilities.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Additional caveats:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>We can spin up a Redis replica to avoid losing data when a redis server crashes</li>
+<li>We can still leverage Redis persistence to not lose data in the event of a crash</li>
+<li>We'll need two supporting tables in MySQL to fetch user details such as username, display name, etc as well as store when eg a user won a game</li>
+<li>The second table in MySQL can be used to reconstruct leaderboard when there is an infrastructure failure</li>
+<li>As a small performance optimization, we could cache the user details of top 10 players as they'd be frequently accessed</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 3: Design Deep Dive</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**To use a cloud provider or not**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We can either choose to deploy and manage our own services or use a cloud provider to manage them for us.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">If we choose to manage the services our selves, we'll use redis for leaderboard data, mysql for user profile and potentially a cache for user profile if we want to scale the database:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/manage-services-ourselves.png" alt="manage-services-ourselves" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Alternatively, we could use cloud offerings to manage a lot of the services for us. For example, we can use AWS API Gateway to route API calls to AWS Lambda functions:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/api-gateway-mapping.png" alt="api-gateway-mapping" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">AWS Lambda enables us to run code without managing or provisioning servers ourselves. It runs only when needed and scales automatically.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Exmaple user scoring a point:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/user-scoring-point-lambda.png" alt="user-scoring-point-lambda" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Example user retrieving leaderboard:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/user-retrieve-leaderboard.png" alt="user-retrieve-leaderboard" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Lambdas are an implementation of a serverless architecture. We don't need to manage scaling and environment setup.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Author recommends going with this approach if we build the game from the ground up.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Scaling Redis**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">With 5mil DAU, we can get away with a single Redis instance from both a storage and QPS perspective.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">However, if we imagine userbase grows 10x to 500mil DAU, then we'd need 65gb for storage and QPS goes to 250k.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Such scale would require sharding.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">One way to achieve it is by range-partitioning the data:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/range-partition.png" alt="range-partition" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In this example, we'll shard based on user's score. We'll maintain the mapping between user_id and shard in application code.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We can do that either via MySQL or another cache for the mapping itself.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">To fetch the top 10 players, we'd query the shard with the highest scores (<code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">[900-1000]</code>).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">To fetch a user's rank, we'll need to calculate the rank within the user's shard and add up all users with higher scores in other shards.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The latter is a O(1) operation as total records per shard can quickly be accessed via the info keyspace command.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Alternatively, we can use hash partitioning via Redis Cluster. It is a proxy which distributes data across redis nodes based on partitioning similar to consistent hashing, but not exactly the same:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/hash-partition.png" alt="hash-partition" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Calculating the top 10 players is challenging with this setup. We'll need to get the top 10 players of each shard and merge the results in the application:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/top-10-players-calculation.png" alt="top-10-players-calculation" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">There are some limitations with the hash partitioning:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>If we need to fetch top K users, where K is high, latency can increase as we'll need to fetch a lot of data from all the shards</li>
+<li>Latency increases as the number of partitions grows</li>
+<li>There is no straightforward approach to determine a user's rank</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Due to all this, the author leans towards using fixed partitions for this problem.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Other caveats:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>A best practice is to allocate twice as much memory as required for write-heavy redis nodes to accommodate snapshots if required</li>
+<li>We can use a tool called Redis-benchmark to track the performance of a redis setup and make data-driven decisions</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Alternative solution: NoSQL**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">An alternative solution to consider is using an appropriate NoSQL database optimized for:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>heavy writes</li>
+<li>effectively sorting items within the same partition by score</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">DynamoDB, Cassandra or MongoDB are all good fits.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In this chapter, the author has decided to use DynamoDB. It is a fully-managed NoSQL database, which offers reliable performance and great scalability.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">It also enables usage of global secondary indexes when we need to query fields not part of the primary key.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/dynamo-db.png" alt="dynamo-db" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Let's start from a table for storing a leaderboard for a chess game:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/chess-game-leaderboard-table-1.png" alt="chess-game-leaderboard-table-1" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This works well, but doesn't scale well if we need to query anything by score. Hence, we can put the score as a sort key:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/chess-game-leaderboard-table-2.png" alt="chess-game-leaderboard-table-2" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Another problem with this design is that we're partitioning by month. This leads to a hotspot partition as the latest month will be unevenly accessed compared to the others.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We could use a technique called write sharding, where we append a partition number for each key, calculated via <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">user_id % num_partitions</code>:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/chess-game-leaderboard-table-3.png" alt="chess-game-leaderboard-table-3" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">An important trade-off to consider is how many partitions we should use:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>The more partitions there are, the higher the write scalability</li>
+<li>However, read scalability suffers as we need to query more partitions to collect aggregate results</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Using this approach requires that we use the "scatter-gather" technique we saw earlier, which grows in time complexity as we add more partitions:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/scatter-gather-2.png" alt="scatter-gather-2" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">To make a good evaluation on the number of partitions, we'd need to do some benchmarking.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This NoSQL approach still has one major downside - it is hard to calculate the specific rank of a user.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">If we have sufficient scale to require us to shard, we could then perhaps tell users what "percentile" of scores they're in.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A cron job can periodically run to analyze score distributions, based on which a user's percentile is determined, eg:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>10th percentile = score < 100
+20th percentile = score < 500
+...
+90th percentile = score < 6500</code></pre></div>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 4: Wrap Up</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Other things to discuss if time permits:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Faster retrieval</strong> - We can cache the user object via a Redis hash with mapping <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">user_id -> user object</code>. This enables faster retrieval vs. querying the database.</li>
+<li><strong class="text-gray-900 font-bold">Breaking ties</strong> - When two players have the same score, we can break the tie by sorting them based on last played game.</li>
+<li><strong class="text-gray-900 font-bold">System failure recovery</strong> - In the event of a large-scale Redis outage, we can recreate the leaderboard by going through the MySQL WAL entries and recreate it via an ad-hoc script</li>
+</ul>
+  </div>
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>System Design Interactive Study Suite &bull; AntiGravity IDE</p>
+</footer>
+</body>
+</html>

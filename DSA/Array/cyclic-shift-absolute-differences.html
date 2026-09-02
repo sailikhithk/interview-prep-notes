@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyclic Shift Absolute Differences &mdash; Capital One GPN Interview Guide</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        'ed-pink': '#db2777', 'ed-blue': '#2563eb', 'ed-teal': '#0d9488',
+        'ed-amber': '#d97706', 'ed-sky': '#0284c7', 'ed-purple': '#7c3aed', 'ed-orange': '#ea580c',
+      },
+      fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+    },
+  },
+};
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .chevron { transition: transform 0.2s; }
+  details[open] .chevron { transform: rotate(90deg); }
+  pre.mono { white-space: pre; }
+  .tok-kw { color: #c084fc; }
+  .tok-ty { color: #fbbf24; }
+  .tok-fn { color: #60a5fa; }
+  .tok-nm { color: #fb923c; }
+  .tok-str { color: #f472b6; }
+  .tok-cm { color: #94a3b8; font-style: italic; }
+  .legend-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+<main class="max-w-5xl mx-auto px-4 py-6 md:py-10 space-y-4">
+
+<header class="bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl p-6 md:p-8 shadow-lg">
+  <div class="flex items-center gap-2 text-sm text-gray-300 mb-2">
+    <span class="bg-amber-500 text-white px-2 py-0.5 rounded-full text-xs font-bold">MEDIUM</span>
+    <span class="text-gray-400">&middot;</span>
+    <span>Capital One GPN &middot; Senior Lead Software Engineer</span>
+  </div>
+  <h1 class="text-3xl md:text-4xl font-extrabold">Cyclic Shift Absolute Differences</h1>
+  <p class="text-gray-300 mt-2 text-sm md:text-base">Modular arithmetic &middot; Array &middot; Time O(n&sup2;) &middot; Space O(n)</p>
+</header>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <h2 class="text-xl md:text-2xl font-bold text-gray-900 mb-3">1. Problem Statement</h2>
+  <div class="text-gray-700 text-sm md:text-base space-y-3">
+    <p>You are given two integer arrays <span class="mono bg-gray-100 px-1 rounded">nums1</span> and <span class="mono bg-gray-100 px-1 rounded">nums2</span> of the same length <span class="mono bg-gray-100 px-1 rounded">n</span>. For each cyclic right shift of <span class="mono bg-gray-100 px-1 rounded">nums1</span>, compute the sum of absolute differences with <span class="mono bg-gray-100 px-1 rounded">nums2</span>, and return the list of all such sums sorted in non-decreasing order.</p>
+    <div class="bg-gray-100 rounded-lg p-3 mt-3">
+      <p class="font-semibold text-gray-800 mb-1">Example:</p>
+      <p class="mono text-sm">nums1 = [1, 4, 2, 11], nums2 = [10, 1, 8, 4] &rarr; returns <strong class="text-ed-teal">[7, 13, 25, 25]</strong></p>
+      <p class="text-xs text-gray-600 mt-1">Shift 0: |1-10|+|4-1|+|2-8|+|11-4| = 9+3+6+7 = 25. Shift 1: |11-10|+|1-1|+|4-8|+|2-4| = 1+0+4+2 = 7. Shift 2: 25. Shift 3: 13. Sorted: [7, 13, 25, 25].</p>
+    </div>
+  </div>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details open>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">2. Pattern Recognition</h2><span class="chevron text-ed-pink text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-pink/5 border border-ed-pink/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong class="text-ed-pink">Signal words:</strong> "cyclic right shift", "sum of absolute differences", "all such sums", "sorted in non-decreasing order". The phrase "cyclic shift" combined with "for each" signals modular arithmetic over physically building rotated copies.</p>
+    <p><strong class="text-ed-pink">When to reach for this pattern:</strong> Whenever a problem asks you to compute something for every rotation/shift of an array. The key insight is that you don't need to physically rotate &mdash; modular index mapping handles it in O(1) per lookup.</p>
+    <p><strong class="text-ed-pink">Key insight:</strong> For a right cyclic shift by <span class="mono">shift</span>, the element at position <span class="mono">i</span> in the shifted array comes from <span class="mono">nums1[(i - shift) % n]</span> in the original. This is <strong>modular index mapping</strong> &mdash; you compute the alignment without building the rotated array.</p>
+    <ul class="space-y-1 ml-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>"For each shift" + "same length n" &rarr; n shifts, each O(n) work</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>Right shift: <span class="mono">shifted[i] = nums1[(i - shift) % n]</span></span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>Sort the results at the end &mdash; the problem asks for sorted output</span></li>
+    </ul>
+    <p class="pt-2"><strong class="text-ed-pink">Approaches considered before settling on modular indexing:</strong> Always brainstorm variants before committing. The O(n&sup2;) bound is acceptable per the prompt, but naming alternatives forces you to understand <em>why</em> modular indexing is the cleanest approach.</p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-ed-pink/10 text-ed-pink"><tr>
+          <th class="text-left px-3 py-2 font-semibold">Approach</th>
+          <th class="text-left px-3 py-2 font-semibold">Description</th>
+          <th class="text-left px-3 py-2 font-semibold">Time / Space</th>
+          <th class="text-left px-3 py-2 font-semibold">Notes (flaws or why proceed)</th>
+        </tr></thead>
+        <tbody class="text-gray-700">
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">Physically rotate + compare</td><td class="px-3 py-2">Build each shifted array with slicing, then compare element-wise with nums2.</td><td class="px-3 py-2 mono">O(n&sup2;) / O(n)</td><td class="px-3 py-2"><span class="text-amber-700">Valid but wasteful:</span> Allocates a new array per shift. Same asymptotic cost but more memory traffic and code complexity. Demoted to v0 in Section 10.</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">Modular index mapping</td><td class="px-3 py-2">For each shift, compute <span class="mono">nums1[(i - shift) % n]</span> on the fly. No array allocation. (v_final in Section 10.)</td><td class="px-3 py-2 mono">O(n&sup2;) / O(n)</td><td class="px-3 py-2"><span class="text-emerald-700 font-semibold">Chosen:</span> Same O(n&sup2;) time but O(n) space (only the result list). Cleaner code, no intermediate arrays. Meets the prompt's complexity bound.</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">FFT-based convolution</td><td class="px-3 py-2">Express the sum of absolute differences as a convolution and use FFT to compute all shifts in O(n log n).</td><td class="px-3 py-2 mono">O(n log n) / O(n)</td><td class="px-3 py-2"><span class="text-red-600">Rejected:</span> Absolute value is not a linear operation, so it doesn't decompose into a convolution cleanly. Would require sorting + prefix sums + case analysis. Over-engineered for the stated O(n&sup2;) bound.</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">Prefix-sum optimization</td><td class="px-3 py-2">Sort indices by value, use prefix sums to compute absolute-difference sums for all shifts in O(n log n).</td><td class="px-3 py-2 mono">O(n log n) / O(n)</td><td class="px-3 py-2"><span class="text-red-600">Rejected:</span> The absolute difference is between aligned positions, not a distance metric that benefits from sorting. The alignment changes per shift, so prefix sums don't directly apply. The O(n&sup2;) solution is the intended one.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="text-gray-600 text-xs pt-1">The point of the table is to show you weighed alternatives. In an interview, saying "I considered FFT but absolute value isn't linear, so convolution doesn't apply cleanly" proves you understand the <em>why</em>, not just the <em>how</em>.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">3. Pattern Blueprint</h2><span class="chevron text-ed-blue text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-blue-50 border border-blue-200 rounded-xl p-4 md:p-6">
+    <ul class="space-y-2 text-gray-700 text-sm">
+      <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span><span>Initialize <span class="mono">result = []</span> and <span class="mono">n = len(nums1)</span></span></li>
+      <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span><span>For each <span class="mono">shift</span> from 0 to <span class="mono">n - 1</span>:</span></li>
+      <li class="flex gap-3 ml-6"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span><span>Initialize <span class="mono">total_distance = 0</span></span></li>
+      <li class="flex gap-3 ml-6"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span><span>For each <span class="mono">i</span> from 0 to <span class="mono">n - 1</span>: <span class="mono">original_index = (i - shift) % n</span>, add <span class="mono">abs(nums1[original_index] - nums2[i])</span> to <span class="mono">total_distance</span></span></li>
+      <li class="flex gap-3 ml-6"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">5</span><span>Append <span class="mono">total_distance</span> to <span class="mono">result</span></span></li>
+      <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">6</span><span>Sort <span class="mono">result</span> in non-decreasing order and return it</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">4. How to Think About It</h2><span class="chevron text-ed-blue text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-blue/5 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p>The first instinct is to physically rotate <span class="mono">nums1</span> for each shift and compare. This works but wastes memory &mdash; you're allocating a new array of size n for each of n shifts. The key insight is that <strong>rotation is just an index transformation</strong>.</p>
+    <p>For a <em>right</em> cyclic shift by <span class="mono">shift</span>, the element that ends up at position <span class="mono">i</span> originally lived at position <span class="mono">(i - shift) % n</span>. Think of it as: "who moves into slot i?" The answer is the element <span class="mono">shift</span> positions to the left (wrapping around), which is <span class="mono">(i - shift) % n</span>.</p>
+    <p>The modulo handles the wrap-around. Python's <span class="mono">%</span> always returns a non-negative result for positive <span class="mono">n</span>, so <span class="mono">(0 - 1) % 4 = 3</span> &mdash; correct. In languages where <span class="mono">%</span> can be negative (C++, Java), use <span class="mono">((i - shift) % n + n) % n</span> to stay safe.</p>
+    <p>Once you have the index mapping, each shift is just a sum of n absolute differences. With n shifts, that's O(n&sup2;) total. The final sort is O(n log n), which is dominated by O(n&sup2;) for large n. The prompt explicitly allows O(n&sup2;), so this is the intended solution.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">5. Real-World Analogy</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong class="text-ed-teal">Two circular gears:</strong> Imagine two gears with numbers written on their teeth, both with <span class="mono">n</span> teeth. <span class="mono">nums1</span> is on the top gear, <span class="mono">nums2</span> on the bottom gear, fixed in place.</p>
+    <p>For each rotation of the top gear (right shift = turn the gear one tooth clockwise), you compute the total "mismatch" &mdash; the sum of absolute differences between the numbers now touching on each tooth pair. After checking all n rotations, you sort the mismatch scores.</p>
+    <p><strong class="text-ed-teal">Mapping:</strong></p>
+    <ul class="space-y-1 ml-4">
+      <li><strong>nums1</strong> = top gear (rotatable)</li>
+      <li><strong>nums2</strong> = bottom gear (fixed)</li>
+      <li><strong>shift</strong> = how many teeth the top gear has rotated clockwise</li>
+      <li><strong>absolute difference</strong> = mismatch at each tooth pair</li>
+      <li><strong>modular index</strong> = "which tooth of the original gear is now at position i?"</li>
+    </ul>
+    <p>You don't need to redraw the gear for each rotation &mdash; you just compute which tooth is where using modular arithmetic.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">6. Build Your Intuition</h2><span class="chevron text-ed-amber text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-amber/5 border border-ed-amber/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p>Trace <span class="mono">nums1=[1,4,2,11], nums2=[10,1,8,4]</span> by hand. For each shift, write out the aligned pairs:</p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-amber-100 text-amber-700"><tr>
+          <th class="text-left px-3 py-2">Shift</th>
+          <th class="text-left px-3 py-2">Shifted nums1</th>
+          <th class="text-left px-3 py-2">nums2</th>
+          <th class="text-left px-3 py-2">Pairs (shifted[i], nums2[i])</th>
+          <th class="text-left px-3 py-2">|diff|s</th>
+          <th class="text-left px-3 py-2">Sum</th>
+        </tr></thead>
+        <tbody class="text-gray-700 mono">
+          <tr class="border-t"><td class="px-3 py-2">0</td><td class="px-3 py-2">[1, 4, 2, 11]</td><td class="px-3 py-2">[10, 1, 8, 4]</td><td class="px-3 py-2">(1,10) (4,1) (2,8) (11,4)</td><td class="px-3 py-2">9+3+6+7</td><td class="px-3 py-2 font-bold">25</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">1</td><td class="px-3 py-2">[11, 1, 4, 2]</td><td class="px-3 py-2">[10, 1, 8, 4]</td><td class="px-3 py-2">(11,10) (1,1) (4,8) (2,4)</td><td class="px-3 py-2">1+0+4+2</td><td class="px-3 py-2 font-bold text-emerald-600">7</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">2</td><td class="px-3 py-2">[2, 11, 1, 4]</td><td class="px-3 py-2">[10, 1, 8, 4]</td><td class="px-3 py-2">(2,10) (11,1) (1,8) (4,4)</td><td class="px-3 py-2">8+10+7+0</td><td class="px-3 py-2 font-bold">25</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">3</td><td class="px-3 py-2">[4, 2, 11, 1]</td><td class="px-3 py-2">[10, 1, 8, 4]</td><td class="px-3 py-2">(4,10) (2,1) (11,8) (1,4)</td><td class="px-3 py-2">6+1+3+3</td><td class="px-3 py-2 font-bold">13</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="pt-2">Sums: [25, 7, 25, 13]. Sorted: <strong class="text-emerald-700">[7, 13, 25, 25]</strong> &mdash; matches the expected output.</p>
+    <p class="text-xs text-gray-600">Note how shift 1 moves the last element (11) to the front: <span class="mono">shifted[0] = nums1[(0-1) % 4] = nums1[3] = 11</span>. That's the modular index in action.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details open>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">7. Interactive Visualization</h2><span class="chevron text-ed-pink text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-pink/5 border border-ed-pink/15 rounded-xl p-4 md:p-6">
+    <div class="flex flex-wrap gap-2 mb-4">
+      <button id="csa-play" class="bg-ed-pink text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-pink-700" style="min-height:44px">Play</button>
+      <button id="csa-pause" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-300" style="min-height:44px">Pause</button>
+      <button id="csa-step" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-300" style="min-height:44px">Step</button>
+      <button id="csa-reset" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-300" style="min-height:44px">Reset</button>
+    </div>
+    <div class="flex flex-wrap items-center gap-2 mb-4 text-sm">
+      <label class="font-semibold text-gray-700">nums1:</label>
+      <input id="csa-n1" type="text" value="1,4,2,11" class="w-32 px-2 py-1 border border-gray-300 rounded text-sm mono" style="min-height:44px">
+      <label class="font-semibold text-gray-700">nums2:</label>
+      <input id="csa-n2" type="text" value="10,1,8,4" class="w-32 px-2 py-1 border border-gray-300 rounded text-sm mono" style="min-height:44px">
+    </div>
+    <div class="flex items-center gap-4 mb-4 text-sm">
+      <span class="text-gray-600">Step: <span id="csa-step-num" class="mono font-bold text-gray-900">0</span></span>
+      <span class="text-gray-600">Status: <span id="csa-status" class="mono font-bold text-ed-pink">ready</span></span>
+      <span class="text-gray-600">Shift: <span id="csa-shift-val" class="mono font-bold text-gray-900">0</span></span>
+      <span class="text-gray-600">Running sum: <span id="csa-sum-val" class="mono font-bold text-ed-teal">0</span></span>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+      <div class="text-xs text-gray-500 mb-1">nums1 (shifted view, current index highlighted):</div>
+      <div id="csa-arr1" class="flex flex-wrap gap-1 mb-3"></div>
+      <div class="text-xs text-gray-500 mb-1">nums2 (fixed):</div>
+      <div id="csa-arr2" class="flex flex-wrap gap-1 mb-3"></div>
+      <div class="text-xs text-gray-500 mb-1">Sums collected so far:</div>
+      <div id="csa-sums" class="mono text-sm text-gray-700">[]</div>
+    </div>
+    <div class="bg-gray-900 text-gray-100 rounded-lg p-3 max-h-48 overflow-y-auto mono text-xs">
+      <div id="csa-log"></div>
+    </div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">8. How It Works (Step by Step)</h2><span class="chevron text-ed-sky text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-sky/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <div class="flex gap-3"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span><span><strong>Outer loop:</strong> Iterate <span class="mono">shift</span> from 0 to <span class="mono">n - 1</span>. Each iteration computes one sum.</span></div>
+    <div class="flex gap-3"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span><span><strong>Inner loop:</strong> For each position <span class="mono">i</span> from 0 to <span class="mono">n - 1</span>, compute <span class="mono">original_index = (i - shift) % n</span>. This is the index in the original <span class="mono">nums1</span> that maps to position <span class="mono">i</span> after the right shift.</span></div>
+    <div class="flex gap-3"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span><span><strong>Accumulate:</strong> Add <span class="mono">abs(nums1[original_index] - nums2[i])</span> to the running sum for this shift.</span></div>
+    <div class="flex gap-3"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span><span><strong>Store:</strong> After the inner loop, append the shift's sum to <span class="mono">result</span>.</span></div>
+    <div class="flex gap-3"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">5</span><span><strong>Sort:</strong> After all shifts, sort <span class="mono">result</span> in non-decreasing order and return it.</span></div>
+    <p class="pt-2 text-gray-600">The <span class="mono">(i - shift) % n</span> formula is the heart. For right shift by 1, position 0 gets the element from index <span class="mono">(0 - 1) % n = n - 1</span> &mdash; the last element moves to the front. That's exactly what "right cyclic shift" means.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">9. Dry Run</h2><span class="chevron text-ed-amber text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-amber-50 border border-amber-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p>Input: <span class="mono">nums1=[1,4,2,11], nums2=[10,1,8,4]</span>, n=4</p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-amber-100 text-amber-700"><tr>
+          <th class="text-left px-3 py-2">shift</th>
+          <th class="text-left px-3 py-2">i=0: (orig_idx, pair, |diff|)</th>
+          <th class="text-left px-3 py-2">i=1</th>
+          <th class="text-left px-3 py-2">i=2</th>
+          <th class="text-left px-3 py-2">i=3</th>
+          <th class="text-left px-3 py-2">Sum</th>
+        </tr></thead>
+        <tbody class="text-gray-700 mono">
+          <tr class="border-t"><td class="px-3 py-2">0</td><td class="px-3 py-2">(0, 1v10, 9)</td><td class="px-3 py-2">(1, 4v1, 3)</td><td class="px-3 py-2">(2, 2v8, 6)</td><td class="px-3 py-2">(3, 11v4, 7)</td><td class="px-3 py-2 font-bold">25</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">1</td><td class="px-3 py-2">(3, 11v10, 1)</td><td class="px-3 py-2">(0, 1v1, 0)</td><td class="px-3 py-2">(1, 4v8, 4)</td><td class="px-3 py-2">(2, 2v4, 2)</td><td class="px-3 py-2 font-bold text-emerald-600">7</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">2</td><td class="px-3 py-2">(2, 2v10, 8)</td><td class="px-3 py-2">(3, 11v1, 10)</td><td class="px-3 py-2">(0, 1v8, 7)</td><td class="px-3 py-2">(1, 4v4, 0)</td><td class="px-3 py-2 font-bold">25</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">3</td><td class="px-3 py-2">(1, 4v10, 6)</td><td class="px-3 py-2">(2, 2v1, 1)</td><td class="px-3 py-2">(3, 11v8, 3)</td><td class="px-3 py-2">(0, 1v4, 3)</td><td class="px-3 py-2 font-bold">13</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="pt-2">Sums: [25, 7, 25, 13]. Sorted: <strong class="text-emerald-700">[7, 13, 25, 25]</strong></p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details open>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">10. From Brute Force to Optimal &mdash; Every Decision &amp; Why</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+  <div class="mt-5 space-y-5">
+    <div class="bg-red-500/5 border border-red-500/15 rounded-xl p-4 md:p-5">
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+        <h3 class="font-bold text-red-500 text-sm md:text-base">v0 &mdash; Brute Force: physically rotate + compare</h3>
+        <div class="flex gap-2">
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">Time: O(n&sup2;)</span>
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700 border border-red-200">Space: O(n) per shift</span>
+        </div>
+      </div>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def solution_bruteforce(nums1, nums2):
+    n = len(nums1)
+    sums = []
+    for shift in range(n):
+        shifted = nums1[-shift:] + nums1[:-shift] if shift else nums1[:]
+        current = 0
+        for i in range(n):
+            current += abs(shifted[i] - nums2[i])
+        sums.append(current)
+    sums.sort()
+    return sums</pre>
+      <p class="text-gray-700 text-sm mt-2"><strong class="text-red-500">Flaw:</strong> Allocates a new <span class="mono">shifted</span> array of size n for each of n shifts &mdash; O(n&sup2;) total memory allocations. The slicing <span class="mono">nums1[-shift:] + nums1[:-shift]</span> is Python-specific and hides the modular arithmetic. Works but wasteful and not portable to languages without slicing.</p>
+    </div>
+    <div class="bg-emerald-50 border border-emerald-300 rounded-xl p-4 md:p-5">
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+        <h3 class="font-bold text-emerald-700 text-sm md:text-base">v_final &mdash; Modular index mapping, no array allocation</h3>
+        <div class="flex gap-2">
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">Time: O(n&sup2;)</span>
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">Space: O(n)</span>
+        </div>
+      </div>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def solution(nums1, nums2):
+    n = len(nums1)
+    result = []
+    for shift in range(n):
+        total_distance = 0
+        for i in range(n):
+            original_index = (i - shift) % n
+            total_distance += abs(nums1[original_index] - nums2[i])
+        result.append(total_distance)
+    result.sort()
+    return result</pre>
+      <p class="text-gray-700 text-sm mt-2"><strong class="text-emerald-700">Why final:</strong> Same O(n&sup2;) time, but O(n) space total (only the result list). No intermediate arrays. The modular index <span class="mono">(i - shift) % n</span> is portable to any language. This is the version used in Section 20.</p>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-gray-100 text-gray-700"><tr>
+          <th class="text-left px-3 py-2 font-semibold">Version</th>
+          <th class="text-left px-3 py-2 font-semibold">Edge case that forced it</th>
+          <th class="text-left px-3 py-2 font-semibold">Enhancement added</th>
+        </tr></thead>
+        <tbody class="text-gray-700">
+          <tr class="border-t"><td class="px-3 py-2 mono">v0</td><td class="px-3 py-2">None &mdash; most direct approach (build, then compare)</td><td class="px-3 py-2">Physical rotation via slicing</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 mono">v_final</td><td class="px-3 py-2">Memory waste &mdash; v0 allocates O(n) per shift</td><td class="px-3 py-2">Replace physical rotation with modular index <span class="mono">(i - shift) % n</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-indigo-700 text-sm">
+      <strong>Principle:</strong> Every line of complexity was earned by a specific input the previous version failed on. Here, the "failure" was wasteful memory allocation, not a wrong answer. The modular index eliminates the allocation without changing the time complexity &mdash; a space optimization, not a time optimization.
+    </div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">11. Complexity Deep Dive</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong class="text-ed-teal">Time: O(n&sup2; + n log n) = O(n&sup2;)</strong> &mdash; The outer loop runs n times (one per shift). The inner loop runs n times (one per position). Total: n &times; n = n&sup2; operations. The final sort is O(n log n), which is dominated by O(n&sup2;) for n &ge; 2. The prompt explicitly allows O(n&sup2;), so this is optimal within the constraint.</p>
+    <p><strong class="text-ed-teal">Space: O(n)</strong> &mdash; The <span class="mono">result</span> list stores n sums. No intermediate arrays are allocated (modular indexing computes on the fly). The input arrays are not modified.</p>
+    <p><strong class="text-ed-teal">Why not O(n log n)?</strong> The absolute difference is not a linear operation, so FFT-based convolution doesn't apply directly. A prefix-sum approach would require sorting by value and tracking alignment changes, which is complex and doesn't clearly reduce the bound. The O(n&sup2;) solution is the intended one for this problem's constraints.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">12. Edge Cases &amp; Gotchas</h2><span class="chevron text-ed-orange text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-orange/5 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Single element (n=1):</strong> Only shift 0. Sum = |nums1[0] - nums2[0]|. Result = [that value].</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Identical arrays:</strong> nums1 == nums2. Shift 0 gives sum 0. Other shifts give non-zero sums. Result starts with 0.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Right shift vs left shift:</strong> The problem says <em>right</em> cyclic shift. Right shift by <span class="mono">shift</span> means <span class="mono">shifted[i] = nums1[(i - shift) % n]</span>. If you use <span class="mono">(i + shift) % n</span>, that's a <em>left</em> shift &mdash; wrong answer.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Negative modulo in C++/Java:</strong> <span class="mono">(i - shift) % n</span> can be negative when <span class="mono">i &lt; shift</span>. Use <span class="mono">((i - shift) % n + n) % n</span> to ensure a non-negative index. Python's <span class="mono">%</span> is always non-negative for positive <span class="mono">n</span>, so no fix needed.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Forgetting to sort:</strong> The problem requires the result to be sorted in non-decreasing order. If you return the sums in shift order, you fail. Always call <span class="mono">result.sort()</span> before returning.</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">13. Common Mistakes</h2><span class="chevron text-ed-orange text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-orange/5 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Left shift instead of right shift:</strong> Using <span class="mono">(i + shift) % n</span> gives a left cyclic shift. The problem asks for right shift, so use <span class="mono">(i - shift) % n</span>. This is the #1 bug.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Forgetting the final sort:</strong> Returning sums in shift order [25, 7, 25, 13] instead of sorted [7, 13, 25, 25]. The problem says "sorted in non-decreasing order".</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Building rotated arrays:</strong> Using <span class="mono">nums1[-shift:] + nums1[:-shift]</span> in Python works but hides the modular arithmetic and wastes memory. Use the index formula directly.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Negative indices in C++/Java:</strong> <span class="mono">(i - shift) % n</span> can be negative. Always normalize with <span class="mono">((i - shift) % n + n) % n</span> in languages where <span class="mono">%</span> preserves sign.</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">14. Flashcards</h2><span class="chevron text-ed-purple text-xl">&#9654;</span></summary>
+  <div class="mt-5 space-y-3">
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: What is the index formula for a right cyclic shift by <span class="mono">shift</span>?</summary><p class="mt-2 text-gray-700"><span class="mono">shifted[i] = nums1[(i - shift) % n]</span>. The element at position <span class="mono">i</span> after a right shift by <span class="mono">shift</span> comes from index <span class="mono">(i - shift) % n</span> in the original.</p></details></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: Why is it <span class="mono">(i - shift)</span> and not <span class="mono">(i + shift)</span>?</summary><p class="mt-2 text-gray-700">A right shift moves elements to higher indices. So the element now at index <span class="mono">i</span> must have come from a lower index <span class="mono">i - shift</span> (wrapping around). <span class="mono">(i + shift)</span> would be a left shift.</p></details></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: What is the time and space complexity?</summary><p class="mt-2 text-gray-700">Time O(n&sup2;) &mdash; n shifts &times; n comparisons each. Space O(n) &mdash; only the result list. The final sort is O(n log n), dominated by O(n&sup2;).</p></details></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: Do you need to physically build each shifted array?</summary><p class="mt-2 text-gray-700">No. Modular index mapping <span class="mono">(i - shift) % n</span> lets you compute the alignment on the fly without allocating intermediate arrays. This saves memory and is portable across languages.</p></details></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: What's the #1 bug to avoid?</summary><p class="mt-2 text-gray-700">Forgetting to sort the result before returning. The problem requires "sorted in non-decreasing order". Also: using <span class="mono">+</span> instead of <span class="mono">-</span> in the index formula (left shift vs right shift).</p></details></div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">15. Where It Is Used (Real World)</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-gray-100 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong>Signal alignment in communications:</strong> Two signal streams where one is cyclically shifted (due to timing offset). You compute the misalignment score for each shift to find the best alignment (the shift with the smallest sum of differences).</p>
+    <p><strong>Image registration:</strong> Comparing two images where one is cyclically shifted (e.g., panoramic images). The "sum of absolute differences" is a similarity metric used to find the optimal shift alignment.</p>
+    <p><strong>Rotational matching:</strong> Matching a pattern against a circular sequence (e.g., comparing two clock configurations, or DNA circular plasmids). Each rotation is a candidate alignment, and the SAD score ranks them.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">16. Interview Tips</h2><span class="chevron text-ed-purple text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong class="text-ed-purple">Say this first:</strong> "For each of n cyclic right shifts, I need to compute the sum of absolute differences with nums2. The key insight is that I don't need to physically rotate &mdash; I can use modular index mapping: <span class="mono">shifted[i] = nums1[(i - shift) % n]</span>. That gives an O(n&sup2;) solution, which matches the stated bound."</p>
+    <p><strong class="text-ed-purple">Write on the whiteboard first:</strong> The index formula <span class="mono">(i - shift) % n</span> and a note to sort at the end. These are the two things candidates forget.</p>
+    <p><strong class="text-ed-purple">If asked to optimize:</strong> "The absolute value isn't linear, so FFT-based convolution doesn't apply directly. A prefix-sum approach would require sorting by value and tracking alignment changes, which is complex. For the stated O(n&sup2;) bound, the modular-index solution is the cleanest."</p>
+    <p><strong class="text-ed-purple">Watch for:</strong> The interviewer testing whether you confuse left and right shift. Clarify: "Right shift by 1 moves the last element to the front, so <span class="mono">shifted[0] = nums1[n-1]</span>. That's <span class="mono">(0 - 1) % n = n - 1</span>."</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">17. Similar Problems</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-gray-100 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-2">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>LeetCode 189. Rotate Array</strong> <span class="bg-amber-100 text-amber-700 px-1.5 rounded text-xs">Medium</span> &mdash; physical rotation using modular indexing and reversal.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>LeetCode 796. Rotate String</strong> <span class="bg-emerald-100 text-emerald-700 px-1.5 rounded text-xs">Easy</span> &mdash; check if one string is a rotation of another.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>LeetCode 1752. Check if Array Is Sorted and Rotated</strong> <span class="bg-emerald-100 text-emerald-700 px-1.5 rounded text-xs">Easy</span> &mdash; detect rotation in a sorted array.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>LeetCode 396. Rotate Function</strong> <span class="bg-amber-100 text-amber-700 px-1.5 rounded text-xs">Medium</span> &mdash; maximize a rotation-based sum (uses a recurrence to go from O(n&sup2;) to O(n)).</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">18. Related Algorithms</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-gray-100 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-2">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>Modular arithmetic:</strong> Index mapping under rotation. Core to circular array problems.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>Sum of Absolute Differences (SAD):</strong> A similarity metric used in image processing and signal alignment.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>Rotation recurrence (LeetCode 396):</strong> For sum-of-products over rotations, you can derive a recurrence: <span class="mono">F(shift+1) = F(shift) + sum(nums1) - n &middot; nums1[n - 1 - shift]</span>. This reduces O(n&sup2;) to O(n). But for absolute differences, no such recurrence exists because |&middot;| is not linear.</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">19. Where This Pattern Meets System Design</h2><span class="chevron text-indigo-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-indigo-50 border border-indigo-200 rounded-xl p-4 md:p-6 text-indigo-700 text-sm space-y-3">
+    <p>In a distributed system, this pattern maps to <strong>log alignment</strong>: two replicas have logs that may be offset by a rotation. You compute the misalignment score for each offset to find the best sync point.</p>
+    <p><strong>Scale considerations:</strong></p>
+    <ul class="space-y-1 ml-4">
+      <li>For large n (millions), O(n&sup2;) is too slow. You'd need an approximate alignment via sampling or a domain-specific optimization.</li>
+      <li>If the arrays are sharded, each shard computes its local SAD, and the results are aggregated. But the shift is global, so sharding by position doesn't parallelize across shifts.</li>
+      <li>For streaming data, you'd maintain a running SAD per shift and update incrementally as new elements arrive &mdash; but this requires O(n) state per shift, which is O(n&sup2;) total.</li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">20. Code Solutions</h2><span class="chevron text-ed-sky text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-sky/5 border border-ed-sky/15 rounded-xl p-4 md:p-6">
+    <div class="flex flex-wrap gap-3 mb-4 text-xs">
+      <span class="legend-chip bg-purple-100 text-purple-700"><span class="tok-kw">keyword</span></span>
+      <span class="legend-chip bg-yellow-100 text-yellow-700"><span class="tok-ty">type</span></span>
+      <span class="legend-chip bg-blue-100 text-blue-700"><span class="tok-fn">function</span></span>
+      <span class="legend-chip bg-orange-100 text-orange-700"><span class="tok-nm">number</span></span>
+      <span class="legend-chip bg-pink-100 text-pink-700"><span class="tok-str">string</span></span>
+      <span class="legend-chip bg-gray-200 text-gray-700"><span class="tok-cm">comment</span></span>
+    </div>
+    <h3 class="font-bold text-ed-sky text-sm md:text-base mb-2">Python</h3>
+    <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def solution(nums1, nums2):
+    n = len(nums1)
+    result = []
+    for shift in range(n):
+        total_distance = 0
+        for i in range(n):
+            original_index = (i - shift) % n
+            total_distance += abs(nums1[original_index] - nums2[i])
+        result.append(total_distance)
+    result.sort()
+    return result</pre>
+    <h3 class="font-bold text-ed-sky text-sm md:text-base mb-2 mt-4">Java</h3>
+    <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">import java.util.*;
+
+public class Solution {
+    public List&lt;Integer&gt; solution(int[] nums1, int[] nums2) {
+        int n = nums1.length;
+        List&lt;Integer&gt; result = new ArrayList&lt;&gt;();
+        for (int shift = 0; shift &lt; n; shift++) {
+            int totalDistance = 0;
+            for (int i = 0; i &lt; n; i++) {
+                int originalIndex = ((i - shift) % n + n) % n;
+                totalDistance += Math.abs(nums1[originalIndex] - nums2[i]);
+            }
+            result.add(totalDistance);
+        }
+        Collections.sort(result);
+        return result;
+    }
+}</pre>
+    <h3 class="font-bold text-ed-sky text-sm md:text-base mb-2 mt-4">C++</h3>
+    <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">#include &lt;vector&gt;
+#include &lt;algorithm&gt;
+#include &lt;cmath&gt;
+
+class Solution {
+public:
+    std::vector&lt;int&gt; solution(std::vector&lt;int&gt;& nums1, std::vector&lt;int&gt;& nums2) {
+        int n = nums1.size();
+        std::vector&lt;int&gt; result;
+        for (int shift = 0; shift &lt; n; shift++) {
+            int total_distance = 0;
+            for (int i = 0; i &lt; n; i++) {
+                int original_index = ((i - shift) % n + n) % n;
+                total_distance += std::abs(nums1[original_index] - nums2[i]);
+            }
+            result.push_back(total_distance);
+        }
+        std::sort(result.begin(), result.end());
+        return result;
+    }
+};</pre>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">21. Follow-Up Questions</h2><span class="chevron text-indigo-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-indigo-50 border border-indigo-200 rounded-xl p-4 md:p-6 text-indigo-700 text-sm space-y-3">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2.5"></span><span><strong>Can you do better than O(n&sup2;)?</strong> For absolute differences, not easily &mdash; |&middot;| isn't linear, so FFT doesn't apply. If the values are bounded, you could sort indices by value and use prefix sums, but it's complex. For the stated bound, O(n&sup2;) is intended.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2.5"></span><span><strong>What if it's sum of squares instead of absolute differences?</strong> Then it's <span class="mono">&Sigma;(nums1[(i-shift)%n] - nums2[i])&sup2;</span>, which expands to a sum of products. That IS a convolution, and FFT gives O(n log n).</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2.5"></span><span><strong>What if n is very large (10&sup6;)?</strong> O(n&sup2;) is 10&sup1;&sup2; operations &mdash; too slow. You'd need an approximate solution: sample shifts, or use a domain-specific optimization (e.g., if values are bounded, bucket-sort and compute incrementally).</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2.5"></span><span><strong>What if the arrays have different lengths?</strong> The problem says "same length n". If they differ, you'd need to define what "cyclic shift" means for unequal lengths &mdash; likely pad the shorter one or only compare overlapping positions.</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">22. Quick Reference</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-gray-100 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong>One-line summary:</strong> For each right cyclic shift (0 to n-1), compute the sum of absolute differences using modular index <span class="mono">(i - shift) % n</span>. Sort the n sums. O(n&sup2;) time, O(n) space.</p>
+    <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def solution(nums1, nums2):
+    n = len(nums1); result = []
+    for shift in range(n):
+        total = sum(abs(nums1[(i - shift) % n] - nums2[i]) for i in range(n))
+        result.append(total)
+    result.sort(); return result</pre>
+  </div>
+</details></section>
+
+</main>
+
+<footer class="bg-gray-900 text-gray-400 text-center text-xs py-6 mt-8">
+  Generated by dsa-generator skill &middot; Cyclic Shift Absolute Differences &middot; Capital One GPN Senior Lead Software Engineer
+</footer>
+
+<script>
+(function(){
+  const n1Input=document.getElementById('csa-n1');
+  const n2Input=document.getElementById('csa-n2');
+  const stepEl=document.getElementById('csa-step-num');
+  const statusEl=document.getElementById('csa-status');
+  const shiftEl=document.getElementById('csa-shift-val');
+  const sumEl=document.getElementById('csa-sum-val');
+  const arr1El=document.getElementById('csa-arr1');
+  const arr2El=document.getElementById('csa-arr2');
+  const sumsEl=document.getElementById('csa-sums');
+  const logEl=document.getElementById('csa-log');
+  let nums1=[], nums2=[], n=0, shift=0, i=0, runningSum=0, sums=[], playing=false, timer=null, stepCount=0;
+  function parseInputs(){
+    nums1=n1Input.value.split(',').map(s=>parseInt(s.trim())).filter(x=>!isNaN(x));
+    nums2=n2Input.value.split(',').map(s=>parseInt(s.trim())).filter(x=>!isNaN(x));
+    n=Math.min(nums1.length, nums2.length);
+  }
+  function render(){
+    shiftEl.textContent=shift;
+    sumEl.textContent=runningSum;
+    stepEl.textContent=stepCount;
+    sumsEl.textContent='['+sums.join(', ')+']';
+    arr1El.innerHTML=nums1.map((val,idx)=>{
+      const origIdx=(idx - shift) % n;
+      const cls=idx===i?'bg-ed-pink text-white':(idx<i?'bg-gray-200 text-gray-500':'bg-white border border-gray-300 text-gray-700');
+      return `<span class="mono px-2 py-1 rounded ${cls} text-sm" title="orig idx: ${origIdx}">${val}</span>`;
+    }).join('');
+    arr2El.innerHTML=nums2.map((val,idx)=>{
+      const cls=idx===i?'bg-blue-500 text-white':(idx<i?'bg-gray-200 text-gray-500':'bg-white border border-gray-300 text-gray-700');
+      return `<span class="mono px-2 py-1 rounded ${cls} text-sm">${val}</span>`;
+    }).join('');
+  }
+  function log(msg){
+    logEl.innerHTML+=`<div>${msg}</div>`;
+    logEl.parentElement.scrollTop=logEl.parentElement.scrollHeight;
+  }
+  function reset(){
+    if(timer){clearInterval(timer);timer=null;}
+    playing=false;statusEl.textContent='ready';statusEl.className='mono font-bold text-ed-pink';
+    parseInputs();shift=0;i=0;runningSum=0;sums=[];stepCount=0;logEl.innerHTML='';render();
+  }
+  function step(){
+    if(shift>=n){
+      sums.sort((a,b)=>a-b);
+      if(timer){clearInterval(timer);timer=null;}
+      playing=false;statusEl.textContent='done';statusEl.className='mono font-bold text-emerald-600';
+      log(`Sorted result: [${sums.join(', ')}]`);
+      render();
+      return;
+    }
+    if(i>=n){
+      sums.push(runningSum);
+      log(`Shift ${shift} complete: sum = ${runningSum}`);
+      shift++;i=0;runningSum=0;stepCount++;
+      render();
+      return;
+    }
+    const origIdx=((i - shift) % n + n) % n;
+    const diff=Math.abs(nums1[origIdx] - nums2[i]);
+    runningSum += diff;
+    log(`Shift ${shift}, i=${i}: nums1[${origIdx}]=${nums1[origIdx]} vs nums2[${i}]=${nums2[i]} → |diff|=${diff}, running=${runningSum}`);
+    i++;stepCount++;
+    render();
+  }
+  document.getElementById('csa-play').onclick=()=>{
+    if(playing)return;
+    if(shift>=n)reset();
+    playing=true;statusEl.textContent='running';statusEl.className='mono font-bold text-ed-pink';
+    timer=setInterval(()=>{step();if(!playing){clearInterval(timer);timer=null;}},500);
+  };
+  document.getElementById('csa-pause').onclick=()=>{
+    if(timer){clearInterval(timer);timer=null;}
+    playing=false;statusEl.textContent='paused';statusEl.className='mono font-bold text-amber-600';
+  };
+  document.getElementById('csa-step').onclick=()=>{
+    if(timer){clearInterval(timer);timer=null;}
+    playing=false;statusEl.textContent='paused';statusEl.className='mono font-bold text-amber-600';
+    step();
+  };
+  document.getElementById('csa-reset').onclick=reset;
+  [n1Input,n2Input].forEach(el=>el.onchange=reset);
+  reset();
+})();
+</script>
+
+<script>
+(function(){
+  const master=/(#[^\n]*|\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b\d+\b)|([A-Za-z_][A-Za-z_0-9]*)/g;
+  const kw=new Set(['def','class','while','if','else','elif','for','return','continue','break','pass','import','from','in','not','and','or','is','None','True','False','lambda','try','except','finally','with','as','yield','global','nonlocal','assert','del','raise','public','private','static','void','int','new','this','const','let','var','function','typeof','instanceof','extends','implements','package','class','interface','enum','struct','vector','std','cout','cin','endl','using','namespace','char','bool','long','double','float','short','unsigned','signed','size_t','include']);
+  const ty=new Set(['str','int','bool','List','Solution','list','dict','set','tuple','float','double','char','long','short','void','auto','string','vector','map','unordered_map','set','unordered_set','pair','Integer','Math','Collections','ArrayList']);
+  function highlight(pre){
+    if(pre.dataset.highlighted)return;
+    const html=pre.innerHTML;
+    let result='';let last=0;let m;
+    master.lastIndex=0;
+    while((m=master.exec(html))!==null){
+      result+=html.slice(last,m.index);
+      if(m[1]){result+=`<span class="tok-cm">${m[1]}</span>`;}
+      else if(m[2]){result+=`<span class="tok-str">${m[2]}</span>`;}
+      else if(m[3]){result+=`<span class="tok-nm">${m[3]}</span>`;}
+      else if(m[4]){
+        const next=html[master.index]||'';
+        if(kw.has(m[4])){result+=`<span class="tok-kw">${m[4]}</span>`;}
+        else if(ty.has(m[4])){result+=`<span class="tok-ty">${m[4]}</span>`;}
+        else if(next==='('){result+=`<span class="tok-fn">${m[4]}</span>`;}
+        else{result+=m[4];}
+      }
+      last=master.lastIndex;
+    }
+    result+=html.slice(last);
+    pre.innerHTML=result;pre.dataset.highlighted='true';
+  }
+  document.querySelectorAll('pre.mono').forEach(highlight);
+})();
+</script>
+</body>
+</html>

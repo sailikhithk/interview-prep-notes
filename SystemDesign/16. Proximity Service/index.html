@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: Proximity Service — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] hero-glow pointer-events-none"></div>
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">SD</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">Proximity Service</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">System Design Workbook</span>
+      </div>
+    </div>
+    <a href="../README.md" class="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">&larr; Back to System Design Hub</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Architectural Study Guide</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">High Scale &bull; Distributed Systems</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+      <span class="gradient-text">Proximity Service</span>
+    </h1>
+    <p class="text-gray-600 text-base max-w-3xl leading-relaxed">
+      Comprehensive architectural deep-dive covering high-level data flow, data models, edge case failure modes, scaling strategies, and interview trade-off defenses.
+    </p>
+  </div>
+</div>
+
+<!-- CONTENT MAIN -->
+<main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+  <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm prose prose-blue max-w-none space-y-6">
+    <h1 class="text-2xl font-black text-gray-900 border-b border-gray-200 pb-3 mb-4 mt-6">Chapter 16: Proximity Service</h1>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Introduction</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A <strong class="text-gray-900 font-bold">proximity service</strong> is designed to find nearby locations, such as restaurants, hotels, gas stations, and other businesses. This functionality is used in applications like <strong class="text-gray-900 font-bold">Google Maps</strong> and <strong class="text-gray-900 font-bold">Yelp</strong> to help users discover places within a defined radius.</p>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 1: Understanding the Problem and Establishing Scope</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Functional Requirements**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Search for businesses</strong> based on user location (latitude, longitude) and search radius.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Allow business owners</strong> to add, update, or delete businesses (not real-time).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Provide detailed business information</strong> when requested.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Non-Functional Requirements**</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Low latency</strong>: Users should get quick responses.</li>
+<li><strong class="text-gray-900 font-bold">Data privacy</strong>: Compliance with GDPR and CCPA regulations.</li>
+<li><strong class="text-gray-900 font-bold">High availability</strong>: Handle peak-hour spikes in busy locations.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Back-of-the-Envelope Estimation**</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">100 million daily active users</strong>.</li>
+<li><strong class="text-gray-900 font-bold">200 million businesses</strong> in the system.</li>
+<li><strong class="text-gray-900 font-bold">Search QPS Calculation</strong>:</li>
+<li>Users make <strong class="text-gray-900 font-bold">5 searches per day</strong>.</li>
+<li><strong class="text-gray-900 font-bold">Search QPS</strong> = (100M × 5) / 86,400 ≈ <strong class="text-gray-900 font-bold">5,000 QPS</strong>.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 2: High-Level Design</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**API Design**</h3>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">**Search Nearby Businesses**</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">GET /v1/search/nearby</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Request Parameters</strong>:</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">latitude</code>: User’s location latitude.</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">longitude</code>: User’s location longitude.</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">radius</code>: Search radius (default: 5000m).</li>
+</ul>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">**Business APIs**</h4>
+<div class="text-xs text-gray-700 font-mono py-0.5">| API Endpoint                     | Description                                      |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">|-----------------------------------|--------------------------------------------------|</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| `GET /v1/businesses/{id}`         | Fetch detailed business info                    |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| `POST /v1/businesses`             | Add a new business                              |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| `PUT /v1/businesses/{id}`         | Update business details                         |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| `DELETE /v1/businesses/{id}`      | Remove a business from the system               |</div>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Data Model**</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Since the read volume is high because two features are very commonly used, a realtional database such as MySQL is a good fit.</li>
+<li>Search for nearby businesses</li>
+<li>View the detailed information of a business</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Data Schema**</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Key Database tables are the business table and the geospatial index table</li>
+<li>The business table consists the detailed information about a business.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**High-Level System Architecture**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The system comprises of two parts: Location based service (LBS) and business related service.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/high-level-design.png" alt="HLD" width="400" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Location-Based Service (LBS)</strong>:</li>
+<li>Processes location-based search queries.</li>
+<li>Read-heavy service with no write requests.</li>
+<li>QPS is high especially during peak hours in dense areas and the system is stateless.</li>
+<li><strong class="text-gray-900 font-bold">Business Service</strong>: Deals with two types of requests.</li>
+<li>Business owners create, update or delete businesses.</li>
+<li>Customers view detailed information about a business.</li>
+<li><strong class="text-gray-900 font-bold">Load Balancer</strong>: Routes traffic to LBS and Business service.</li>
+<li><strong class="text-gray-900 font-bold">Database Cluster</strong>:</li>
+<li>Uses <strong class="text-gray-900 font-bold">primary-replica architecture</strong> for read-heavy workloads.</li>
+<li>There might be some discrepancy between data read b/w data read by LBS and data written by by primary database.</li>
+<li>This incosistency is not an issue beacuase the business information is not updated in real-time.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 3: Algorithms for Fetching Nearby Businesses</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Option 1: Two-Dimensional Search (Naive Approach)**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/2d-search.png" alt="2D" width="250" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The most intuitive way is to draw a circle with pre-defined radius and find all the businesses within the circle.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><strong class="text-gray-900 font-bold">SQL Query:</strong></p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>SELECT business_id, latitude, longitude
+FROM business
+WHERE (latitude BETWEEN :lat - radius AND :lat + radius)
+AND (longitude BETWEEN :long - radius AND :long + radius);</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><strong class="text-gray-900 font-bold">Problems:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Inefficient</strong>: Requires scanning the entire database.</li>
+<li><strong class="text-gray-900 font-bold">Limited by one-dimensional indexes</strong> (latitude/longitude).</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A potiential improvement is to build index on logitude and latitude columns, alhtough this is slighlty better but still vry slow.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Better Approach</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>The problem with last approach is that the database index can only increase search speed in one dimension.</li>
+<li>An optimal apporach is to reprsent the two-dimensional data into one dimension using geospatial indexing.</li>
+<li>Hash: Even grid, Geo Hash</li>
+<li>Tree: Quadtree, Google S2, RTree</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/geospatial-index-types.png" alt="2D" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Option 2: Evenly Divided Grid**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/even-grid.png" alt="Even Grid" width="400" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Divides the world into fixed-size grids</strong>.</li>
+<li><strong class="text-gray-900 font-bold">Issue</strong>: Uneven business distribution (high density in cities, sparse in rural areas).</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Option 3: Geohash**</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Divide the planet into four quadrants along with the prime meridian and equator. And then divide each grid into four smaller grids.</li>
+<li>Each grids can be represented by altering b/w longitude and latitude bit.</li>
+<li>Repeat this subdivision</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/geohash.png" alt="Geohash" width="300" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/geohash-1.png" alt="Geohash" width="285" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Encodes latitude and longitude into a single alphanumeric string</strong>. It has 12 precisions (levels)</li>
+<li><strong class="text-gray-900 font-bold">Hierarchical grid structure</strong> allows for efficient searching.</li>
+<li>The right precision is chosen by using the minimal geohash length according to the table.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/geohash-radius-mapping.png" alt="Geohash Radius" width="400" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<li>Geohash guarantees that the longer a shared prefix is between two geohashes, the closer they are.</li>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Challenges</strong>:</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/boundary-issue.png" alt="Boundary Issue" width="300" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Boundary issues</strong> (businesses close to grid edges may get excluded).</li>
+<li>Two locations can be very close but have no shared prefix at all (can be on other side of equator)</li>
+<li>Two locations can have a long shared prefix but belong to different geohashes.</li>
+<li>Solution: Need to search neighboring grids.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Option 4: Quadtree**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A quadtree is a tree data structure that recursively divides a two-dimensional space into four quadrants, with each internal node having exactly four children, representing the four sub-regions of the space.</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>The quadtree is an in-memory data structure and it runs on each LBS server and built on server startup time.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/quadtree.png" alt="Quadtree" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>The root node is recursively broken down into 4 quadrants until no nodes are left with more than x number of businesses (100 in this case).</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/building-quadtree.png" alt="Building Quadtree" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>The quadtree index doen't take too much memory (typically in GBs) and can easily fit in one server.</li>
+<li>Since tge time complexity to build the tree is nlogn, it might take a few minutes to build the tree.</li>
+<li><strong class="text-gray-900 font-bold">Efficient for k-nearest search queries</strong> (e.g., find the closest gas station).</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/realworld-quadtree.png" alt="Real World Quadtree" width="400" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Operational considerations</h4>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>For around 200 million businesses, it might take few minutes to build a quadtree at the server start time.</li>
+<li>While the quadtree is built it cannot serve traffic, therefore a new release should be rolled out incrementally to a subset of servers.</li>
+<li>When updating a business or adding a new the easiest approach is to incrementally rebuild the quadtree. (Leading to a lot of cache invalidation)</li>
+<li>Also possible to update the quadtree on the fly but more complex to implement. (Needs locking mechanism)</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Option 5: Google S2**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">It maps a sphere to a !D index based on Hilbert curve.Two points that are close to each other on the Hilbert curve are close in 1D space.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/hilbert-curve.png" alt="Hilbert curve" width="300" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/geofence.png" alt="Geofence" width="355" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Divides the earth into small cells using a Hilbert curve</strong>.</li>
+<li>Great for geofencing becuase it can cover arbitrary areas with varying levels.</li>
+<li>Geofencing also allows to define parameters that surround the area of interest.</li>
+<li>Aother advantage if instead of having a fixed level of precision, we can specify min,max level and max cells in S2.</li>
+</ul>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Tradeoff Comparison</h2>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Geohash</h4>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Easy to use and implement- No need to build/rebuild a tree</li>
+<li>Supports fixed radius results</li>
+<li>Updating the index is easy.</li>
+<li>Cannot dynamically adjust the grid size based on population density.</li>
+</ul>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Quadtree</h4>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Slightly harder to implement.</li>
+<li>Supports fetching k-nearest businesses.</li>
+<li>Can dynamically adjust the grid size based on population desnsity.</li>
+<li>Updating the index is more complicated as might need to rebuild the whole tree.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 4: Scaling the Database and Caching Strategy</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Scaling the Business Table**</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Sharding by business ID</strong> ensures even data distribution.</li>
+<li>We have separate rows for each business in the table.</li>
+</ul>
+<div class="text-xs text-gray-700 font-mono py-0.5">| Geohash | Business ID |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">|---------|------------|</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| 9q9hvu  | 343        |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| 9q9hvu  | 347        |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| 9q9hvu  | 112        |</div>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Scaling the Geospatial Index**</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Might not be a good fit for the geohash table. In this case everything can fit in a single server so there's no tehcnical reason for sharding.</li>
+<li>A better approach is to have read-replicas to help with read loads.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Cache Strategy**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The most obvious cache key choice is the location coordinate, however it has a few issues:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Location coordinates from gps are not accurate.</li>
+<li>A user can move casuing the location coordinate to change.</li>
+<li>A better key is the geohash.</li>
+</ul>
+<div class="text-xs text-gray-700 font-mono py-0.5">| Cache Key  | Cache Value |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">|------------|------------|</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| `geohash`  | List of business IDs in that grid |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| `business_id` | Business details (name, address, reviews, etc.) |</div>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 5: Deployment Strategy and Final Architecture</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Region and Availability Zones**</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Deploy LBS and Business Service <strong class="text-gray-900 font-bold">across multiple regions</strong>.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Handling Real-Time Updates**</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Business updates are batch processed daily</strong>.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Final System Architecture**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/final-design.png" alt="Final Design" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This final algorithm looks like this:</p>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Steps to Retrieve Nearby Businesses</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">User Request:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>A user searches for restaurants within <strong class="text-gray-900 font-bold">500 meters</strong>.</li>
+<li>The client sends <strong class="text-gray-900 font-bold">latitude (37.776720), longitude (-122.416730), and radius (500m)</strong> to the <strong class="text-gray-900 font-bold">load balancer</strong>.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Request Forwarding:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>The <strong class="text-gray-900 font-bold">load balancer (LB)</strong> forwards the request to the <strong class="text-gray-900 font-bold">Location-Based Service (LBS)</strong>.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Geohash Calculation:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>LBS determines the <strong class="text-gray-900 font-bold">geohash length</strong> matching the radius.</li>
+<li>Using a reference table, <strong class="text-gray-900 font-bold">500m corresponds to geohash length = 6</strong>.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Fetching Neighboring Geohashes:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>LBS calculates <strong class="text-gray-900 font-bold">neighboring geohashes</strong> to include nearby areas.</li>
+<li>The result is a list:</li>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>     [my_geohash, neighbor1_geohash, neighbor2_geohash, ..., neighbor8_geohash]</code></pre></div>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">5. <strong class="text-gray-900 font-bold">Fetching Business IDs from Redis:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>For each geohash in the list, LBS queries the <strong class="text-gray-900 font-bold">Geohash Redis server</strong> to fetch <strong class="text-gray-900 font-bold">business IDs</strong>.</li>
+<li>Parallel queries are used to minimize latency.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">6. <strong class="text-gray-900 font-bold">Retrieving & Ranking Businesses:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>LBS fetches <strong class="text-gray-900 font-bold">full business details</strong> from the <strong class="text-gray-900 font-bold">Business Info Redis server</strong>.</li>
+<li>Businesses are <strong class="text-gray-900 font-bold">sorted by distance</strong> from the user’s location.</li>
+<li>The <strong class="text-gray-900 font-bold">ranked results</strong> are sent back to the client.</li>
+</ul>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Key Optimizations</h2>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Parallel Redis Calls</strong>: Reduces response time.</li>
+<li><strong class="text-gray-900 font-bold">Geohash Indexing</strong>: Ensures efficient spatial queries.</li>
+<li><strong class="text-gray-900 font-bold">Caching</strong>: Speeds up lookup and retrieval of business data.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This method ensures <strong class="text-gray-900 font-bold">low-latency, scalable</strong> retrieval of businesses near a user’s location.</p>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Choosing the Best Indexing Method**</h3>
+<div class="text-xs text-gray-700 font-mono py-0.5">| Indexing Method | Pros | Cons |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">|----------------|------|------|</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **Geohash** | Easy to implement, efficient for proximity search | Boundary issues, fixed grid size |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **Quadtree** | Dynamically adjusts to density, supports k-nearest queries | More complex, requires tree rebalancing |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **Google S2** | Advanced geofencing, used in Google Maps | Harder to implement |</div>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">References</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. [Geohash Algorithm](https://www.movable-type.co.uk/scripts/geohash.html)</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. [Quadtree Indexing](https://en.wikipedia.org/wiki/Quadtree)</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. [Google S2 Geometry](https://s2geometry.io/)</p>
+  </div>
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>System Design Interactive Study Suite &bull; AntiGravity IDE</p>
+</footer>
+</body>
+</html>

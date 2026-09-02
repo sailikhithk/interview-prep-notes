@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment Processing at Billion-Transaction Scale &mdash; Capital One GPN</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = { theme: { extend: { colors: {
+  'ed-pink': '#db2777', 'ed-blue': '#2563eb', 'ed-teal': '#0d9488',
+  'ed-amber': '#d97706', 'ed-sky': '#0284c7', 'ed-purple': '#7c3aed', 'ed-orange': '#ea580c',
+}, fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } } } };
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  details > summary { cursor: pointer; list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  .chevron { transition: transform 0.2s; }
+  details[open] .chevron { transform: rotate(90deg); }
+  pre.mono { white-space: pre; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:'neutral',securityLevel:'loose'});</script>
+<script>window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+<main class="max-w-5xl mx-auto px-4 py-6 md:py-10 space-y-4">
+
+<header class="bg-gradient-to-r from-indigo-600 to-gray-900 text-white rounded-2xl p-6 md:p-8 shadow-lg">
+  <div class="flex items-center gap-2 text-sm text-gray-300 mb-2">
+    <span class="bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-bold">SYSTEM DESIGN</span>
+    <span class="text-gray-400">&middot;</span>
+    <span>Capital One GPN &middot; Senior Round</span>
+  </div>
+  <h1 class="text-3xl md:text-4xl font-extrabold">Payment Processing at Billion-Transaction Scale</h1>
+  <p class="text-gray-300 mt-2 text-sm md:text-base">Design a payment processing system that handles 1B+ transactions per day with idempotency, exactly-once processing, fraud checks, and regulatory compliance.</p>
+  <div class="mt-4 flex flex-wrap gap-2 text-xs">
+    <span class="bg-white/10 px-3 py-1 rounded-full">Scale: 1B tx/day, 12K tx/sec peak</span>
+    <span class="bg-white/10 px-3 py-1 rounded-full">Latency: p99 &lt; 200ms</span>
+    <span class="bg-white/10 px-3 py-1 rounded-full">Availability: 99.99%</span>
+    <span class="bg-white/10 px-3 py-1 rounded-full">Compliance: PCI-DSS, OCC</span>
+  </div>
+</header>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <h2 class="text-xl md:text-2xl font-bold text-gray-900 mb-3">1. Problem Statement</h2>
+  <p class="text-sm text-gray-700 mb-3">Design Capital One's payment processing system that handles card transactions (auth, capture, settlement) at scale. The system must process 1B+ transactions per day, integrate with card networks (Visa, Mastercard), ensure exactly-once processing, detect fraud in real time, and comply with PCI-DSS and OCC regulations.</p>
+  <div class="bg-gray-100/60 rounded-lg p-4 text-sm">
+    <p class="font-semibold mb-2">Functional Requirements:</p>
+    <ul class="space-y-1 ml-4">
+      <li>&bull; <strong>Authorization:</strong> Verify card is valid and funds are available. Hold the amount.</li>
+      <li>&bull; <strong>Capture:</strong> Complete the transaction. Move held funds to merchant.</li>
+      <li>&bull; <strong>Settlement:</strong> Batch process at end of day. Transfer funds via ACH/Fedwire.</li>
+      <li>&bull; <strong>Refund:</strong> Reverse a captured transaction.</li>
+      <li>&bull; <strong>Void:</strong> Cancel an authorization before capture.</li>
+    </ul>
+    <p class="font-semibold mt-3 mb-2">Non-Functional Requirements:</p>
+    <ul class="space-y-1 ml-4">
+      <li>&bull; <strong>Scale:</strong> 1B transactions/day, 12K tx/sec peak (Black Friday)</li>
+      <li>&bull; <strong>Latency:</strong> p99 &lt; 200ms for authorization (customer is waiting at POS)</li>
+      <li>&bull; <strong>Availability:</strong> 99.99% (4 min downtime/month). Payment failures lose customers.</li>
+      <li>&bull; <strong>Consistency:</strong> Exactly-once processing. No double charges, no missed charges.</li>
+      <li>&bull; <strong>Durability:</strong> No transaction ever lost. Audit trail for 7 years (regulatory).</li>
+      <li>&bull; <strong>Compliance:</strong> PCI-DSS Level 1, OCC regulation, SOX audit</li>
+    </ul>
+  </div>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details open><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">2. Pattern Recognition</h2><span class="chevron text-ed-pink">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-pink/5 border border-ed-pink/15 rounded-lg p-4">
+    <p class="text-sm text-gray-800 mb-2"><strong class="text-ed-pink">Why signals:</strong></p>
+    <ul class="text-sm space-y-1">
+      <li>&bull; High write throughput + low latency &rarr; partition by transaction ID, shard the database</li>
+      <li>&bull; Exactly-once processing &rarr; idempotency keys, dedup at ingestion</li>
+      <li>&bull; Real-time fraud check &rarr; sync call to fraud service with timeout + circuit breaker</li>
+      <li>&bull; Batch settlement &rarr; Kafka + batch processor, not real-time</li>
+      <li>&bull; Regulatory audit &rarr; append-only ledger, event sourcing</li>
+      <li>&bull; External dependency (Visa/Mastercard) &rarr; saga pattern, compensating transactions</li>
+    </ul>
+    <p class="text-sm text-gray-800 mt-3"><strong class="text-ed-pink">Core pattern:</strong> Event-driven microservices with Kafka as the backbone. Idempotent ingestion, synchronous auth path (fraud + ledger), asynchronous settlement path. Event-sourced ledger for audit. Saga for cross-service transactions.</p>
+  </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">3. High-Level Architecture</h2><span class="chevron text-ed-blue">&#9654;</span></summary>
+  <div class="mt-3 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg p-4">
+    <pre class="mono text-xs bg-gray-900 text-gray-100 rounded p-3 overflow-x-auto">Merchant POS / App
+       |
+       v
+  [API Gateway] --- rate limit, auth, TLS
+       |
+       v
+  [Payment Service] --- orchestrates auth flow
+       |
+       +---> [Fraud Service] (sync, 50ms timeout, circuit breaker)
+       +---> [Ledger Service] (sync, double-entry write)
+       +---> [Card Network Adapter] (sync to Visa/MC, 100ms timeout)
+       |
+       v
+  [Kafka] --- transaction events
+       |
+       +---> [Settlement Service] (batch, end of day)
+       +---> [Notification Service] (SMS/email to customer)
+       +---> [Analytics Service] (streaming aggregations)
+       +---> [Compliance Service] (regulatory reports)
+
+  Databases:
+  - Ledger DB (Cassandra, partitioned by account_id)
+  - Transaction DB (PostgreSQL sharded by tx_id)
+  - Idempotency Store (Redis, 24h TTL)
+  - Audit Store (S3 + Glacier, 7-year retention)</pre>
+  <div class="mt-4">
+    <p class="text-xs font-semibold text-gray-500 mb-2">Architecture Diagram (Mermaid):</p>
+    <div class="mermaid">
+flowchart LR
+    A[Merchant POS] --> B[API Gateway]
+    B --> C[Payment Service]
+    C --> D[Fraud Service]
+    C --> E[Ledger Service]
+    C --> F[Card Network Adapter]
+    F --> F1[Visa/MC]
+    E --> G[(Cassandra Ledger)]
+    C --> H[(Kafka)]
+    H --> I[Settlement]
+    H --> J[Notification]
+    H --> K[Analytics]
+    H --> L[Compliance]
+    C --> M[(Redis Idempotency)]
+    </div>
+  </div>
+  </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">4. How to Think About It</h2><span class="chevron text-ed-blue">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-blue/5 border border-gray-300 rounded-lg p-4 space-y-3">
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">1</span> What is the critical path?</p>
+      <p class="text-gray-700 ml-8">Authorization: customer is waiting at the POS terminal. Every millisecond counts. Fraud check + ledger write + card network call must all complete in &lt; 200ms. This drives the architecture: sync calls with tight timeouts, circuit breakers, and fallbacks.</p>
+    </div>
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">2</span> What can be asynchronous?</p>
+      <p class="text-gray-700 ml-8">Settlement (end-of-day batch), notifications, analytics, compliance reporting. These do not block the customer. Push to Kafka, process later. This separates the fast path (auth) from the slow path (everything else).</p>
+    </div>
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">3</span> How do you ensure exactly-once?</p>
+      <p class="text-gray-700 ml-8">Idempotency key on every request (client-generated UUID). Store in Redis with 24h TTL. If a duplicate arrives, return the cached result. At the ledger level, use a transaction ID as the primary key. Duplicate writes are rejected by the database.</p>
+    </div>
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">4</span> <span class="text-ed-teal">&rarr;</span> What fails and how?</p>
+      <p class="text-gray-700 ml-8">Fraud service down: fail open (approve) or fail closed (decline)? For customer experience, fail open with a post-transaction fraud review. For security, fail closed. This is a business decision. State the tradeoff. Card network down: queue the transaction, retry with exponential backoff. Ledger write fails: fail the transaction, no money moves.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- PLACEHOLDER: Sections 5-22 -->
+
+<!-- 5. Real-World Analogy -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">5. Real-World Analogy</h2><span class="chevron text-ed-teal">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-4 text-sm text-gray-800">
+    <p class="mb-2">Think of a <strong>restaurant with a front-of-house and a back-of-house</strong>. The front-of-house (waiter, POS terminal) is the auth path: customer is waiting, everything must be fast. The waiter checks with the kitchen (fraud service: is this order suspicious?), checks inventory (ledger: do we have the ingredients?), and confirms with the customer (card network: is the card valid?). All in under 2 minutes.</p>
+    <p class="mb-2">The back-of-house (settlement, reporting) happens after the customer leaves. The chef reconciles the day's orders, sends the receipts to accounting, orders more ingredients for tomorrow. No customer is waiting, so it can be batch and slow.</p>
+    <p>The idempotency key is the order number. If the waiter accidentally submits the same order twice, the kitchen sees the same order number and does not cook it twice. The ledger is the recipe book: every dish has a double-entry (debit ingredients, credit the plate).</p>
+  </div>
+  </details>
+</section>
+
+<!-- 6. Build Your Intuition -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">6. Build Your Intuition</h2><span class="chevron text-ed-amber">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Q: Why Kafka instead of direct service-to-service calls?</p>
+      <p class="text-gray-700">Decoupling. The auth service publishes a transaction event. Settlement, notification, analytics, and compliance all subscribe independently. Adding a new consumer (e.g., rewards points) does not touch the auth service. Kafka also provides replay (reprocess if a consumer has a bug) and buffering (handle traffic spikes).</p>
+    </div>
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-3 text-sm text-ed-teal">
+      <p class="font-semibold mb-1">Q: Why Cassandra for the ledger and PostgreSQL for transactions?</p>
+      <p class="text-gray-800">Ledger is write-heavy, append-only, partitioned by account_id. Cassandra is optimized for this: high write throughput, linearizable writes within a partition. Transactions need ACID (auth, capture, refund are stateful). PostgreSQL gives transactions, foreign keys, and rich queries. Polyglot persistence: use the right tool for each workload.</p>
+    </div>
+    <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Q: Why not use 2PC (two-phase commit) for the saga?</p>
+      <p class="text-gray-700">2PC blocks until all participants agree. If the card network is slow (100ms), the entire transaction is blocked. At 12K tx/sec, this creates cascading timeouts. Saga with compensating actions is preferred: each step commits locally, failures trigger compensating transactions. Higher availability, lower latency, but requires idempotency and careful ordering.</p>
+    </div>
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-3 text-sm text-ed-teal">
+      <p class="font-semibold mb-1">Q: How do you handle Black Friday traffic spikes (10x normal)?</p>
+      <p class="text-gray-800">Auto-scaling: Kubernetes HPA based on CPU and queue depth. Pre-provision for known events (Black Friday). Kafka buffers the spike: consumers scale up to drain the queue. The idempotency store (Redis) is scaled by cluster mode. The ledger (Cassandra) handles spikes naturally due to its write-optimized design.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 7. How It Works (Step by Step) -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">7. How It Works (Step by Step)</h2><span class="chevron text-ed-sky">&#9654;</span></summary>
+  <div class="mt-3 space-y-2 text-sm">
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 1:</strong> Merchant sends auth request with idempotency key, card token, amount, merchant ID.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 2:</strong> API Gateway authenticates, rate-limits, routes to Payment Service.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 3:</strong> Payment Service checks idempotency store (Redis). If duplicate, return cached result. If new, proceed.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 4:</strong> Payment Service calls Fraud Service (sync, 50ms timeout). Fraud returns approve/decline/review. If timeout, fail open (approve) with post-transaction review.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 5:</strong> Payment Service calls Ledger Service (sync). Ledger writes double-entry: debit customer account, credit merchant hold account. Atomic within a Cassandra partition.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 6:</strong> Payment Service calls Card Network Adapter (sync, 100ms timeout). Visa/MC returns auth code. If timeout, mark as pending, retry async.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 7:</strong> Payment Service publishes "transaction.authorized" event to Kafka. Returns auth code to merchant.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 8:</strong> Async consumers: Notification Service sends SMS. Analytics Service updates dashboards. Settlement Service queues for end-of-day batch.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 9:</strong> End of day: Settlement Service batches transactions, sends to ACH/Fedwire. publishes "transaction.settled" event.</div>
+  </div>
+  </details>
+</section>
+
+<!-- 8. Data Model -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">8. Data Model</h2><span class="chevron text-ed-amber">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Transaction (PostgreSQL, sharded by tx_id)</p>
+      <pre class="mono text-xs bg-gray-200 rounded p-2 mt-1">transactions:
+  tx_id          UUID PK
+  idempotency_key VARCHAR(64) UNIQUE
+  type           ENUM(auth, capture, refund, void)
+  status         ENUM(pending, approved, declined, settled, failed)
+  amount         DECIMAL(12,2)
+  currency       CHAR(3)
+  card_token     VARCHAR(128)  -- PCI tokenized
+  merchant_id    VARCHAR(64)
+  customer_id    VARCHAR(64)
+  auth_code      VARCHAR(32)
+  created_at     TIMESTAMP
+  settled_at     TIMESTAMP NULL
+  fraud_score    INT
+  fraud_decision ENUM(approve, review, decline)</pre>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Ledger Entry (Cassandra, partitioned by account_id)</p>
+      <pre class="mono text-xs bg-gray-200 rounded p-2 mt-1">ledger_entries:
+  account_id     VARCHAR PARTITION KEY
+  tx_id          UUID CLUSTERING KEY
+  entry_type     ENUM(debit, credit)
+  amount         DECIMAL(12,2)
+  balance_after  DECIMAL(12,2)
+  created_at     TIMESTAMP
+  -- Append-only, never updated or deleted</pre>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Idempotency Record (Redis, 24h TTL)</p>
+      <pre class="mono text-xs bg-gray-200 rounded p-2 mt-1">idempotency:{key} = {
+  tx_id: UUID,
+  status: approved/declined,
+  auth_code: VARCHAR,
+  response_payload: JSON
+}
+TTL: 24 hours</pre>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 9. Interactive Architecture Diagram -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details open><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">9. Interactive Architecture Diagram</h2><span class="chevron text-ed-pink">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-pink/5 border border-ed-pink/15 rounded-lg p-4">
+    <p class="text-sm text-gray-800 mb-3"><span class="bg-ed-pink/10 text-ed-pink px-2 py-0.5 rounded text-xs font-bold mr-2">INTERACTIVE</span>Click a component to see its responsibilities and failure modes.</p>
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
+      <button class="arch-btn bg-ed-blue text-white p-2 rounded text-xs font-semibold" data-comp="gateway">API Gateway</button>
+      <button class="arch-btn bg-ed-blue text-white p-2 rounded text-xs font-semibold" data-comp="payment">Payment Service</button>
+      <button class="arch-btn bg-ed-pink text-white p-2 rounded text-xs font-semibold" data-comp="fraud">Fraud Service</button>
+      <button class="arch-btn bg-ed-teal text-white p-2 rounded text-xs font-semibold" data-comp="ledger">Ledger Service</button>
+      <button class="arch-btn bg-ed-amber text-white p-2 rounded text-xs font-semibold" data-comp="network">Card Network</button>
+      <button class="arch-btn bg-ed-purple text-white p-2 rounded text-xs font-semibold" data-comp="kafka">Kafka</button>
+      <button class="arch-btn bg-ed-orange text-white p-2 rounded text-xs font-semibold" data-comp="settlement">Settlement</button>
+      <button class="arch-btn bg-gray-600 text-white p-2 rounded text-xs font-semibold" data-comp="redis">Redis (Idempotency)</button>
+      <button class="arch-btn bg-gray-700 text-white p-2 rounded text-xs font-semibold" data-comp="cassandra">Cassandra (Ledger)</button>
+    </div>
+    <div id="arch-detail" class="bg-gray-900 text-gray-100 rounded-lg p-3 text-sm min-h-[120px]">
+      <p class="text-gray-400">Click a component to see details.</p>
+    </div>
+  </div>
+  <script>
+    const archData = {
+      gateway: { title: 'API Gateway', resp: 'Rate limiting (12K req/sec), TLS termination, JWT auth, request routing, IP allowlisting.', failure: 'If down: all payments fail. Mitigate with multi-AZ deployment + active-active. If overloaded: shed non-critical traffic, prioritize auth.' },
+      payment: { title: 'Payment Service', resp: 'Orchestrates auth flow: idempotency check, fraud call, ledger write, card network call. Stateless, horizontally scaled.', failure: 'If down: no new auths. Mitigate with K8s HPA + multi-AZ. If a step fails: compensating transaction (release hold).' },
+      fraud: { title: 'Fraud Service', resp: 'Real-time fraud scoring using ML model + rules engine. Inputs: card, amount, merchant, location, velocity. Returns approve/decline/review.', failure: 'If down or timeout: fail open (approve) for low-risk, fail closed for high-risk. Post-transaction review for fail-open cases.' },
+      ledger: { title: 'Ledger Service', resp: 'Double-entry bookkeeping. Debit customer, credit merchant hold. Atomic within Cassandra partition. Append-only.', failure: 'If down: no transactions can commit. This is the source of truth. Multi-AZ Cassandra with quorum writes. No compromise on consistency.' },
+      network: { title: 'Card Network Adapter', resp: 'Translates internal format to Visa/MC ISO 8583. Handles retries, timeouts, network-specific error codes.', failure: 'If Visa down: queue transactions, retry with backoff. If extended outage: route to backup network or decline with clear error.' },
+      kafka: { title: 'Kafka', resp: 'Event backbone. Topics: transaction.authorized, transaction.settled, transaction.failed. Consumers: settlement, notification, analytics, compliance.', failure: 'If down: auth still works (sync path), but async consumers are blocked. Buffer in Payment Service, replay when Kafka recovers. Multi-broker, replicated.' },
+      settlement: { title: 'Settlement Service', resp: 'Batch processes at end of day. Groups by merchant, generates ACH/Fedwire files. Idempotent: re-running produces same file.', failure: 'If batch fails: retry next day. No money lost, just delayed. Reconciliation job detects missing settlements.' },
+      redis: { title: 'Redis (Idempotency Store)', resp: 'Stores idempotency key to tx_id mapping. 24h TTL. Cluster mode for scale. If a duplicate request arrives, return cached response.', failure: 'If Redis down: fall back to checking the transaction DB by idempotency key (slower but correct). Redis is a cache, not the source of truth.' },
+      cassandra: { title: 'Cassandra (Ledger DB)', resp: 'Write-optimized, partitioned by account_id. Quorum writes (CL=QUORUM) for linearizable consistency within a partition. 3 replicas per shard.', failure: 'If a node fails: quorum still works (2 of 3). If a shard is lost: restore from snapshot + replay from Kafka. No data loss.' }
+    };
+    document.querySelectorAll('.arch-btn').forEach(btn => {
+      btn.onclick = () => {
+        const d = archData[btn.dataset.comp];
+        document.getElementById('arch-detail').innerHTML = '<p class="font-bold text-ed-pink mb-2">' + d.title + '</p><p class="mb-2"><strong>Responsibilities:</strong> ' + d.resp + '</p><p><strong class="text-ed-amber">Failure Mode:</strong> ' + d.failure + '</p>';
+      };
+    });
+  </script>
+  </details>
+</section>
+
+<!-- 10. Scalability Deep Dive -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">10. Scalability Deep Dive</h2><span class="chevron text-ed-teal">&#9654;</span></summary>
+  <div class="mt-3 grid md:grid-cols-2 gap-3">
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-4">
+      <h3 class="font-bold text-ed-teal mb-2">Throughput</h3>
+      <p class="text-sm text-gray-800">12K tx/sec peak. Payment Service: stateless, scale to 100 pods. Cassandra: 30 nodes, 3 replicas, 10 shards. Kafka: 6 brokers, 30 partitions. Redis: 6-node cluster.</p>
+    </div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-4">
+      <h3 class="font-bold text-ed-purple mb-2">Latency</h3>
+      <p class="text-sm text-gray-800">p99 &lt; 200ms. Breakdown: gateway 5ms, idempotency 2ms, fraud 50ms, ledger 20ms, card network 100ms, Kafka publish 5ms. Total ~182ms. Buffer for tail latency.</p>
+    </div>
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-700">
+      <h3 class="font-bold mb-2">Sharding Strategy</h3>
+      <p class="text-sm text-gray-800">Transactions: hash(tx_id) mod N. Ledger: hash(account_id) mod N (all entries for an account on one partition). Kafka: partition by merchant_id for settlement ordering.</p>
+    </div>
+    <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-4 text-ed-amber">
+      <h3 class="font-bold mb-2">Caching</h3>
+      <p class="text-sm text-gray-800">Redis for idempotency (24h TTL), card token to account mapping (1h TTL), merchant config (1h TTL). Hot accounts cached in Payment Service L1 cache (Caffeine, 10K entries, 5min TTL).</p>
+    </div>
+  </div>
+  <div class="mt-4 bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+    <h3 class="font-bold text-indigo-700 mb-2">Back-of-the-Envelope Estimation</h3>
+    <p class="text-sm text-gray-800 mb-2">1B transactions/day, 12K tx/sec peak.</p>
+    <p class="text-sm text-gray-800 mb-2">$$\text{Daily volume} = 10^9 \text{ tx} \quad \text{Avg throughput} = \frac{10^9}{86{,}400} \approx 11{,}574 \text{ tx/sec}$$</p>
+    <p class="text-sm text-gray-800 mb-2">Storage per tx $\approx 1$ KB (ledger entry + metadata). $$\text{Daily storage} = 10^9 \times 1 \text{ KB} = 1 \text{ TB/day} \approx 365 \text{ TB/year}$$</p>
+    <p class="text-sm text-gray-800 mb-2">7-year retention (PCI-DSS): $\approx 2.5$ PB. Cassandra cluster: $$\text{Nodes} = \frac{2.5 \text{ PB} \times 3 \text{ replicas}}{10 \text{ TB/node}} \approx 750 \text{ nodes}$$</p>
+    <p class="text-sm text-gray-800">Kafka: $10^9$ events/day, 30 partitions, 6 brokers. Retention 7 days $\approx 7$ TB per broker.</p>
+  </div>
+  </details>
+</section>
+
+<!-- 11. Failure Modes & Resilience -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">11. Failure Modes & Resilience</h2><span class="chevron text-ed-teal">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-red-700 mb-1">Fraud Service Timeout</p>
+      <p class="text-gray-800">Fail open for low-risk (approve, post-review). Fail closed for high-risk (decline). Circuit breaker: after 5 consecutive timeouts, stop calling for 30s. Post-transaction review queue for fail-open cases.</p>
+    </div>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-red-700 mb-1">Ledger Write Failure</p>
+      <p class="text-gray-800">Fail the transaction. No money moves without a ledger entry. Cassandra quorum write retries internally. If quorum cannot be reached (network partition), return error to merchant. Retry by merchant with same idempotency key.</p>
+    </div>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-red-700 mb-1">Card Network Timeout</p>
+      <p class="text-gray-800">Mark transaction as pending. Retry with exponential backoff (1s, 2s, 4s, 8s). After 3 retries, mark as failed and notify merchant. If Visa confirms later, reconcile. Idempotency key prevents double-auth on retry.</p>
+    </div>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-red-700 mb-1">Kafka Unavailable</p>
+      <p class="text-gray-800">Auth path still works (sync). Async consumers blocked. Buffer events in Payment Service memory (bounded queue, 10K). When Kafka recovers, flush. If buffer overflows, drop analytics events (lowest priority), keep settlement and notification.</p>
+    </div>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-red-700 mb-1">Redis (Idempotency) Down</p>
+      <p class="text-gray-800">Fall back to PostgreSQL lookup by idempotency_key. Slower (20ms vs 2ms) but correct. Circuit breaker on Redis. When Redis recovers, warm cache from recent transactions.</p>
+    </div>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-red-700 mb-1">Network Partition (Split Brain)</p>
+      <p class="text-gray-800">Cassandra uses quorum (2 of 3 replicas). The partition with quorum continues. The minority partition rejects writes. When healed, Cassandra repairs via read-repair and hinted handoff. No data loss, no split-brain.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 12. Edge Cases & Gotchas -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">12. Edge Cases & Gotchas</h2><span class="chevron text-ed-orange">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Double spend (concurrent auths on same card)</p>
+      <p class="text-gray-800">Two auths arrive simultaneously for the same card. Both check balance, both see sufficient funds, both approve. Fix: serialize by card_id. Use a Redis lock or Cassandra lightweight transaction (IF NOT EXISTS) on the ledger.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Refund before settlement</p>
+      <p class="text-gray-800">Merchant tries to refund a transaction that has not settled yet. Either block (return error) or allow (creates a negative entry, netted at settlement). Clarify business rule.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Currency conversion rounding</p>
+      <p class="text-gray-800">Customer in EUR, merchant in USD. Convert at auth time, hold the converted amount. At settlement, reconvert. Rounding differences (sub-cent) accumulate. Use BigDecimal and a rounding policy. Reconciliation job catches discrepancies.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Partial auth ( Visa Partial Authorization)</p>
+      <p class="text-gray-800">Customer has $50, transaction is $100. Visa supports partial auth: approve $50, decline $50. The system must handle this: split the transaction, return partial auth code. Merchant decides whether to accept.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Time skew across services</p>
+      <p class="text-gray-800">Different services have slightly different clocks. Transaction timestamp from Payment Service may differ from Ledger timestamp. Use NTP and a central time service. For ordering, use the Kafka offset, not wall clock.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 13. Flashcards -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">13. Flashcards</h2><span class="chevron text-ed-purple">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q1: How do you ensure exactly-once processing?</summary>
+      <p class="text-sm text-gray-800 mt-2">Client-generated idempotency key on every request. Redis cache (24h TTL) for fast dedup. Transaction DB unique constraint on idempotency_key as the source of truth. Ledger uses tx_id as primary key, duplicates rejected by Cassandra.</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q2: Why saga instead of 2PC?</summary>
+      <p class="text-sm text-gray-800 mt-2">2PC blocks on all participants. At 12K tx/sec, a slow card network (100ms) creates cascading timeouts. Saga commits each step locally, failures trigger compensating actions. Higher availability, lower latency, requires idempotency.</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q3: How do you handle the auth vs settlement timing gap?</summary>
+      <p class="text-sm text-gray-800 mt-2">Auth holds funds immediately (ledger entry with status=held). Settlement batches at end of day, converts held to settled. If auth expires (typically 7 days), release the hold. Reconciliation job detects orphaned holds.</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q4: How do you achieve PCI-DSS compliance?</summary>
+      <p class="text-sm text-gray-800 mt-2">Never store raw card numbers. Tokenize at ingress. Encrypt at rest (AES-256). Network segmentation: card data zone isolated. Audit all access. Annual penetration testing. QSA audit. The system never sees raw PAN after tokenization.</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q5: How do you handle 10x traffic spikes (Black Friday)?</summary>
+      <p class="text-sm text-gray-800 mt-2">K8s HPA auto-scales Payment Service. Kafka buffers the spike. Cassandra handles write spikes naturally. Pre-provision for known events. Rate limit at gateway to protect downstream. Shed non-critical traffic (analytics) if needed.</p>
+    </details>
+  </div>
+  </details>
+</section>
+
+<!-- 14. Where It Is Used (Real World) -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">14. Where It Is Used (Real World)</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <div class="bg-amber-100 border border-amber-300 text-amber-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Stripe</p>
+      <p class="text-gray-800">Processes hundreds of millions of transactions per day. Uses a similar architecture: API gateway, idempotent ingestion, Kafka backbone, double-entry ledger. Their engineering blog details the evolution from monolith to event-driven microservices.</p>
+    </div>
+    <div class="bg-gray-100 border border-gray-300 text-gray-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Capital One</p>
+      <p class="text-gray-800">Processes 1B+ card transactions per day. Uses Kafka extensively, event sourcing for the ledger, and a microservices architecture. Their "Capital One Software Engineering" blog covers their journey to cloud-native.</p>
+    </div>
+    <div class="bg-rose-100 border border-rose-300 text-rose-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">PayPal</p>
+      <p class="text-gray-800">Handles 4B+ payment transactions per year. Uses a mix of synchronous (auth) and asynchronous (settlement) paths. Their architecture emphasizes idempotency and exactly-once processing at scale.</p>
+    </div>
+    <div class="bg-indigo-100 border border-indigo-300 text-indigo-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Square</p>
+      <p class="text-gray-800">Processes card payments for merchants. Their engineering blog describes a ledger service very similar to this design: append-only, double-entry, Cassandra-backed, with Kafka for event distribution.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 15. Common Mistakes -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">15. Common Mistakes</h2><span class="chevron text-ed-orange">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-orange/5 border border-ed-orange/15 rounded-lg p-4">
+    <ul class="text-sm space-y-2">
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>No idempotency key.</strong> Network retries cause double charges. Every request must have a client-generated idempotency key.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Using double for money.</strong> Precision errors. Use BigDecimal or integer cents.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Single-entry ledger.</strong> No audit trail. Double-entry is mandatory for financial systems: every transaction debits one account and credits another.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Synchronous settlement.</strong> Settlement is batch, not real-time. Doing it synchronously blocks the auth path and kills latency.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>No circuit breaker on fraud.</strong> Fraud service timeout blocks the entire auth. Use circuit breaker with fail-open fallback.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Storing raw card numbers.</strong> PCI-DSS violation. Tokenize at ingress, never store PAN.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Not handling concurrent auths on same card.</strong> Double spend. Serialize by card_id using locks or CAS.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>No reconciliation job.</strong> Silent failures accumulate. Daily reconciliation between ledger, card network, and bank accounts catches discrepancies.</li>
+    </ul>
+  </div>
+  </details>
+</section>
+
+<!-- 16. Interview Tips -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">16. Interview Tips</h2><span class="chevron text-ed-purple">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-4">
+    <ul class="text-sm space-y-2">
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Start with requirements.</strong> "Let me clarify the scale, latency, and consistency requirements." Write them down. This frames the entire design.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Separate sync (auth) from async (settlement).</strong> The customer is waiting for auth. Settlement can wait. This is the key architectural decision.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Draw the diagram.</strong> API Gateway, Payment Service, Fraud, Ledger, Card Network, Kafka, Settlement. Show the flow. Visual communication matters.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Discuss idempotency early.</strong> It is the foundation. Every request has a key. Redis for fast dedup, DB for source of truth.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Use double-entry ledger.</strong> This is a financial system. Mention it proactively. Shows domain understanding.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Discuss failure modes.</strong> For each component: what if it fails? Circuit breakers, fallbacks, compensating transactions. This is the senior signal.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Mention compliance.</strong> PCI-DSS, OCC, SOX. Tokenization, encryption, audit trail. Shows you understand regulated industries.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Quantify everything.</strong> 12K tx/sec, p99 &lt; 200ms, 99.99% availability. Numbers show you think about production, not just theory.</li>
+    </ul>
+  </div>
+  </details>
+</section>
+
+<!-- 17. Related System Design Problems -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">17. Related System Design Problems</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Distributed Ledger / Double-Entry Bookkeeping</strong> &mdash; the core of any financial system</span>
+      <span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-bold">CORE</span>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Idempotency at Scale</strong> &mdash; dedup patterns for distributed systems</span>
+      <span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-bold">CORE</span>
+    </div>
+    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Design a Payment Gateway</strong> (Stripe-like) &mdash; similar but merchant-focused</span>
+      <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-bold">SIMILAR</span>
+    </div>
+    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Design a Wallet System</strong> (PayPal/Venmo) &mdash; account-to-account transfers</span>
+      <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-bold">SIMILAR</span>
+    </div>
+    <div class="bg-rose-50 border border-rose-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Design a Stock Trading System</strong> &mdash; order matching, settlement</span>
+      <span class="bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-xs font-bold">ADVANCED</span>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 18. Key Technologies -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">18. Key Technologies</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 grid md:grid-cols-2 gap-2 text-sm">
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Kafka</strong> &mdash; event backbone, durable, replayable</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Cassandra</strong> &mdash; write-optimized ledger, partitioned by account</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>PostgreSQL</strong> &mdash; transaction state, ACID</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Redis</strong> &mdash; idempotency cache, distributed locks</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Kubernetes</strong> &mdash; container orchestration, HPA auto-scaling</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Envoy / Istio</strong> &mdash; service mesh, circuit breakers, mTLS</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Flink</strong> &mdash; stream processing for real-time analytics</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Vault / KMS</strong> &mdash; encryption key management, tokenization</div>
+  </div>
+  </details>
+</section>
+
+<!-- 19. Trade-Offs -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">19. Trade-Offs</h2><span class="chevron text-indigo-600">&#9654;</span></summary>
+  <div class="mt-3 bg-indigo-50 border border-indigo-200 rounded-lg p-4 text-indigo-700 text-sm space-y-3">
+    <div>
+      <p class="font-semibold mb-1">Consistency vs Availability (CAP)</p>
+      <p class="text-gray-800">Ledger: choose consistency (quorum writes, reject if cannot achieve quorum). Auth path: choose availability (fail open on fraud timeout). Different parts of the system make different tradeoffs.</p>
+    </div>
+    <div>
+      <p class="font-semibold mb-1">Latency vs Fraud Accuracy</p>
+      <p class="text-gray-800">A more complex ML model gives better fraud detection but takes longer. 50ms budget for fraud. Use a fast rules engine (10ms) for the first pass, a slower ML model (40ms) for borderline cases.</p>
+    </div>
+    <div>
+      <p class="font-semibold mb-1">2PC vs Saga</p>
+      <p class="text-gray-800">2PC gives atomicity but blocks. Saga gives availability but requires compensating actions and idempotency. At scale, saga wins. The cost is operational complexity.</p>
+    </div>
+    <div>
+      <p class="font-semibold mb-1">Cassandra vs Spanner vs PostgreSQL</p>
+      <p class="text-gray-800">Cassandra: high write throughput, tunable consistency. Spanner: global strong consistency, expensive. PostgreSQL: ACID, but sharding is manual. For ledger, Cassandra with quorum is the sweet spot.</p>
+    </div>
+    <div>
+      <p class="font-semibold mb-1">Event Sourcing vs CRUD</p>
+      <p class="text-gray-800">Event sourcing (append-only ledger) gives perfect audit trail and replay. CRUD is simpler but loses history. For financial systems, event sourcing is worth the complexity. Regulatory requirement.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 20. Monitoring & Observability -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">20. Monitoring & Observability</h2><span class="chevron text-ed-sky">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-sky mb-1">Metrics (Prometheus + Grafana)</p>
+      <p class="text-gray-800">Tx rate, p99 latency, error rate, fraud decline rate, auth success rate, settlement batch status, Kafka consumer lag, Cassandra write latency, Redis hit rate. Alert on SLO breaches.</p>
+    </div>
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-sky mb-1">Distributed Tracing (Jaeger/Zipkin)</p>
+      <p class="text-gray-800">Trace every transaction across services: gateway, payment, fraud, ledger, network. See where the 200ms is spent. Identify tail latency causes. Essential for debugging p99 issues.</p>
+    </div>
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-sky mb-1">Structured Logging (ELK / Splunk)</p>
+      <p class="text-gray-800">Every log line includes tx_id, idempotency_key, customer_id, merchant_id. Search by tx_id to see the full journey. No PII (card numbers) in logs. PCI compliance.</p>
+    </div>
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-sky mb-1">Reconciliation Jobs</p>
+      <p class="text-gray-800">Daily: compare ledger totals vs card network reports vs bank account balances. Discrepancies trigger alerts. This is the safety net that catches silent failures.</p>
+    </div>
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-sky mb-1">Alerting (PagerDuty)</p>
+      <p class="text-gray-800">Page on: auth success rate &lt; 99%, p99 latency &gt; 200ms, ledger write failures &gt; 0.1%, settlement batch failure, Kafka consumer lag &gt; 10K. Runbooks for each alert.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 21. Follow-Up Questions -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">21. Follow-Up Questions</h2><span class="chevron text-indigo-600">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How would you handle international payments (multi-currency)?</summary>
+      <p class="text-sm text-gray-800 mt-2">FX rate service with real-time rates. At auth, convert and hold in customer currency. At settlement, convert to merchant currency. Cache FX rates with 1min TTL. Rounding policy: banker's rounding to nearest cent. Reconciliation handles sub-cent discrepancies.</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How would you add support for recurring payments (subscriptions)?</summary>
+      <p class="text-sm text-gray-800 mt-2">Tokenize the card at first auth. Store token with a subscription schedule. A scheduler triggers auth on the schedule. If auth fails (card expired), notify customer, retry with backoff. Use the same idempotency pattern with a subscription-specific key.</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How would you handle chargebacks (customer disputes a transaction)?</summary>
+      <p class="text-sm text-gray-800 mt-2">Chargeback is a separate flow. Customer initiates dispute. Dispute Service creates a chargeback record, debits the merchant account, credits the customer. Merchant can contest. If contested, arbitration via card network. The ledger tracks all of this.</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How would you migrate from a monolith to this architecture without downtime?</summary>
+      <p class="text-sm text-gray-800 mt-2">Strangler fig pattern. New features go to microservices. Old features migrated one at a time. Dual-write during migration: write to monolith and new service, compare results. Cut over when confident. Keep monolith as fallback for 30 days.</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How would you handle a regulatory audit (OCC, PCI)?</summary>
+      <p class="text-sm text-gray-800 mt-2">Event-sourced ledger provides the full audit trail. Every transaction has a complete history. Compliance Service generates reports on demand. Access logs show who accessed what. Encryption keys are rotated and audited. QSA audits annually.</p>
+    </details>
+  </div>
+  </details>
+</section>
+
+<!-- 22. Quick Reference -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details open><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">22. Quick Reference</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 grid md:grid-cols-2 gap-3">
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Architecture</p>
+      <p class="text-gray-800">Event-driven microservices, Kafka backbone, sync auth + async settlement</p>
+    </div>
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-3 text-sm text-ed-teal">
+      <p class="font-semibold mb-1">Scale</p>
+      <p>1B tx/day, 12K tx/sec peak, p99 &lt; 200ms, 99.99% availability</p>
+    </div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3 text-sm text-ed-purple">
+      <p class="font-semibold mb-1">Key Patterns</p>
+      <p class="text-gray-800">Idempotency keys, double-entry ledger, saga, circuit breakers, event sourcing</p>
+    </div>
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+      <p class="font-semibold mb-1">Data Stores</p>
+      <p class="text-gray-800">Cassandra (ledger), PostgreSQL (tx state), Redis (idempotency), S3 (audit)</p>
+    </div>
+    <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-3 text-sm text-ed-amber">
+      <p class="font-semibold mb-1">Compliance</p>
+      <p class="text-gray-800">PCI-DSS (tokenization, encryption), OCC (audit trail), SOX (controls)</p>
+    </div>
+    <div class="bg-ed-pink/5 border border-ed-pink/15 rounded-lg p-3 text-sm text-ed-pink">
+      <p class="font-semibold mb-1">Senior Signal</p>
+      <p class="text-gray-800">Failure modes, tradeoffs, reconciliation, observability, compliance</p>
+    </div>
+  </div>
+  <div class="mt-3 bg-gray-900 text-gray-100 rounded-lg p-3">
+    <p class="text-xs font-semibold text-gray-400 mb-1">Key decisions:</p>
+    <pre class="mono text-xs">1. Sync auth (customer waiting) vs async settlement (batch)
+2. Idempotency key on every request (Redis + DB)
+3. Double-entry ledger (Cassandra, append-only)
+4. Saga over 2PC (availability over atomicity)
+5. Kafka for decoupling (auth does not block on async consumers)
+6. Circuit breakers on external calls (fraud, card network)
+7. Event sourcing for audit (regulatory requirement)
+8. Polyglot persistence (right tool for each workload)</pre>
+  </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">23. Reference Implementation (Java)</h2><span class="chevron text-ed-sky">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3">
+      <h3 class="font-bold text-ed-sky mb-2 text-sm">Payment Service &mdash; Idempotent Auth with Circuit Breakers</h3>
+      <pre class="mono text-xs bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">import java.util.*;
+import java.util.concurrent.*;
+
+public class PaymentService {
+    private final FraudService fraudService;
+    private final LedgerService ledgerService;
+    private final CardNetworkAdapter cardNetwork;
+    private final IdempotencyStore idempotency;
+
+    public AuthResult authorize(PaymentRequest req) {
+        // Idempotency check
+        Optional&lt;AuthResult&gt; cached = idempotency.get(req.getIdempotencyKey());
+        if (cached.isPresent()) return cached.get();
+
+        // Fraud check (sync, 50ms timeout, fail-open for low risk)
+        FraudVerdict verdict = fraudService.check(req, Duration.ofMillis(50));
+
+        // Double-entry ledger write (sync)
+        ledgerService.postDoubleEntry(req);
+
+        // Card network auth (sync, 100ms timeout)
+        NetworkResponse networkResp = cardNetwork.authorize(req, Duration.ofMillis(100));
+
+        AuthResult result = AuthResult.from(verdict, networkResp);
+        idempotency.put(req.getIdempotencyKey(), result, Duration.ofHours(24));
+        return result;
+    }
+}</pre>
+    </div>
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3">
+      <h3 class="font-bold text-ed-sky mb-2 text-sm">Ledger Service &mdash; Double-Entry Append-Only</h3>
+      <pre class="mono text-xs bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">public class LedgerService {
+    private final CassandraLedger ledger;
+
+    public void postDoubleEntry(PaymentRequest req) {
+        LedgerEntry debit = LedgerEntry.builder()
+            .entryId(UUID.randomUUID())
+            .accountId(req.getMerchantAccountId())
+            .type(EntryType.DEBIT)
+            .amount(req.getAmount())
+            .txId(req.getTxId())
+            .timestamp(Instant.now())
+            .build();
+        LedgerEntry credit = LedgerEntry.builder()
+            .entryId(UUID.randomUUID())
+            .accountId(req.getCustomerAccountId())
+            .type(EntryType.CREDIT)
+            .amount(req.getAmount())
+            .txId(req.getTxId())
+            .timestamp(Instant.now())
+            .build();
+        // Batch atomic write to Cassandra (same partition key = tx_id)
+        ledger.appendBatch(Arrays.asList(debit, credit));
+    }
+}</pre>
+    </div>
+  </div>
+  </details>
+</section>
+
+</main>
+</body>
+</html>

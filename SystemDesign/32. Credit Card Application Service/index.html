@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Credit Card Application Service &mdash; Capital One GPN</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = { theme: { extend: { colors: {
+  'ed-pink': '#db2777', 'ed-blue': '#2563eb', 'ed-teal': '#0d9488',
+  'ed-amber': '#d97706', 'ed-sky': '#0284c7', 'ed-purple': '#7c3aed', 'ed-orange': '#ea580c',
+}, fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } } } };
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  details > summary { cursor: pointer; list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  .chevron { transition: transform 0.2s; }
+  details[open] .chevron { transform: rotate(90deg); }
+  pre.mono { white-space: pre; }
+  .mermaid { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:'neutral',securityLevel:'loose'});</script>
+<script>window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+<main class="max-w-5xl mx-auto px-4 py-6 md:py-10 space-y-4">
+
+<header class="bg-gradient-to-r from-emerald-600 to-gray-900 text-white rounded-2xl p-6 md:p-8 shadow-lg">
+  <div class="flex items-center gap-2 text-sm text-gray-300 mb-2">
+    <span class="bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-bold">SYSTEM DESIGN</span>
+    <span class="text-gray-400">&middot;</span>
+    <span>Capital One GPN &middot; Senior Round</span>
+  </div>
+  <h1 class="text-3xl md:text-4xl font-extrabold">Credit Card Application Service</h1>
+  <p class="text-gray-300 mt-2 text-sm md:text-base">Design a credit card application system that processes applications, pulls credit bureau data, scores risk, makes instant decisions, and issues cards. Handle 100K applications per day with compliance.</p>
+  <div class="mt-4 flex flex-wrap gap-2 text-xs">
+    <span class="bg-white/10 px-3 py-1 rounded-full">Scale: 100K apps/day</span>
+    <span class="bg-white/10 px-3 py-1 rounded-full">Latency: instant decision &lt; 5s</span>
+    <span class="bg-white/10 px-3 py-1 rounded-full">Compliance: FCRA, ECOA, OCC</span>
+    <span class="bg-white/10 px-3 py-1 rounded-full">Integration: Experian, Equifax, TransUnion</span>
+  </div>
+</header>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <h2 class="text-xl md:text-2xl font-bold text-gray-900 mb-3">1. Problem Statement</h2>
+  <p class="text-sm text-gray-700 mb-3">Design Capital One's credit card application system. A customer applies for a credit card online or in-app. The system pulls credit bureau data, scores the application, makes an instant decision (approve/deny/pending), and if approved, issues a card. The system must comply with FCRA, ECOA, and OCC regulations, and integrate with three credit bureaus.</p>
+  <div class="bg-gray-100/60 rounded-lg p-4 text-sm">
+    <p class="font-semibold mb-2">Functional Requirements:</p>
+    <ul class="space-y-1 ml-4">
+      <li>&bull; <strong>Submit application:</strong> Personal info, income, employment, desired card product.</li>
+      <li>&bull; <strong>Credit pull:</strong> Soft pull (pre-qual) or hard pull (formal application) from bureaus.</li>
+      <li>&bull; <strong>Risk scoring:</strong> Internal model + bureau score (FICO). Decision: approve/deny/pending.</li>
+      <li>&bull; <strong>Card issuance:</strong> Generate card number, manufacture physical card, ship to customer.</li>
+      <li>&bull; <strong>Adverse action notice:</strong> If denied, generate FCRA-compliant notice with reasons.</li>
+      <li>&bull; <strong>Application status:</strong> Customer can check status online or via app.</li>
+    </ul>
+    <p class="font-semibold mt-3 mb-2">Non-Functional Requirements:</p>
+    <ul class="space-y-1 ml-4">
+      <li>&bull; <strong>Scale:</strong> 100K applications/day, 1K/sec peak (marketing campaigns)</li>
+      <li>&bull; <strong>Latency:</strong> Instant decision &lt; 5 seconds (customer is waiting)</li>
+      <li>&bull; <strong>Availability:</strong> 99.9% (not 99.99% like payments, this is not real-time POS)</li>
+      <li>&bull; <strong>Compliance:</strong> FCRA (credit reporting), ECOA (fair lending), OCC (banking), PCI-DSS (card data)</li>
+      <li>&bull; <strong>Data retention:</strong> 7 years (regulatory), adverse action notices 25 months</li>
+      <li>&bull; <strong>Fairness:</strong> No discriminatory decisions. Regular fair lending audits.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details open><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">2. Pattern Recognition</h2><span class="chevron text-ed-pink">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-pink/5 border border-ed-pink/15 rounded-lg p-4">
+    <p class="text-sm text-gray-800 mb-2"><strong class="text-ed-pink">Why signals:</strong></p>
+    <ul class="text-sm space-y-1">
+      <li>&bull; Multi-step workflow with external calls &rarr; orchestration engine / saga</li>
+      <li>&bull; Instant decision &rarr; pre-compute what you can, parallel calls to bureaus</li>
+      <li>&bull; External dependency (3 bureaus) &rarr; circuit breakers, fallback, retry</li>
+      <li>&bull; Regulatory compliance &rarr; audit trail, adverse action generation, data retention</li>
+      <li>&bull; Risk scoring &rarr; ML model + rules, model versioning, explainability</li>
+      <li>&bull; Card issuance &rarr; async manufacturing and shipping, not instant</li>
+    </ul>
+    <p class="text-sm text-gray-800 mt-3"><strong class="text-ed-pink">Core pattern:</strong> Orchestrated workflow with parallel external calls (3 bureaus simultaneously), ML risk scoring, and async card issuance. Event-driven for the slow path (manufacturing, shipping). Synchronous for the fast path (decision in &lt; 5s).</p>
+  </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">3. High-Level Architecture</h2><span class="chevron text-ed-blue">&#9654;</span></summary>
+  <div class="mt-3 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg p-4">
+    <pre class="mono text-xs bg-gray-900 text-gray-100 rounded p-3 overflow-x-auto">Customer App / Website
+     |
+     v
+[API Gateway] --- auth, rate limit, TLS
+     |
+     v
+[Application Service] --- orchestrates the flow
+     |
+     +---> [Bureau Service] (parallel calls, 2s timeout each)
+     |       +---> Experian API
+     |       +---> Equifax API
+     |       +---> TransUnion API
+     |       returns: 3 bureau reports + FICO scores
+     |
+     +---> [Risk Scoring Service] (ML model + rules)
+     |       inputs: app data, bureau data, internal history
+     |       returns: score, decision (approve/deny/pending), reasons
+     |
+     +---> [Decision Service] --- combines bureau + risk + policy
+     |       returns: final decision, credit limit, APR
+     |
+     v
+[Kafka] --- application.decided event
+     |
+     +---> [Card Issuance Service] (async: generate number, manufacture, ship)
+     +---> [Adverse Action Service] (if denied: generate FCRA notice, mail)
+     +---> [Notification Service] (SMS/email: "You're approved!")
+     +---> [CRM Service] (update customer record)
+     +---> [Analytics Service] (conversion funnel, approval rate)
+
+  Stores:
+  - Application DB (PostgreSQL, sharded by app_id)
+  - Bureau Cache (Redis, 24h TTL, soft pull reuse)
+  - Risk Model Registry (MLflow)
+  - Card Vault (HSM-protected, PCI-DSS)
+  - Document Store (S3, adverse action notices, 25-month retention)</pre>
+  <div class="mt-4">
+    <p class="text-xs font-semibold text-gray-500 mb-2">Architecture Diagram (Mermaid):</p>
+    <div class="mermaid">
+flowchart LR
+    A[Customer App] --> B[API Gateway]
+    B --> C[Application Service]
+    C --> D[Bureau Service]
+    D --> D1[Experian]
+    D --> D2[Equifax]
+    D --> D3[TransUnion]
+    C --> E[Risk Scoring Service]
+    E --> F[Decision Service]
+    F --> G[(PostgreSQL)]
+    F --> H[(Kafka)]
+    H --> I[Card Issuance]
+    H --> J[Adverse Action]
+    H --> K[Notification]
+    I --> L[(HSM Vault)]
+    J --> M[(S3 Docs)]
+    </div>
+  </div>
+  </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">4. How to Think About It</h2><span class="chevron text-ed-blue">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-blue/5 border border-gray-300 rounded-lg p-4 space-y-3">
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">1</span> What is the critical path?</p>
+      <p class="text-gray-700 ml-8">Customer is waiting for a decision. The 5-second budget: bureau pulls (2s parallel), risk scoring (1s), decision logic (0.5s), DB write (0.5s), notification (0.5s). Bureau calls are the bottleneck, so call all 3 in parallel.</p>
+    </div>
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">2</span> Soft pull vs hard pull?</p>
+      <p class="text-gray-700 ml-8">Soft pull (pre-qualification): does not affect credit score, cached for 24h. Hard pull (formal application): affects credit score, fresh data. Pre-qual uses soft pull to show "you're pre-approved." Formal app uses hard pull for the actual decision.</p>
+    </div>
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">3</span> What if a bureau is down?</p>
+      <p class="text-gray-700 ml-8">If one bureau is down, use the other two. If all three are down, either: (a) pending decision (defer until bureaus recover), or (b) use cached data if available. Hard pull cannot be skipped (regulatory). Circuit breaker per bureau. Fallback to pending.</p>
+    </div>
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">4</span> <span class="text-ed-teal">&rarr;</span> What about adverse action?</p>
+      <p class="text-gray-700 ml-8">If denied, FCRA requires an adverse action notice within 30 days. It must state the reasons and the bureau data used. The system generates the notice automatically, stores it for 25 months, and mails it (physical or electronic). This is a regulatory requirement, not optional.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- PLACEHOLDER: Sections 5-22 -->
+
+<!-- 5. Real-World Analogy -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">5. Real-World Analogy</h2><span class="chevron text-ed-teal">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-4 text-sm text-gray-800">
+    <p class="mb-2">Think of a <strong>loan officer at a bank branch</strong>. You walk in, fill out an application. The officer calls three references (credit bureaus) in parallel to get your history. While waiting, they check their own records (internal history). When the references come back, the officer scores you (risk model) and makes a decision.</p>
+    <p class="mb-2">If approved, the officer says "congratulations" and starts the card manufacturing process (which takes days). If denied, they hand you a letter explaining why (adverse action notice). The letter is a legal requirement.</p>
+    <p>The 5-second budget is like the customer standing at the counter. They will not wait 30 seconds. The officer must be fast: parallel calls, pre-computed scores, instant decision. The slow stuff (manufacturing, mailing) happens in the back office after the customer leaves.</p>
+  </div>
+  </details>
+</section>
+
+<!-- 6. Build Your Intuition -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">6. Build Your Intuition</h2><span class="chevron text-ed-amber">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Q: Why call all 3 bureaus in parallel?</p>
+      <p class="text-gray-700">Each bureau call takes 1-2 seconds. Sequential: 6 seconds (too slow). Parallel: 2 seconds (within budget). Different bureaus have different data, so you need all 3 for an accurate score. The slowest bureau determines the total time.</p>
+    </div>
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-3 text-sm text-ed-teal">
+      <p class="font-semibold mb-1">Q: Why not cache bureau data permanently?</p>
+      <p class="text-gray-800">Credit data changes daily. A hard pull must be fresh (regulatory). Soft pulls can be cached for 24h (pre-qualification). Caching a hard pull would violate FCRA. The cache is only for soft pulls and pre-qualification flows.</p>
+    </div>
+    <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Q: How does the risk model work?</p>
+      <p class="text-gray-700">Inputs: application data (income, employment), bureau data (FICO, utilization, inquiries, delinquencies), internal history (existing Capital One accounts). Model: gradient boosted trees (XGBoost). Output: probability of default. Threshold: below X% = approve, above Y% = deny, between = pending (manual review).</p>
+    </div>
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-3 text-sm text-ed-teal">
+      <p class="font-semibold mb-1">Q: What is adverse action and why does it matter?</p>
+      <p class="text-gray-800">FCRA requires that if you deny credit based on bureau data, you must tell the customer: (1) that bureau data was used, (2) which bureau, (3) the main reasons for denial. This is the adverse action notice. Non-compliance is a regulatory violation with fines. The system generates it automatically.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 7. How It Works (Step by Step) -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">7. How It Works (Step by Step)</h2><span class="chevron text-ed-sky">&#9654;</span></summary>
+  <div class="mt-3 space-y-2 text-sm">
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 1:</strong> Customer submits application via app/website. API Gateway authenticates, rate-limits, routes to Application Service.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 2:</strong> Application Service validates input (SSN format, income &gt; 0, etc.). Creates application record with status=RECEIVED.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 3:</strong> Bureau Service calls Experian, Equifax, TransUnion in parallel (2s timeout each). Returns 3 bureau reports with FICO scores. If one fails, use the other two.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 4:</strong> Risk Scoring Service fetches internal history (existing accounts, past delinquencies). Runs ML model with all features. Returns risk score and top factors.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 5:</strong> Decision Service applies policy rules: if score &lt; X and FICO &gt; 680, APPROVE with limit $Y. If score &gt; Z, DENY. Else, PENDING (manual review).</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 6:</strong> Application Service writes decision to DB. Publishes application.decided event to Kafka. Returns decision to customer. Total: 3-5 seconds.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 7:</strong> Async (APPROVED): Card Issuance Service generates card number (HSM), creates card record, orders physical card manufacturing. Ships in 7-10 days.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 8:</strong> Async (DENIED): Adverse Action Service generates FCRA notice with reasons and bureau info. Mails to customer within 30 days. Stores for 25 months.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 9:</strong> Async (all): Notification Service sends SMS/email. CRM updates customer record. Analytics tracks conversion funnel.</div>
+  </div>
+  </details>
+</section>
+
+<!-- 8. Data Model -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">8. Data Model</h2><span class="chevron text-ed-amber">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Application (PostgreSQL, sharded by app_id)</p>
+      <pre class="mono text-xs bg-gray-200 rounded p-2 mt-1">applications:
+  app_id          UUID PK
+  customer_id     VARCHAR
+  product_id      VARCHAR  -- which card product (Quicksilver, Venture, etc.)
+  status          ENUM(received, pending, approved, denied, cancelled)
+  personal_info   JSONB  -- name, DOB, SSN (encrypted), address
+  financial_info  JSONB  -- income, employment, housing
+  bureau_reports  JSONB  -- 3 bureau responses
+  risk_score      DECIMAL
+  risk_factors    JSONB  -- top SHAP features
+  decision        VARCHAR
+  credit_limit    DECIMAL NULL
+  apr             DECIMAL NULL
+  created_at      TIMESTAMP
+  decided_at      TIMESTAMP NULL</pre>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Bureau Cache (Redis, 24h TTL, soft pulls only)</p>
+      <pre class="mono text-xs bg-gray-200 rounded p-2 mt-1">bureau_cache:soft:{customer_id} = {
+  experian: JSON,
+  equifax: JSON,
+  transunion: JSON,
+  pulled_at: TIMESTAMP
+}
+TTL: 24 hours</pre>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Adverse Action Notice (S3 + PostgreSQL index)</p>
+      <pre class="mono text-xs bg-gray-200 rounded p-2 mt-1">adverse_actions:
+  notice_id       UUID PK
+  app_id          UUID
+  customer_id     VARCHAR
+  reasons         JSONB  -- ["high_utilization", "recent_inquiries"]
+  bureaus_used    JSONB  -- ["Experian", "Equifax"]
+  document_url    VARCHAR  -- S3 URL to PDF
+  mailed_at       TIMESTAMP NULL
+  retention_until TIMESTAMP  -- created_at + 25 months</pre>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Card (HSM Vault + PostgreSQL metadata)</p>
+      <pre class="mono text-xs bg-gray-200 rounded p-2 mt-1">cards:
+  card_id         UUID PK
+  app_id          UUID
+  customer_id     VARCHAR
+  card_token      VARCHAR  -- tokenized PAN
+  last4           CHAR(4)
+  product_id      VARCHAR
+  credit_limit    DECIMAL
+  apr             DECIMAL
+  status          ENUM(issued, activated, closed)
+  manufactured_at TIMESTAMP NULL
+  shipped_at      TIMESTAMP NULL
+  activated_at    TIMESTAMP NULL</pre>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 9. Interactive Application Flow -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details open><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">9. Interactive Application Flow</h2><span class="chevron text-ed-pink">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-pink/5 border border-ed-pink/15 rounded-lg p-4">
+    <p class="text-sm text-gray-800 mb-3"><span class="bg-ed-pink/10 text-ed-pink px-2 py-0.5 rounded text-xs font-bold mr-2">INTERACTIVE</span>Step through the application process and see how each component contributes to the decision.</p>
+    <div class="flex items-center gap-2 mb-3">
+      <button id="app-prev" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm font-semibold">&larr; Prev</button>
+      <button id="app-play" class="bg-ed-pink hover:bg-ed-pink/80 text-white px-3 py-1 rounded text-sm font-semibold">Play</button>
+      <button id="app-next" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm font-semibold">Next &rarr;</button>
+      <span id="app-counter" class="ml-auto text-sm text-gray-600 font-mono">Step 0/9</span>
+    </div>
+    <div id="app-flow" class="space-y-2"></div>
+    <div class="grid grid-cols-3 gap-2 mt-3 text-xs">
+      <div id="app-timer" class="bg-gray-100 rounded p-2 text-center font-semibold">Time: 0ms</div>
+      <div id="app-status" class="bg-gray-100 rounded p-2 text-center font-semibold">Status: --</div>
+      <div id="app-decision" class="bg-gray-100 rounded p-2 text-center font-semibold">Decision: --</div>
+    </div>
+  </div>
+  <script>
+    const appSteps = [
+      {step:'Submit', comp:'API Gateway', time:100, status:'RECEIVED', decision:'--', msg:'Customer submits application. API Gateway authenticates and rate-limits.'},
+      {step:'Validate', comp:'Application Service', time:200, status:'VALIDATING', decision:'--', msg:'Validate input: SSN format, income > 0, required fields. Create application record.'},
+      {step:'Bureau Pull', comp:'Bureau Service', time:2000, status:'PULLING_BUREAU', decision:'--', msg:'Parallel calls to Experian, Equifax, TransUnion. 2s timeout. Returns 3 reports + FICO scores.'},
+      {step:'Risk Score', comp:'Risk Scoring Service', time:1000, status:'SCORING', decision:'--', msg:'ML model runs with app data + bureau data + internal history. Returns risk score and top factors.'},
+      {step:'Decision', comp:'Decision Service', time:500, status:'DECIDING', decision:'APPROVED', msg:'Policy rules applied. Score below threshold, FICO > 680. APPROVE with $5000 limit, 18.99% APR.'},
+      {step:'Persist', comp:'Application DB', time:500, status:'DECIDED', decision:'APPROVED', msg:'Write decision to DB. Publish application.decided to Kafka. Return to customer.'},
+      {step:'Card Issuance', comp:'Card Issuance Service', time:0, status:'ISSUING', decision:'APPROVED', msg:'Async: Generate card number in HSM. Order physical card manufacturing. Ship in 7-10 days.'},
+      {step:'Notification', comp:'Notification Service', time:0, status:'NOTIFIED', decision:'APPROVED', msg:'Async: Send SMS "You\'re approved!" Email with card details and timeline.'},
+      {step:'Complete', comp:'CRM + Analytics', time:0, status:'COMPLETE', decision:'APPROVED', msg:'Async: Update CRM. Track conversion in analytics. Application complete.'}
+    ];
+    let appStep = 0, appPlaying = false, appTimer = null;
+    function appRender() {
+      const flow = document.getElementById('app-flow');
+      flow.innerHTML = '';
+      appSteps.forEach((s, i) => {
+        const active = i <= appStep;
+        const current = i === appStep;
+        let cls = active ? 'bg-ed-pink/10 border-ed-pink/30' : 'bg-gray-50 border-gray-200';
+        if (current) cls = 'bg-ed-pink/20 border-ed-pink/50 ring-2 ring-ed-pink/20';
+        flow.insertAdjacentHTML('beforeend', '<div class="' + cls + ' border rounded-lg p-2 text-xs flex items-center gap-3"><span class="w-6 h-6 rounded-full ' + (active ? 'bg-ed-pink text-white' : 'bg-gray-300 text-gray-500') + ' flex items-center justify-center font-bold">' + (i+1) + '</span><div class="flex-1"><span class="font-semibold">' + s.step + '</span> <span class="text-gray-500">(' + s.comp + ')</span><div class="text-gray-600 mt-0.5">' + s.msg + '</div></div>' + (s.time > 0 ? '<span class="text-gray-500 mono">' + s.time + 'ms</span>' : '') + '</div>');
+      });
+      const s = appSteps[appStep];
+      const totalTime = appSteps.slice(0, appStep+1).reduce((sum, x) => sum + x.time, 0);
+      document.getElementById('app-counter').textContent = 'Step ' + appStep + '/' + (appSteps.length - 1);
+      document.getElementById('app-timer').textContent = 'Time: ' + totalTime + 'ms';
+      document.getElementById('app-status').textContent = 'Status: ' + s.status;
+      const decEl = document.getElementById('app-decision');
+      decEl.textContent = 'Decision: ' + s.decision;
+      decEl.className = 'rounded p-2 text-center font-semibold ' + (s.decision === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : s.decision === 'DENIED' ? 'bg-red-100 text-red-700' : s.decision === 'PENDING' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100');
+    }
+    function appNext() { if (appStep < appSteps.length - 1) { appStep++; appRender(); } else { appStop(); } }
+    function appPrev() { if (appStep > 0) { appStep--; appRender(); } }
+    function appReset() { appStop(); appStep = 0; appRender(); }
+    function appPlay() { if (appStep >= appSteps.length - 1) { appStep = 0; appRender(); } appPlaying = true; document.getElementById('app-play').textContent = 'Pause'; appTimer = setInterval(appNext, 1200); }
+    function appStop() { appPlaying = false; document.getElementById('app-play').textContent = 'Play'; if (appTimer) { clearInterval(appTimer); appTimer = null; } }
+    document.getElementById('app-next').onclick = () => { appStop(); appNext(); };
+    document.getElementById('app-prev').onclick = () => { appStop(); appPrev(); };
+    document.getElementById('app-play').onclick = () => { if (appPlaying) appStop(); else appPlay(); };
+    appRender();
+  </script>
+  </details>
+</section>
+
+<!-- 10. Scalability Deep Dive -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">10. Scalability Deep Dive</h2><span class="chevron text-ed-teal">&#9654;</span></summary>
+  <div class="mt-3 grid md:grid-cols-2 gap-3">
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-4">
+      <h3 class="font-bold text-ed-teal mb-2">Throughput</h3>
+      <p class="text-sm text-gray-800">100K apps/day, 1K/sec peak. Application Service: stateless, 20 pods. Bureau Service: 15 pods (I/O bound, waiting on bureau APIs). Risk Scoring: 10 pods with model in memory. Kafka: 3 brokers, 12 partitions.</p>
+    </div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-4">
+      <h3 class="font-bold text-ed-purple mb-2">Latency</h3>
+      <p class="text-sm text-gray-800">p99 &lt; 5s. Gateway 100ms, validation 200ms, bureau pull 2000ms (parallel), risk scoring 1000ms, decision 500ms, DB write 500ms, Kafka publish 100ms. Total: 4.4s. Buffer for tail latency.</p>
+    </div>
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-700">
+      <h3 class="font-bold mb-2">Bureau API Rate Limits</h3>
+      <p class="text-sm text-gray-800">Bureaus enforce rate limits (e.g., 100 req/sec per client). Bureau Service manages a token bucket per bureau. Queue excess requests. For peak campaigns, pre-negotiate higher limits. Cache soft pulls to reduce volume.</p>
+    </div>
+    <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-4 text-ed-amber">
+      <h3 class="font-bold mb-2">Card Vault (HSM)</h3>
+      <p class="text-sm text-gray-800">Card numbers generated in Hardware Security Module (HSM). Never exposed outside HSM. Tokenized immediately. HSM throughput: 100 cards/sec. Sufficient for 100K/day. For spikes, queue card generation.</p>
+    </div>
+  </div>
+  <div class="mt-4 bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+    <h3 class="font-bold text-indigo-700 mb-2">Back-of-the-Envelope Estimation</h3>
+    <p class="text-sm text-gray-800 mb-2">Daily volume: $100{,}000$ applications. Peak: $1{,}000$ apps/sec during marketing campaigns.</p>
+    <p class="text-sm text-gray-800 mb-2">$$\text{Throughput} = \frac{100{,}000 \text{ apps}}{86{,}400 \text{ sec}} \approx 1.16 \text{ apps/sec (avg)}$$</p>
+    <p class="text-sm text-gray-800 mb-2">Bureau calls: $3 \times 100{,}000 = 300{,}000$ calls/day. With 24h soft-pull cache (assume 40% hit rate): $$\text{Bureau calls} = 300{,}000 \times 0.6 = 180{,}000 \text{ hard pulls/day}$$</p>
+    <p class="text-sm text-gray-800 mb-2">Storage: each application $\approx 50$ KB (bureau reports JSONB). $$\text{Daily storage} = 100{,}000 \times 50 \text{ KB} = 5 \text{ GB/day} \approx 1.8 \text{ TB/year}$$</p>
+    <p class="text-sm text-gray-800">7-year retention (regulatory): $\approx 12.6$ TB. Sharded PostgreSQL by <code class="mono">app_id</code>, 16 shards.</p>
+  </div>
+  </details>
+</section>
+
+<!-- 11. Failure Modes & Resilience -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">11. Failure Modes & Resilience</h2><span class="chevron text-ed-teal">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-red-700 mb-1">One Bureau Down</p>
+      <p class="text-gray-800">If Experian is down, use Equifax and TransUnion. The risk model works with 2 bureaus (slightly less accurate). Circuit breaker per bureau. Log the missing bureau for compliance. If all 3 are down, defer to PENDING.</p>
+    </div>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-red-700 mb-1">All Bureaus Down</p>
+      <p class="text-gray-800">Cannot make a credit decision without bureau data (FCRA). Set application to PENDING. Queue for retry when bureaus recover. Notify customer: "We need more time to review your application." Do not deny without bureau data.</p>
+    </div>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-red-700 mb-1">Risk Scoring Service Down</p>
+      <p class="text-gray-800">Fall back to rules-based decision: FICO &gt; 720 and income &gt; $50K = APPROVE. FICO &lt; 600 = DENY. Else PENDING. Less accurate but functional. Circuit breaker on ML service. When it recovers, resume ML scoring.</p>
+    </div>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-red-700 mb-1">HSM (Card Vault) Down</p>
+      <p class="text-gray-800">Cannot generate card numbers. APPROVED applications queue for card issuance. When HSM recovers, drain the queue. Customer is notified of delay. No application is lost. Card manufacturing waits for HSM.</p>
+    </div>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-red-700 mb-1">Kafka Down</p>
+      <p class="text-gray-800">Decision still works (sync path). Async consumers (card issuance, notification, adverse action) are blocked. Buffer events in Application Service. When Kafka recovers, flush. Critical async jobs (adverse action) have a fallback queue.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 12. Edge Cases & Gotchas -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">12. Edge Cases & Gotchas</h2><span class="chevron text-ed-orange">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Duplicate application</p>
+      <p class="text-gray-800">Customer submits twice (double-click) or applies for multiple cards. Check for existing application with same SSN in last 30 days. If found, return the existing decision. Do not pull bureau twice (FCRA: one hard pull per application).</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Fraudulent application (identity theft)</p>
+      <p class="text-gray-800">Someone applies using stolen SSN. Fraud detection on applications: velocity (multiple apps from same IP), device fingerprinting, address mismatch. If flagged, PENDING for manual review. Do not deny automatically (could be legitimate customer).</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Existing customer applying for second card</p>
+      <p class="text-gray-800">Customer already has a Capital One card. Internal history is rich: payment behavior, utilization, account age. The risk model weights internal data heavily. May approve with better terms (loyal customer). Or deny if existing account is delinquent.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Thin file (no credit history)</p>
+      <p class="text-gray-800">Young adult or new immigrant with no bureau data. FICO cannot be computed. Use alternative data: utility payments, rent history, employment. Capital One's CreditWise program handles this. May require manual review or secured card product.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Fair lending (ECOA) compliance</p>
+      <p class="text-gray-800">Cannot discriminate on protected classes (race, gender, age, marital status). Model must not use these features or proxies (zip code can proxy for race). Regular fair lending audits. Adverse action reasons must be specific and actionable.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 13. Flashcards -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">13. Flashcards</h2><span class="chevron text-ed-purple">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q1: Why call bureaus in parallel?</summary>
+      <p class="text-sm text-gray-800 mt-2">Each bureau call takes 1-2s. Sequential: 6s (exceeds 5s budget). Parallel: 2s (within budget). The slowest bureau determines total time. All 3 are needed for an accurate score.</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q2: What is an adverse action notice?</summary>
+      <p class="text-sm text-gray-800 mt-2">FCRA-required notice sent to denied applicants. Must state: bureau data was used, which bureaus, and the main reasons for denial. Generated automatically. Mailed within 30 days. Retained for 25 months. Non-compliance = fines.</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q3: Soft pull vs hard pull?</summary>
+      <p class="text-sm text-gray-800 mt-2">Soft pull: pre-qualification, does not affect credit score, cached 24h. Hard pull: formal application, affects credit score, must be fresh. FCRA regulates both. Hard pull cannot be cached or skipped.</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q4: How do you ensure fair lending?</summary>
+      <p class="text-sm text-gray-800 mt-2">No protected class features (race, gender, age). No proxies (zip code). Regular fair lending audits. Monitor approval rates by demographic. Explainable model (SHAP). ECOA compliance. Adverse action reasons must be specific.</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q5: How do you handle card issuance?</summary>
+      <p class="text-sm text-gray-800 mt-2">HSM generates card number. Tokenized immediately. Physical card manufactured (1-2 days), shipped (7-10 days). Customer activates via app or phone. Virtual card number available instantly in app for online use while waiting for physical card.</p>
+    </details>
+  </div>
+  </details>
+</section>
+
+<!-- 14. Where It Is Used (Real World) -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">14. Where It Is Used (Real World)</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <div class="bg-amber-100 border border-amber-300 text-amber-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Capital One</p>
+      <p class="text-gray-800">Processes millions of credit card applications per year. Pre-qualification (soft pull) on their website. Instant decision on formal application. Their engineering blog covers the bureau integration and risk model architecture.</p>
+    </div>
+    <div class="bg-gray-100 border border-gray-300 text-gray-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Chase, Amex, Discover</p>
+      <p class="text-gray-800">All major card issuers use a similar architecture. Bureau integration, risk scoring, instant decision, card issuance. The differences are in the risk models and product offerings.</p>
+    </div>
+    <div class="bg-rose-100 border border-rose-300 text-rose-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Fintech Card Issuers (Mercury, Brex, Ramp)</p>
+      <p class="text-gray-800">Modern fintech card issuers use similar patterns but with modern stack: Kafka, Kubernetes, MLflow. They often use card-issuing-as-a-service (Marqeta, Stripe Issuing) for the HSM and manufacturing.</p>
+    </div>
+    <div class="bg-indigo-100 border border-indigo-300 text-indigo-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Mortgage and Auto Loan Applications</p>
+      <p class="text-gray-800">Same pattern: application, bureau pull, risk scoring, decision. Different: larger amounts, longer terms, more documentation. The architecture is reusable across credit products.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 15. Common Mistakes -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">15. Common Mistakes</h2><span class="chevron text-ed-orange">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-orange/5 border border-ed-orange/15 rounded-lg p-4">
+    <ul class="text-sm space-y-2">
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Sequential bureau calls.</strong> 6 seconds, exceeds budget. Always parallel.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>No adverse action automation.</strong> Manual generation is non-compliant. Must be automatic and within 30 days.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Caching hard pulls.</strong> FCRA violation. Hard pulls must be fresh. Only soft pulls can be cached.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>No duplicate application check.</strong> Double hard pull from double-click. Check existing applications first.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Storing raw SSN.</strong> Encrypt at rest. Tokenize. PCI-DSS and FCRA compliance.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>No fair lending audit.</strong> Model bias can lead to regulatory action. Monitor approval rates by demographic. Regular audits.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Synchronous card manufacturing.</strong> Takes days. Must be async. Customer gets instant decision, card arrives later.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>No bureau rate limit handling.</strong> Bureaus enforce limits. Token bucket per bureau. Queue excess. Pre-negotiate for campaigns.</li>
+    </ul>
+  </div>
+  </details>
+</section>
+
+<!-- 16. Interview Tips -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">16. Interview Tips</h2><span class="chevron text-ed-purple">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-4">
+    <ul class="text-sm space-y-2">
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Start with the 5-second budget.</strong> "Customer is waiting. Bureau calls are 2s, scoring 1s, decision 0.5s. I will parallelize bureau calls."</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Discuss soft vs hard pull.</strong> Shows FCRA knowledge. Pre-qual uses soft, formal uses hard. Cache soft, never cache hard.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Mention adverse action early.</strong> FCRA requirement. Automatic generation. 30-day window. 25-month retention. Regulatory knowledge.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Discuss bureau failure handling.</strong> One down: use other two. All down: PENDING. Circuit breakers. Never deny without bureau data.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Mention fair lending (ECOA).</strong> No protected classes. No proxies. Regular audits. Shows regulatory depth.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Separate sync (decision) from async (issuance).</strong> Customer gets instant decision. Card manufacturing is async. This is the key architectural split.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Discuss HSM for card numbers.</strong> PCI-DSS. Tokenization. Never expose PAN. Shows security knowledge.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Mention duplicate application check.</strong> Prevents double hard pull. FCRA compliance. Customer experience.</li>
+    </ul>
+  </div>
+  </details>
+</section>
+
+<!-- 17. Related System Design Problems -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">17. Related System Design Problems</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Loan Application System</strong> &mdash; same pattern for mortgages, auto loans</span>
+      <span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-bold">CORE</span>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Multi-Step Workflow with External APIs</strong> &mdash; orchestration pattern</span>
+      <span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-bold">CORE</span>
+    </div>
+    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Identity Verification System</strong> &mdash; KYC/AML, bureau integration</span>
+      <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-bold">SIMILAR</span>
+    </div>
+    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Insurance Underwriting</strong> &mdash; risk scoring, external data, decision</span>
+      <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-bold">SIMILAR</span>
+    </div>
+    <div class="bg-rose-50 border border-rose-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Account Opening (KYC/AML)</strong> &mdash; compliance-heavy onboarding</span>
+      <span class="bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-xs font-bold">ADVANCED</span>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 18. Key Technologies -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">18. Key Technologies</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 grid md:grid-cols-2 gap-2 text-sm">
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>PostgreSQL</strong> &mdash; application data, ACID, JSONB for bureau reports</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Redis</strong> &mdash; soft pull cache, rate limiting tokens</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Kafka</strong> &mdash; event backbone for async consumers</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>XGBoost</strong> &mdash; risk scoring model</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>MLflow</strong> &mdash; model registry, versioning</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>HSM (Thales/Gemalto)</strong> &mdash; card number generation, PCI-DSS</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>S3</strong> &mdash; adverse action notices, document storage</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Bureau APIs</strong> &mdash; Experian, Equifax, TransUnion integration</div>
+  </div>
+  </details>
+</section>
+
+<!-- 19. Trade-Offs -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">19. Trade-Offs</h2><span class="chevron text-indigo-600">&#9654;</span></summary>
+  <div class="mt-3 bg-indigo-50 border border-indigo-200 rounded-lg p-4 text-indigo-700 text-sm space-y-3">
+    <div>
+      <p class="font-semibold mb-1">Speed vs Accuracy</p>
+      <p class="text-gray-800">A more complex model is more accurate but slower. 5s budget. Use XGBoost (1s) instead of a deep neural network (3s). The accuracy difference is small for this use case.</p>
+    </div>
+    <div>
+      <p class="font-semibold mb-1">2 Bureaus vs 3 Bureaus</p>
+      <p class="text-gray-800">If one bureau is slow, do you wait or proceed with 2? Proceeding is faster but less accurate. Waiting risks the 5s budget. Compromise: 2s timeout per bureau. If one times out, proceed with the other two.</p>
+    </div>
+    <div>
+      <p class="font-semibold mb-1">Instant vs Pending</p>
+      <p class="text-gray-800">Instant decision is better UX but riskier (less review). Pending is safer but slower. Use instant for clear Approve/Deny, pending for borderline. Manual review for pending cases within 24h.</p>
+    </div>
+    <div>
+      <p class="font-semibold mb-1">Physical vs Virtual Card</p>
+      <p class="text-gray-800">Physical card takes 7-10 days. Virtual card is instant. Offer both: virtual for immediate use, physical for in-store. Customer gets value immediately, physical arrives later.</p>
+    </div>
+    <div>
+      <p class="font-semibold mb-1">Model Explainability vs Accuracy</p>
+      <p class="text-gray-800">A complex model is more accurate but harder to explain (adverse action reasons). XGBoost with SHAP gives both. Deep learning would be more accurate but less explainable. Regulatory requirement for explainability.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 20. Monitoring & Compliance -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">20. Monitoring & Compliance</h2><span class="chevron text-ed-sky">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-sky mb-1">Business Metrics</p>
+      <p class="text-gray-800">Approval rate, denial rate, pending rate, conversion funnel (started vs submitted vs approved), average credit limit, average APR, time-to-decision. Dashboard for product team.</p>
+    </div>
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-sky mb-1">System Metrics</p>
+      <p class="text-gray-800">Application latency p99, bureau API latency, bureau error rate, risk scoring time, DB write time, Kafka lag. Alert on SLO breaches.</p>
+    </div>
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-sky mb-1">Fair Lending Monitoring</p>
+      <p class="text-gray-800">Approval rate by demographic (inferred from address, not explicitly collected). If one group has significantly lower approval rate, investigate. Regular fair lending audits by compliance team. ECOA compliance.</p>
+    </div>
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-sky mb-1">Regulatory Reporting</p>
+      <p class="text-gray-800">Monthly: application statistics to OCC. Adverse action notice audit (all denied apps have notices within 30 days). FCRA compliance audit. Data retention check (25 months for adverse action, 7 years for applications).</p>
+    </div>
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-sky mb-1">Model Monitoring</p>
+      <p class="text-gray-800">Model performance: approval rate drift, default rate of approved customers, feature drift. If model approves riskier customers over time, retrain. A/B test new models. SR 11-7 model risk management compliance.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 21. Follow-Up Questions -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">21. Follow-Up Questions</h2><span class="chevron text-indigo-600">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How would you handle pre-qualification (soft pull) at scale?</summary>
+      <p class="text-sm text-gray-800 mt-2">Marketing campaigns drive millions of pre-qual checks. Soft pull, cached 24h. If a customer pre-quals, show "you're pre-approved for Venture X." When they apply formally, the hard pull confirms. The cache reduces bureau volume by 80% during campaigns.</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How would you handle instant virtual card issuance?</summary>
+      <p class="text-sm text-gray-800 mt-2">On approval, HSM generates a virtual card number instantly. Push to customer's app. They can use it online immediately. Physical card arrives in 7-10 days. This reduces drop-off (customer gets value immediately) and is a competitive feature.</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How would you handle A/B testing of risk models?</summary>
+      <p class="text-sm text-gray-800 mt-2">Route 5% of applications to the challenger model. Compare approval rate, default rate (over 6 months), and revenue. If challenger is better, promote to 100%. MLflow for model versioning. Shadow mode: run both models, compare decisions without using the challenger's decision.</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How would you handle applications from existing customers?</summary>
+      <p class="text-sm text-gray-800 mt-2">Rich internal data: payment history, utilization, account age. Skip bureau pull if internal data is sufficient (saves cost and time). Pre-fill application from existing profile. Offer better terms for loyal customers. Deny if existing account is delinquent.</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How would you handle a marketing campaign that drives 10x traffic?</summary>
+      <p class="text-sm text-gray-800 mt-2">Pre-negotiate higher bureau rate limits. Pre-provision Application Service pods. Kafka buffers the spike. For soft pulls, the 24h cache absorbs most of the load. For hard pulls, queue if bureau rate limit is hit. Customer sees "processing" and gets decision in minutes instead of seconds.</p>
+    </details>
+  </div>
+  </details>
+</section>
+
+<!-- 22. Quick Reference -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details open><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">22. Quick Reference</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 grid md:grid-cols-2 gap-3">
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Architecture</p>
+      <p class="text-gray-800">Orchestrated workflow, parallel bureau calls, sync decision + async issuance</p>
+    </div>
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-3 text-sm text-ed-teal">
+      <p class="font-semibold mb-1">Scale</p>
+      <p>100K apps/day, 1K/sec peak, p99 &lt; 5s, 99.9% availability</p>
+    </div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3 text-sm text-ed-purple">
+      <p class="font-semibold mb-1">Key Patterns</p>
+      <p class="text-gray-800">Parallel external calls, ML risk scoring, adverse action automation, HSM card issuance</p>
+    </div>
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+      <p class="font-semibold mb-1">Compliance</p>
+      <p class="text-gray-800">FCRA (adverse action), ECOA (fair lending), OCC (banking), PCI-DSS (card data)</p>
+    </div>
+    <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-3 text-sm text-ed-amber">
+      <p class="font-semibold mb-1">Data Stores</p>
+      <p class="text-gray-800">PostgreSQL (apps), Redis (soft pull cache), HSM (cards), S3 (notices)</p>
+    </div>
+    <div class="bg-ed-pink/5 border border-ed-pink/15 rounded-lg p-3 text-sm text-ed-pink">
+      <p class="font-semibold mb-1">Senior Signal</p>
+      <p class="text-gray-800">Soft vs hard pull, adverse action, fair lending, HSM, bureau failure handling</p>
+    </div>
+  </div>
+  <div class="mt-3 bg-gray-900 text-gray-100 rounded-lg p-3">
+    <p class="text-xs font-semibold text-gray-400 mb-1">Key decisions:</p>
+    <pre class="mono text-xs">1. Parallel bureau calls (2s vs 6s sequential)
+2. Soft pull cache (24h) vs hard pull (fresh, no cache)
+3. Sync decision (5s) + async card issuance (7-10 days)
+4. Adverse action automation (FCRA, 30 days, 25-month retention)
+5. HSM for card numbers (PCI-DSS, tokenization)
+6. ML risk scoring + rules fallback
+7. Fair lending monitoring (ECOA, no proxies)
+8. Bureau failure: 2 of 3 is OK, all 3 down = PENDING</pre>
+  </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">23. Reference Implementation (Java)</h2><span class="chevron text-ed-sky">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3">
+      <h3 class="font-bold text-ed-sky mb-2 text-sm">Bureau Service &mdash; Parallel Calls with Circuit Breaker</h3>
+      <pre class="mono text-xs bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">import java.util.concurrent.*;
+import java.util.*;
+
+public class BureauService {
+    private final Map&lt;String, BureauClient&gt; bureaus = new LinkedHashMap&lt;&gt;();
+    private final ExecutorService executor = Executors.newFixedThreadPool(3);
+
+    public BureauService() {
+        bureaus.put("Experian", new ExperianClient());
+        bureaus.put("Equifax", new EquifaxClient());
+        bureaus.put("TransUnion", new TransUnionClient());
+    }
+
+    public List&lt;BureauReport&gt; pullAllReports(Application app, boolean isHardPull) {
+        List&lt;Future&lt;BureauReport&gt;&gt; futures = new ArrayList&lt;&gt;();
+        for (BureauClient client : bureaus.values()) {
+            futures.add(executor.submit(() -&gt; client.pull(app.getSsn(), isHardPull)));
+        }
+        List&lt;BureauReport&gt; reports = new ArrayList&lt;&gt;();
+        for (Future&lt;BureauReport&gt; f : futures) {
+            try {
+                reports.add(f.get(2, TimeUnit.SECONDS));
+            } catch (Exception e) {
+                // Circuit breaker per bureau; continue with remaining
+            }
+        }
+        return reports; // may have 2 of 3 if one bureau timed out
+    }
+}</pre>
+    </div>
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3">
+      <h3 class="font-bold text-ed-sky mb-2 text-sm">Decision Service &mdash; Risk Score + Policy</h3>
+      <pre class="mono text-xs bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">public class DecisionService {
+    private final RiskScoringService riskService;
+    private final PolicyRepository policyRepo;
+
+    public Decision decide(Application app, List&lt;BureauReport&gt; reports) {
+        RiskScore score = riskService.score(app, reports);
+        Policy policy = policyRepo.getForProduct(app.getProductId());
+
+        if (score.getProbabilityOfDefault() &lt; policy.getApproveThreshold()
+                &amp;&amp; getMinFico(reports) &gt;= policy.getMinFico()) {
+            return Decision.approved(policy.getCreditLimit(score), policy.getApr());
+        } else if (score.getProbabilityOfDefault() &gt; policy.getDenyThreshold()) {
+            return Decision.denied(score.getTopReasons()); // triggers adverse action
+        } else {
+            return Decision.pending("Manual review required");
+        }
+    }
+
+    private int getMinFico(List&lt;BureauReport&gt; reports) {
+        return reports.stream().mapToInt(BureauReport::getFico).min().orElse(0);
+    }
+}</pre>
+    </div>
+  </div>
+  </details>
+</section>
+
+</main>
+</body>
+</html>

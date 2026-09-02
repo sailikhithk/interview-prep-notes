@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Two Sum Closest to Zero &mdash; Capital One GPN</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = { theme: { extend: { colors: {
+  'ed-pink': '#db2777', 'ed-blue': '#2563eb', 'ed-teal': '#0d9488',
+  'ed-amber': '#d97706', 'ed-sky': '#0284c7', 'ed-purple': '#7c3aed', 'ed-orange': '#ea580c',
+}, fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } } } };
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  details > summary { cursor: pointer; list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  .chevron { transition: transform 0.2s; }
+  details[open] .chevron { transform: rotate(90deg); }
+  pre.mono { white-space: pre; }
+  .tok-kw { color: #c084fc; } .tok-ty { color: #fbbf24; } .tok-fn { color: #60a5fa; }
+  .tok-nm { color: #fb923c; } .tok-str { color: #f472b6; } .tok-cm { color: #94a3b8; font-style: italic; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+<main class="max-w-5xl mx-auto px-4 py-6 md:py-10 space-y-4">
+
+<header class="bg-gradient-to-r from-ed-teal to-gray-900 text-white rounded-2xl p-6 md:p-8 shadow-lg">
+  <div class="flex items-center gap-2 text-sm text-gray-300 mb-2">
+    <span class="bg-ed-amber text-white px-2 py-0.5 rounded-full text-xs font-bold">EASY-MEDIUM</span>
+    <span class="text-gray-400">&middot;</span>
+    <span>Capital One GPN &middot; DSA Round</span>
+  </div>
+  <h1 class="text-3xl md:text-4xl font-extrabold">Two Sum Closest to Zero</h1>
+  <p class="text-gray-300 mt-2 text-sm md:text-base">Find the pair of integers in an array whose sum is closest to zero. Return the sum. If two pairs have the same absolute sum, prefer the positive one.</p>
+  <div class="mt-4 flex flex-wrap gap-2 text-xs">
+    <span class="bg-white/10 px-3 py-1 rounded-full">Pattern: Sort + Two Pointer</span>
+    <span class="bg-white/10 px-3 py-1 rounded-full">Time: O(n log n)</span>
+    <span class="bg-white/10 px-3 py-1 rounded-full">Space: O(1) or O(n)</span>
+    <span class="bg-white/10 px-3 py-1 rounded-full">Language: Java / Python</span>
+  </div>
+</header>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <h2 class="text-xl md:text-2xl font-bold text-gray-900 mb-3">1. Problem Statement</h2>
+  <p class="text-sm text-gray-700 mb-3">Given an array of integers (positive and negative), find two elements whose sum is closest to zero. Return the sum of that pair. If multiple pairs have the same absolute distance from zero, return the positive sum (the one with the larger value).</p>
+  <div class="bg-gray-100/60 rounded-lg p-4 text-sm">
+    <p class="font-semibold mb-2">Examples:</p>
+    <pre class="mono text-xs bg-gray-200 rounded p-2 mt-1">Input:  [1, 60, -10, 70, -80, 85]
+Output: 0  (pair: 1 + -1... wait, -80 + 85 = 5, 70 + -80 = -10, 60 + -10 = 50... actually 85 + -80 = 5 is closest)
+Let me recompute: pairs and sums:
+  1 + 60 = 61, 1 + (-10) = -9, 1 + 70 = 71, 1 + (-80) = -79, 1 + 85 = 86
+  60 + (-10) = 50, 60 + 70 = 130, 60 + (-80) = -20, 60 + 85 = 145
+  -10 + 70 = 60, -10 + (-80) = -90, -10 + 85 = 75
+  70 + (-80) = -10, 70 + 85 = 155
+  -80 + 85 = 5
+Closest to zero: 5 (pair -80, 85)
+
+Input:  [1, 2, -2, 4, -4]
+Output: 0  (pair: 2 + -2 = 0)
+
+Input:  [-1, 2, -2, 4, -4]
+Output: 0  (pair: 2 + -2 = 0, or -1 + 2 = 1, but 0 is closer)
+
+Input:  [1, 2, 3, 4, 5]
+Output: 3  (pair: 1 + 2 = 3, closest to zero)
+
+Input:  [-5, -4, -3, -2, -1]
+Output: -3  (pair: -2 + -1 = -3, closest to zero)</pre>
+  </div>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details open><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">2. Pattern Recognition</h2><span class="chevron text-ed-pink">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-pink/5 border border-ed-pink/15 rounded-lg p-4">
+    <p class="text-sm text-gray-800 mb-2"><strong class="text-ed-pink">Why signals:</strong></p>
+    <ul class="text-sm space-y-1">
+      <li>&bull; Find a pair with a target property &rarr; two pointer or hash map</li>
+      <li>&bull; "Closest to zero" &rarr; minimize absolute value of sum</li>
+      <li>&bull; Array has both positive and negative &rarr; sorting helps</li>
+      <li>&bull; No exact target &rarr; two pointer on sorted array, track minimum</li>
+      <li>&bull; Tie-break (prefer positive) &rarr; comparison logic update</li>
+    </ul>
+    <p class="text-sm text-gray-800 mt-3"><strong class="text-ed-pink">Core pattern:</strong> Sort the array, then use two pointers (left at start, right at end). Compute sum. If sum &lt; 0, move left rightward (increase sum). If sum &gt; 0, move right leftward (decrease sum). Track the closest sum seen. O(n log n) time, O(1) space.</p>
+  </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">3. Pattern Blueprint</h2><span class="chevron text-ed-blue">&#9654;</span></summary>
+  <div class="mt-3 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg p-4">
+    <p class="text-sm font-semibold mb-2">5-step template for Two Sum Closest to Zero:</p>
+    <ol class="space-y-2 text-sm">
+      <li><span class="bg-blue-100 text-blue-700 rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">1</span> Sort the array in ascending order</li>
+      <li><span class="bg-blue-100 text-blue-700 rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">2</span> Initialize left = 0, right = n-1, minSum = infinity, result = 0</li>
+      <li><span class="bg-blue-100 text-blue-700 rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">3</span> Loop while left &lt; right: compute sum = arr[left] + arr[right]</li>
+      <li><span class="bg-blue-100 text-blue-700 rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">4</span> If |sum| &lt; |minSum|, update minSum = sum. If |sum| == |minSum| and sum &gt; minSum, update (prefer positive). Move pointers: if sum &lt; 0, left++. If sum &gt; 0, right--. If sum == 0, break (found exact).</li>
+      <li><span class="bg-blue-100 text-blue-700 rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">5</span> Return minSum (the closest sum)</li>
+    </ol>
+  </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">4. How to Think About It</h2><span class="chevron text-ed-blue">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-blue/5 border border-gray-300 rounded-lg p-4 space-y-3">
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">1</span> Why does sorting help?</p>
+      <p class="text-gray-700 ml-8">After sorting, the smallest (most negative) is at the left, the largest (most positive) is at the right. Their sum is somewhere in the middle. By moving pointers inward based on the sign of the sum, we systematically explore all candidate pairs.</p>
+    </div>
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">2</span> Why not check all pairs?</p>
+      <p class="text-gray-700 ml-8">Brute force is O(n^2). For n = 1M, that is 1 trillion pairs. Sort + two pointer is O(n log n) = 20M operations. 50,000x faster.</p>
+    </div>
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">3</span> Why does the two-pointer movement work?</p>
+      <p class="text-gray-700 ml-8">If sum &lt; 0, we need a larger sum to get closer to zero. Moving left rightward increases the sum (since the array is sorted). If sum &gt; 0, we need a smaller sum. Moving right leftward decreases the sum. This greedily converges toward zero.</p>
+    </div>
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">4</span> <span class="text-ed-teal">&rarr;</span> What about the tie-break?</p>
+      <p class="text-gray-700 ml-8">If two sums have the same absolute value (e.g., -3 and 3), prefer the positive one (3). Update the result when |sum| &lt; |minSum| OR (|sum| == |minSum| AND sum &gt; minSum).</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- PLACEHOLDER: Sections 5-22 -->
+
+<!-- 5. Real-World Analogy -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">5. Real-World Analogy</h2><span class="chevron text-ed-teal">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-4 text-sm text-gray-800">
+    <p class="mb-2">Think of a <strong>balance scale with weights on both sides</strong>. You have a set of weights, some positive (right side) and some negative (left side, which is really a counterweight). You want to find two weights that, when placed on the same side, make the scale as balanced as possible (closest to zero).</p>
+    <p class="mb-2">Sort the weights from lightest to heaviest. Put one finger on the lightest (most negative) and one on the heaviest (most positive). If the combined weight tilts left (negative), move the left finger right to a heavier weight. If it tilts right (positive), move the right finger left to a lighter weight. Keep going until your fingers meet.</p>
+    <p>At each step, note how close the scale is to balanced. The closest you ever got is your answer. If you ever hit perfect balance (sum = 0), stop immediately.</p>
+  </div>
+  </details>
+</section>
+
+<!-- 6. Build Your Intuition -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">6. Build Your Intuition</h2><span class="chevron text-ed-amber">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Q: Why not use a HashMap like classic Two Sum?</p>
+      <p class="text-gray-700">Classic Two Sum has an exact target (e.g., target = 9). You check if (target - num) exists in the map. Here, the target is "closest to zero," which is not a fixed value. You cannot look up "closest to zero" in a HashMap. Sort + two pointer handles the fuzzy target.</p>
+    </div>
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-3 text-sm text-ed-teal">
+      <p class="font-semibold mb-1">Q: Can we do better than O(n log n)?</p>
+      <p class="text-gray-800">Sorting is the bottleneck. If the array is already sorted, the two-pointer part is O(n). There is no known O(n) solution for unsorted input because finding the closest-to-zero pair requires comparing elements in a way that sorting enables.</p>
+    </div>
+    <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Q: What if the array has fewer than 2 elements?</p>
+      <p class="text-gray-700">Edge case. If n &lt; 2, there is no pair. Return an error or a sentinel value. Clarify with the interviewer.</p>
+    </div>
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-3 text-sm text-ed-teal">
+      <p class="font-semibold mb-1">Q: Why prefer positive on tie?</p>
+      <p class="text-gray-800">Convention. The problem specifies it. In a financial context, a net gain of $3 is preferred over a net loss of $3. The positive sum is the "better" outcome. State this rule explicitly.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 7. How It Works (Step by Step) -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">7. How It Works (Step by Step)</h2><span class="chevron text-ed-sky">&#9654;</span></summary>
+  <div class="mt-3 space-y-2 text-sm">
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 1:</strong> Input: [1, 60, -10, 70, -80, 85]. Sort: [-80, -10, 1, 60, 70, 85].</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 2:</strong> left=0 (-80), right=5 (85). sum = -80+85 = 5. |5| &lt; inf, minSum = 5. sum &gt; 0, right--. right=4.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 3:</strong> left=0 (-80), right=4 (70). sum = -80+70 = -10. |-10| &gt; |5|, no update. sum &lt; 0, left++. left=1.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 4:</strong> left=1 (-10), right=4 (70). sum = -10+70 = 60. |60| &gt; |5|, no update. sum &gt; 0, right--. right=3.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 5:</strong> left=1 (-10), right=3 (60). sum = -10+60 = 50. |50| &gt; |5|, no update. sum &gt; 0, right--. right=2.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 6:</strong> left=1 (-10), right=2 (1). sum = -10+1 = -9. |-9| &gt; |5|, no update. sum &lt; 0, left++. left=2. left == right, stop.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 7:</strong> Return minSum = 5. Pair: -80 and 85.</div>
+  </div>
+  </details>
+</section>
+
+<!-- 8. Dry Run Table -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">8. Dry Run Table</h2><span class="chevron text-ed-amber">&#9654;</span></summary>
+  <div class="mt-3 overflow-x-auto">
+    <table class="w-full text-xs border border-amber-200 rounded-lg">
+      <thead class="bg-amber-50 text-amber-700">
+        <tr>
+          <th class="p-2 text-left">Step</th>
+          <th class="p-2 text-left">left</th>
+          <th class="p-2 text-left">arr[left]</th>
+          <th class="p-2 text-left">right</th>
+          <th class="p-2 text-left">arr[right]</th>
+          <th class="p-2 text-left">sum</th>
+          <th class="p-2 text-left">minSum</th>
+          <th class="p-2 text-left">Action</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200 bg-amber-50/30">
+        <tr><td class="p-2">0</td><td class="p-2">0</td><td class="p-2">-80</td><td class="p-2">5</td><td class="p-2">85</td><td class="p-2">5</td><td class="p-2">5</td><td class="p-2">sum&gt;0, right--</td></tr>
+        <tr><td class="p-2">1</td><td class="p-2">0</td><td class="p-2">-80</td><td class="p-2">4</td><td class="p-2">70</td><td class="p-2">-10</td><td class="p-2">5</td><td class="p-2">|-10|&gt;|5|, sum&lt;0, left++</td></tr>
+        <tr><td class="p-2">2</td><td class="p-2">1</td><td class="p-2">-10</td><td class="p-2">4</td><td class="p-2">70</td><td class="p-2">60</td><td class="p-2">5</td><td class="p-2">|60|&gt;|5|, sum&gt;0, right--</td></tr>
+        <tr><td class="p-2">3</td><td class="p-2">1</td><td class="p-2">-10</td><td class="p-2">3</td><td class="p-2">60</td><td class="p-2">50</td><td class="p-2">5</td><td class="p-2">|50|&gt;|5|, sum&gt;0, right--</td></tr>
+        <tr><td class="p-2">4</td><td class="p-2">1</td><td class="p-2">-10</td><td class="p-2">2</td><td class="p-2">1</td><td class="p-2">-9</td><td class="p-2">5</td><td class="p-2">|-9|&gt;|5|, sum&lt;0, left++</td></tr>
+        <tr><td class="p-2">5</td><td class="p-2">2</td><td class="p-2">1</td><td class="p-2">2</td><td class="p-2">1</td><td class="p-2">-</td><td class="p-2">5</td><td class="p-2">left==right, STOP</td></tr>
+      </tbody>
+    </table>
+    <p class="text-xs text-gray-500 mt-2">Result: 5 (pair -80, 85)</p>
+  </div>
+  </details>
+</section>
+
+<!-- 9. Live Interactive Visualization -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details open><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">9. Live Interactive Visualization</h2><span class="chevron text-ed-pink">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-pink/5 border border-ed-pink/15 rounded-lg p-4">
+    <p class="text-sm text-gray-800 mb-3"><span class="bg-ed-pink/10 text-ed-pink px-2 py-0.5 rounded text-xs font-bold mr-2">INTERACTIVE</span>Enter an array and step through the two-pointer algorithm.</p>
+    <div class="mb-3">
+      <label class="text-xs text-gray-600 block mb-1">Array (comma-separated integers):</label>
+      <input id="ts-input" type="text" value="1, 60, -10, 70, -80, 85" class="mono w-full border border-gray-300 rounded-lg p-2 text-sm" placeholder="e.g. 1, 60, -10, 70, -80, 85">
+    </div>
+    <div class="flex items-center gap-2 mb-3">
+      <button id="ts-prev" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm font-semibold">&larr; Prev</button>
+      <button id="ts-play" class="bg-ed-pink hover:bg-ed-pink/80 text-white px-3 py-1 rounded text-sm font-semibold">Play</button>
+      <button id="ts-next" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm font-semibold">Next &rarr;</button>
+      <button id="ts-reset" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm font-semibold">Reset</button>
+      <span id="ts-counter" class="ml-auto text-sm text-gray-600 font-mono">Step 0/0</span>
+    </div>
+    <div id="ts-array-viz" class="flex gap-1 flex-wrap mb-3"></div>
+    <div class="flex flex-wrap gap-2 mb-3 text-xs">
+      <span id="ts-pill-sum" class="bg-gray-100 px-2 py-1 rounded font-semibold">sum: --</span>
+      <span id="ts-pill-min" class="bg-gray-100 px-2 py-1 rounded font-semibold">minSum: --</span>
+      <span id="ts-pill-action" class="bg-gray-100 px-2 py-1 rounded font-semibold">action: --</span>
+    </div>
+    <p id="ts-msg" class="text-sm text-gray-700">Click Next or Play to start.</p>
+  </div>
+  <script>
+    let tsSteps = [], tsStep = 0, tsPlaying = false, tsTimer = null;
+    function tsParse() {
+      const raw = document.getElementById('ts-input').value;
+      return raw.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+    }
+    function tsCompute() {
+      const arr = tsParse();
+      const sorted = [...arr].sort((a, b) => a - b);
+      const steps = [];
+      let left = 0, right = sorted.length - 1, minSum = Infinity;
+      steps.push({left, right, sum: null, minSum: null, action: 'start', msg: 'Sorted array: [' + sorted.join(', ') + ']'});
+      while (left < right) {
+        const sum = sorted[left] + sorted[right];
+        let action = '', updated = false;
+        if (Math.abs(sum) < Math.abs(minSum)) { minSum = sum; updated = true; }
+        else if (Math.abs(sum) === Math.abs(minSum) && sum > minSum) { minSum = sum; updated = true; }
+        if (sum < 0) { action = 'sum<0, left++'; }
+        else if (sum > 0) { action = 'sum>0, right--'; }
+        else { action = 'sum==0, FOUND'; }
+        steps.push({left, right, sum, minSum, action, msg: 'arr[' + left + ']=' + sorted[left] + ' + arr[' + right + ']=' + sorted[right] + ' = ' + sum + (updated ? ' (new min!)' : '') + '. ' + action});
+        if (sum === 0) break;
+        if (sum < 0) left++; else right--;
+      }
+      steps.push({left, right, sum: null, minSum, action: 'done', msg: 'Result: ' + minSum});
+      return { sorted, steps };
+    }
+    function tsRender() {
+      const { sorted, steps } = tsCompute();
+      tsSteps = steps;
+      const viz = document.getElementById('ts-array-viz');
+      viz.innerHTML = '';
+      const s = tsSteps[tsStep] || tsSteps[0];
+      sorted.forEach((val, i) => {
+        let cls = 'bg-gray-200 text-gray-700';
+        if (i === s.left) cls = 'bg-ed-blue text-white font-bold';
+        if (i === s.right) cls = 'bg-ed-pink text-white font-bold';
+        if (i === s.left && i === s.right) cls = 'bg-ed-purple text-white font-bold';
+        viz.insertAdjacentHTML('beforeend', '<div class="' + cls + ' px-2 py-1 rounded text-xs mono">' + val + '</div>');
+      });
+      document.getElementById('ts-counter').textContent = 'Step ' + tsStep + '/' + (tsSteps.length - 1);
+      document.getElementById('ts-pill-sum').textContent = 'sum: ' + (s.sum !== null ? s.sum : '--');
+      document.getElementById('ts-pill-min').textContent = 'minSum: ' + (s.minSum !== null && s.minSum !== Infinity ? s.minSum : '--');
+      document.getElementById('ts-pill-action').textContent = 'action: ' + (s.action || '--');
+      document.getElementById('ts-msg').textContent = s.msg || '';
+    }
+    function tsNext() { if (tsStep < tsSteps.length - 1) { tsStep++; tsRender(); } else { tsStop(); } }
+    function tsPrev() { if (tsStep > 0) { tsStep--; tsRender(); } }
+    function tsReset() { tsStop(); tsStep = 0; tsRender(); }
+    function tsPlay() { if (tsStep >= tsSteps.length - 1) { tsStep = 0; tsRender(); } tsPlaying = true; document.getElementById('ts-play').textContent = 'Pause'; tsTimer = setInterval(tsNext, 1000); }
+    function tsStop() { tsPlaying = false; document.getElementById('ts-play').textContent = 'Play'; if (tsTimer) { clearInterval(tsTimer); tsTimer = null; } }
+    document.getElementById('ts-next').onclick = () => { tsStop(); tsNext(); };
+    document.getElementById('ts-prev').onclick = () => { tsStop(); tsPrev(); };
+    document.getElementById('ts-reset').onclick = tsReset;
+    document.getElementById('ts-play').onclick = () => { if (tsPlaying) tsStop(); else tsPlay(); };
+    document.getElementById('ts-input').oninput = () => { tsStop(); tsStep = 0; tsRender(); };
+    tsRender();
+  </script>
+  </details>
+</section>
+
+<!-- 10. Complexity Deep Dive -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">10. Complexity Deep Dive</h2><span class="chevron text-ed-teal">&#9654;</span></summary>
+  <div class="mt-3 grid md:grid-cols-2 gap-3">
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-4">
+      <h3 class="font-bold text-ed-teal mb-2">Time Complexity</h3>
+      <p class="text-sm text-gray-800">Sort: O(n log n). Two pointer scan: O(n). Total: O(n log n). The sort dominates.</p>
+      <p class="text-sm text-gray-800 mt-2">For n = 1M: sort ~20M ops, scan ~1M ops. Total ~21M ops vs brute force 1 trillion.</p>
+    </div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-4">
+      <h3 class="font-bold text-ed-purple mb-2">Space Complexity</h3>
+      <p class="text-sm text-gray-800">O(1) if sorting in place (modifies input). O(n) if you copy the array to avoid mutation. Java's Arrays.sort() on primitives is in-place. Python's sorted() creates a new list.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 11. From Brute Force to Optimal -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">11. From Brute Force to Optimal</h2><span class="chevron text-ed-teal">&#9654;</span></summary>
+  <div class="mt-3 grid md:grid-cols-2 gap-3">
+    <div class="bg-red-500/5 border border-red-500/15 rounded-lg p-4 text-red-500">
+      <h3 class="font-bold mb-2">Naive: Check All Pairs</h3>
+      <pre class="mono text-xs bg-gray-900 text-gray-100 rounded p-2 mb-2">int closestSum(int[] arr) {
+  int minSum = Integer.MAX_VALUE;
+  for (int i = 0; i < n; i++)
+    for (int j = i+1; j < n; j++) {
+      int sum = arr[i] + arr[j];
+      if (Math.abs(sum) < Math.abs(minSum))
+        minSum = sum;
+      else if (Math.abs(sum) == Math.abs(minSum) && sum > minSum)
+        minSum = sum;
+    }
+  return minSum;
+}</pre>
+      <p class="text-sm text-gray-800">O(n^2) time, O(1) space. For n=1M, 500 billion pairs. Too slow.</p>
+    </div>
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-4 text-ed-teal">
+      <h3 class="font-bold mb-2">Optimal: Sort + Two Pointer</h3>
+      <pre class="mono text-xs bg-gray-900 text-gray-100 rounded p-2 mb-2">int closestSum(int[] arr) {
+  Arrays.sort(arr);
+  int left = 0, right = arr.length - 1;
+  int minSum = Integer.MAX_VALUE;
+  while (left < right) {
+    int sum = arr[left] + arr[right];
+    if (Math.abs(sum) < Math.abs(minSum)) minSum = sum;
+    else if (Math.abs(sum) == Math.abs(minSum) && sum > minSum) minSum = sum;
+    if (sum < 0) left++;
+    else if (sum > 0) right--;
+    else break;
+  }
+  return minSum;
+}</pre>
+      <p class="text-sm text-gray-800">O(n log n) time, O(1) space. <strong>50,000x faster</strong> at n=1M.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 12. Edge Cases & Gotchas -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">12. Edge Cases & Gotchas</h2><span class="chevron text-ed-orange">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Array with fewer than 2 elements</p>
+      <p class="text-gray-800">n &lt; 2: no pair exists. Return error, Integer.MIN_VALUE, or throw. Clarify with interviewer.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">All positive numbers</p>
+      <p class="text-gray-800">[1, 2, 3, 4, 5]. Closest sum is the two smallest: 1+2=3. The algorithm handles this: left starts at 0, right at n-1, sum is always positive, right moves left until left and right are adjacent.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">All negative numbers</p>
+      <p class="text-gray-800">[-5, -4, -3, -2, -1]. Closest sum is the two largest (closest to zero): -2 + -1 = -3. Algorithm: sum always negative, left moves right until adjacent.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Exact zero pair exists</p>
+      <p class="text-gray-800">[1, -1, 2, 3]. Sum = 0 is the best possible. Break early when sum == 0. Optimization.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Tie between positive and negative</p>
+      <p class="text-gray-800">[-3, 3] both have |sum| = 3. Prefer 3 (positive). The comparison: if |sum| == |minSum| AND sum &gt; minSum, update.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Duplicate elements</p>
+      <p class="text-gray-800">[2, 2, -2, -2]. Multiple pairs sum to 0. The algorithm finds one of them. Duplicates do not break the two-pointer approach.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 13. Flashcards -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">13. Flashcards</h2><span class="chevron text-ed-purple">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q1: What is the time complexity of the optimal solution?</summary>
+      <p class="text-sm text-gray-800 mt-2">O(n log n). Sorting is O(n log n), the two-pointer scan is O(n). The sort dominates.</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q2: Why does the two-pointer approach work?</summary>
+      <p class="text-sm text-gray-800 mt-2">After sorting, moving left rightward increases the sum, moving right leftward decreases it. If sum &lt; 0, we need a larger sum, so left++. If sum &gt; 0, we need smaller, so right--. This greedily converges toward zero.</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q3: How do you handle the tie-break (prefer positive)?</summary>
+      <p class="text-sm text-gray-800 mt-2">Update minSum when |sum| &lt; |minSum| OR (|sum| == |minSum| AND sum &gt; minSum). This ensures the positive sum wins on ties.</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q4: Can you break early?</summary>
+      <p class="text-sm text-gray-800 mt-2">Yes. If sum == 0, that is the best possible. Break immediately. This is a common optimization to mention.</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q5: Why not use a HashMap?</summary>
+      <p class="text-sm text-gray-800 mt-2">HashMap works for exact target Two Sum (look up target - num). Here the target is "closest to zero," which is fuzzy. You cannot hash-search for a fuzzy target. Sort + two pointer handles it.</p>
+    </details>
+  </div>
+  </details>
+</section>
+
+<!-- 14. Where It Is Used (Real World) -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">14. Where It Is Used (Real World)</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <div class="bg-amber-100 border border-amber-300 text-amber-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Portfolio Hedging (Finance)</p>
+      <p class="text-gray-800">Find two positions whose combined risk is closest to zero. Long and short positions offset. Minimizing net exposure is literally "two sum closest to zero."</p>
+    </div>
+    <div class="bg-gray-100 border border-gray-300 text-gray-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Transaction Reconciliation (Capital One)</p>
+      <p class="text-gray-800">Match debits and credits that sum closest to zero to find near-balanced pairs. Useful when exact matches fail and you need the closest reconciliation.</p>
+    </div>
+    <div class="bg-rose-100 border border-rose-300 text-rose-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Charge-Balance Optimization</p>
+      <p class="text-gray-800">In battery systems or chemical reactions, find two charges that neutralize each other closest to zero. Same algorithm.</p>
+    </div>
+    <div class="bg-indigo-100 border border-indigo-300 text-indigo-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Sensor Calibration</p>
+      <p class="text-gray-800">Two sensors with offset errors. Find the pair whose combined error is closest to zero for calibration pairing.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 15. Common Mistakes -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">15. Common Mistakes</h2><span class="chevron text-ed-orange">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-orange/5 border border-ed-orange/15 rounded-lg p-4">
+    <ul class="text-sm space-y-2">
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Not sorting first.</strong> Two pointer only works on sorted arrays. Unsorted gives wrong answers.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Moving the wrong pointer.</strong> If sum &lt; 0, move LEFT rightward (to increase sum). If sum &gt; 0, move RIGHT leftward (to decrease). Reversing this diverges from zero.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Forgetting the tie-break.</strong> |sum| == |minSum| but sum &gt; minSum: update. Otherwise you return -3 instead of 3.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Using left &lt;= right instead of left &lt; right.</strong> You need two distinct elements. left == right means the same element, which is not a pair.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Not handling n &lt; 2.</strong> Array of 0 or 1 elements has no pair. Check first.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Initializing minSum to 0.</strong> 0 is a valid sum. Use Integer.MAX_VALUE or infinity. Otherwise you might miss a valid negative sum.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Not breaking on sum == 0.</strong> 0 is the optimal. Continuing wastes iterations. Mention as optimization.</li>
+    </ul>
+  </div>
+  </details>
+</section>
+
+<!-- 16. Interview Tips -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">16. Interview Tips</h2><span class="chevron text-ed-purple">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-4">
+    <ul class="text-sm space-y-2">
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Start with brute force.</strong> "I can check all pairs in O(n^2). But I can do better by sorting first."</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Explain why sorting enables two-pointer.</strong> Sorted array lets you greedily move pointers based on the sign of the sum.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>State the tie-break rule.</strong> "If two sums have the same absolute value, I prefer the positive one." Shows attention to detail.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Walk through the example.</strong> Trace the sorted array and pointer movements. Verify the result matches.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Mention the early break.</strong> "If sum == 0, I break immediately since 0 is optimal." Shows optimization thinking.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>State complexity.</strong> O(n log n) time, O(1) space (or O(n) if copying).</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Handle edge cases.</strong> n &lt; 2, all positive, all negative, duplicates. State assumptions.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Pivot to production.</strong> For Capital One: reconciliation, hedging, risk offset. Connect to finance domain.</li>
+    </ul>
+  </div>
+  </details>
+</section>
+
+<!-- 17. Similar Problems to Practice -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">17. Similar Problems to Practice</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Two Sum</strong> (LeetCode 1) &mdash; the classic, HashMap approach</span>
+      <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-bold">EASY</span>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Two Sum II</strong> (LeetCode 167) &mdash; sorted array, two pointer</span>
+      <span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-bold">MEDIUM</span>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>3Sum Closest</strong> (LeetCode 16) &mdash; three elements closest to target</span>
+      <span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-bold">MEDIUM</span>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>3Sum</strong> (LeetCode 15) &mdash; all triplets summing to zero</span>
+      <span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-bold">MEDIUM</span>
+    </div>
+    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Container With Most Water</strong> (LeetCode 11) &mdash; two pointer on sorted</span>
+      <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-bold">EASY</span>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 18. Related Algorithms -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">18. Related Algorithms</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 grid md:grid-cols-2 gap-2 text-sm">
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Two Pointer</strong> &mdash; left and right converging on sorted array</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Sorting</strong> &mdash; enables the two-pointer greedy approach</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Greedy</strong> &mdash; move the pointer that improves the current best</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>HashMap</strong> &mdash; alternative for exact-target Two Sum</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Binary Search</strong> &mdash; alternative: for each num, binary search for -num</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>k-Sum Problem</strong> &mdash; generalization to k elements</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Subset Sum</strong> &mdash; related NP-complete problem</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Knapsack</strong> &mdash; optimization with constraints</div>
+  </div>
+  </details>
+</section>
+
+<!-- 19. Where This Pattern Meets System Design -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">19. Where This Pattern Meets System Design</h2><span class="chevron text-indigo-600">&#9654;</span></summary>
+  <div class="mt-3 bg-indigo-50 border border-indigo-200 rounded-lg p-4 text-indigo-700 text-sm space-y-3">
+    <div>
+      <p class="font-semibold mb-1">In-memory pair search &rarr; Streaming reconciliation</p>
+      <p class="text-gray-800">The coding problem assumes the full array fits in memory. Production reconciliation processes millions of transactions streaming from Kafka. Use windowed aggregation: collect transactions in a time window, sort, run two-pointer, emit matched pairs.</p>
+    </div>
+    <div>
+      <p class="font-semibold mb-1">Single array &rarr; Sharded datasets</p>
+      <p class="text-gray-800">If debits and credits are in different databases, you cannot sort them together. Partition by a hash key, run the algorithm per partition, then merge results. Or use a distributed sort (MapReduce).</p>
+    </div>
+    <div>
+      <p class="font-semibold mb-1">O(n log n) batch &rarr; Real-time matching engine</p>
+      <p class="text-gray-800">For real-time hedging, you need sub-millisecond matching. Maintain a sorted structure (balanced BST or skip list) of live positions. On each new position, binary search for the closest offset. O(log n) per insertion and query.</p>
+    </div>
+    <div>
+      <p class="font-semibold mb-1">Closest to zero &rarr; Multi-objective optimization</p>
+      <p class="text-gray-800">Production systems optimize multiple objectives: minimize risk, maximize return, respect constraints. This is a constrained optimization problem, not just closest-to-zero. Linear programming or ML-based optimizers replace the simple two-pointer.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 20. Code Solutions -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">20. Code Solutions</h2><span class="chevron text-ed-sky">&#9654;</span></summary>
+  <div class="mt-3 space-y-4">
+    <div>
+      <h3 class="font-bold text-ed-sky mb-2">Java</h3>
+      <pre class="mono bg-gray-900 text-gray-100 rounded-lg p-3 text-xs overflow-x-auto"><span class="tok-kw">import</span> java.util.Arrays;
+
+<span class="tok-kw">public class</span> <span class="tok-ty">TwoSumClosestToZero</span> {
+
+    <span class="tok-kw">public static int</span> <span class="tok-fn">closestSumToZero</span>(<span class="tok-kw">int</span>[] arr) {
+        <span class="tok-kw">if</span> (arr == <span class="tok-kw">null</span> || arr.length &lt; <span class="tok-nm">2</span>) {
+            <span class="tok-kw">throw new</span> <span class="tok-fn">IllegalArgumentException</span>(<span class="tok-str">"Array must have at least 2 elements"</span>);
+        }
+
+        Arrays.<span class="tok-fn">sort</span>(arr);
+        <span class="tok-kw">int</span> left = <span class="tok-nm">0</span>, right = arr.length - <span class="tok-nm">1</span>;
+        <span class="tok-kw">int</span> minSum = Integer.MAX_VALUE;
+
+        <span class="tok-kw">while</span> (left &lt; right) {
+            <span class="tok-kw">int</span> sum = arr[left] + arr[right];
+
+            <span class="tok-kw">if</span> (Math.<span class="tok-fn">abs</span>(sum) &lt; Math.<span class="tok-fn">abs</span>(minSum)) {
+                minSum = sum;
+            } <span class="tok-kw">else if</span> (Math.<span class="tok-fn">abs</span>(sum) == Math.<span class="tok-fn">abs</span>(minSum) &amp;&amp; sum &gt; minSum) {
+                minSum = sum;
+            }
+
+            <span class="tok-kw">if</span> (sum &lt; <span class="tok-nm">0</span>) {
+                left++;
+            } <span class="tok-kw">else if</span> (sum &gt; <span class="tok-nm">0</span>) {
+                right--;
+            } <span class="tok-kw">else</span> {
+                <span class="tok-kw">break</span>; <span class="tok-cm">// sum == 0 is optimal</span>
+            }
+        }
+
+        <span class="tok-kw">return</span> minSum;
+    }
+
+    <span class="tok-kw">public static void</span> <span class="tok-fn">main</span>(<span class="tok-ty">String</span>[] args) {
+        <span class="tok-ty">System</span>.out.<span class="tok-fn">println</span>(<span class="tok-fn">closestSumToZero</span>(<span class="tok-kw">new int</span>[]{<span class="tok-nm">1</span>, <span class="tok-nm">60</span>, -<span class="tok-nm">10</span>, <span class="tok-nm">70</span>, -<span class="tok-nm">80</span>, <span class="tok-nm">85</span>})); <span class="tok-cm">// 5</span>
+        <span class="tok-ty">System</span>.out.<span class="tok-fn">println</span>(<span class="tok-fn">closestSumToZero</span>(<span class="tok-kw">new int</span>[]{<span class="tok-nm">1</span>, <span class="tok-nm">2</span>, -<span class="tok-nm">2</span>, <span class="tok-nm">4</span>, -<span class="tok-nm">4</span>})); <span class="tok-cm">// 0</span>
+    }
+}</pre>
+    </div>
+    <div>
+      <h3 class="font-bold text-ed-sky mb-2">Python</h3>
+      <pre class="mono bg-gray-900 text-gray-100 rounded-lg p-3 text-xs overflow-x-auto"><span class="tok-kw">def</span> <span class="tok-fn">closest_sum_to_zero</span>(arr: <span class="tok-ty">list</span>[<span class="tok-ty">int</span>]) -> <span class="tok-ty">int</span>:
+    <span class="tok-kw">if not</span> arr <span class="tok-kw">or</span> <span class="tok-fn">len</span>(arr) &lt; <span class="tok-nm">2</span>:
+        <span class="tok-kw">raise</span> <span class="tok-fn">ValueError</span>(<span class="tok-str">"Array must have at least 2 elements"</span>)
+
+    sorted_arr = <span class="tok-fn">sorted</span>(arr)
+    left, right = <span class="tok-nm">0</span>, <span class="tok-fn">len</span>(sorted_arr) - <span class="tok-nm">1</span>
+    min_sum = <span class="tok-fn">float</span>(<span class="tok-str">'inf'</span>)
+
+    <span class="tok-kw">while</span> left &lt; right:
+        s = sorted_arr[left] + sorted_arr[right]
+
+        <span class="tok-kw">if</span> <span class="tok-fn">abs</span>(s) &lt; <span class="tok-fn">abs</span>(min_sum):
+            min_sum = s
+        <span class="tok-kw">elif</span> <span class="tok-fn">abs</span>(s) == <span class="tok-fn">abs</span>(min_sum) <span class="tok-kw">and</span> s &gt; min_sum:
+            min_sum = s
+
+        <span class="tok-kw">if</span> s &lt; <span class="tok-nm">0</span>:
+            left += <span class="tok-nm">1</span>
+        <span class="tok-kw">elif</span> s &gt; <span class="tok-nm">0</span>:
+            right -= <span class="tok-nm">1</span>
+        <span class="tok-kw">else</span>:
+            <span class="tok-kw">break</span>  <span class="tok-cm"># s == 0 is optimal</span>
+
+    <span class="tok-kw">return</span> min_sum
+
+<span class="tok-cm"># Test</span>
+<span class="tok-fn">print</span>(<span class="tok-fn">closest_sum_to_zero</span>([<span class="tok-nm">1</span>, <span class="tok-nm">60</span>, -<span class="tok-nm">10</span>, <span class="tok-nm">70</span>, -<span class="tok-nm">80</span>, <span class="tok-nm">85</span>]))  <span class="tok-cm"># 5</span>
+<span class="tok-fn">print</span>(<span class="tok-fn">closest_sum_to_zero</span>([<span class="tok-nm">1</span>, <span class="tok-nm">2</span>, -<span class="tok-nm">2</span>, <span class="tok-nm">4</span>, -<span class="tok-nm">4</span>]))  <span class="tok-cm"># 0</span></pre>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 21. Follow-Up Questions -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">21. Follow-Up Questions</h2><span class="chevron text-indigo-600">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: What if you need to return the pair, not just the sum?</summary>
+      <p class="text-sm text-gray-800 mt-2">Track minLeft and minRight alongside minSum. When you update minSum, also update the indices. Return (arr[minLeft], arr[minRight]).</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: What if there are multiple pairs with the same closest sum?</summary>
+      <p class="text-sm text-gray-800 mt-2">Return all of them. Collect pairs in a list whenever |sum| == |minSum|. Reset the list when a closer sum is found. Return the list at the end.</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: What about 3Sum Closest to Zero?</summary>
+      <p class="text-sm text-gray-800 mt-2">Sort, then for each element i, run two-pointer on the subarray i+1 to n-1 looking for the pair closest to -arr[i]. O(n^2) time, O(1) space. Same pattern as 3Sum.</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How would you handle streaming data?</summary>
+      <p class="text-sm text-gray-800 mt-2">Maintain a sorted structure (balanced BST). On each new element, binary search for the element closest to its negation. Update the closest sum. O(log n) per element, O(n log n) total.</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: Can you do it without sorting?</summary>
+      <p class="text-sm text-gray-800 mt-2">Binary search approach: for each element, binary search for its negation in a sorted copy. Still O(n log n). No known O(n) solution for closest-to-zero pair finding on unsorted input.</p>
+    </details>
+  </div>
+  </details>
+</section>
+
+<!-- 22. Quick Reference -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details open><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">22. Quick Reference</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 grid md:grid-cols-2 gap-3">
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Pattern</p>
+      <p class="text-gray-800">Sort + Two Pointer (convergent)</p>
+    </div>
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-3 text-sm text-ed-teal">
+      <p class="font-semibold mb-1">Complexity</p>
+      <p>O(n log n) time, O(1) space (in-place sort)</p>
+    </div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3 text-sm text-ed-purple">
+      <p class="font-semibold mb-1">Pointer Movement</p>
+      <p class="text-gray-800">sum &lt; 0 &rarr; left++, sum &gt; 0 &rarr; right--, sum == 0 &rarr; break</p>
+    </div>
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+      <p class="font-semibold mb-1">Tie-Break</p>
+      <p class="text-gray-800">|sum| == |minSum| AND sum &gt; minSum &rarr; update (prefer positive)</p>
+    </div>
+    <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-3 text-sm text-ed-amber">
+      <p class="font-semibold mb-1">Edge Cases</p>
+      <p class="text-gray-800">n &lt; 2, all positive, all negative, duplicates, exact zero</p>
+    </div>
+    <div class="bg-ed-pink/5 border border-ed-pink/15 rounded-lg p-3 text-sm text-ed-pink">
+      <p class="font-semibold mb-1">Senior Signal</p>
+      <p class="text-gray-800">Pivot to finance: reconciliation, hedging, risk offset</p>
+    </div>
+  </div>
+  <div class="mt-3 bg-gray-900 text-gray-100 rounded-lg p-3">
+    <p class="text-xs font-semibold text-gray-400 mb-1">Core code shape:</p>
+    <pre class="mono text-xs">int closestSum(int[] arr) {
+  Arrays.sort(arr);
+  int left = 0, right = arr.length - 1;
+  int minSum = MAX_VALUE;
+  while (left < right) {
+    int sum = arr[left] + arr[right];
+    if (|sum| < |minSum|) minSum = sum;
+    else if (|sum| == |minSum| && sum > minSum) minSum = sum;
+    if (sum < 0) left++;
+    else if (sum > 0) right--;
+    else break;  // sum == 0 is optimal
+  }
+  return minSum;
+}</pre>
+  </div>
+  </details>
+</section>
+
+</main>
+</body>
+</html>

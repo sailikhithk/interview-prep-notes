@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Manager Simulation &mdash; Capital One GPN Interview Guide</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = { theme: { extend: { colors: { 'ed-pink': '#db2777', 'ed-blue': '#2563eb', 'ed-teal': '#0d9488', 'ed-amber': '#d97706', 'ed-sky': '#0284c7', 'ed-purple': '#7c3aed', 'ed-orange': '#ea580c' }, fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } } } };
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .chevron { transition: transform 0.2s; }
+  details[open] .chevron { transform: rotate(90deg); }
+  pre.mono { white-space: pre; }
+  .tok-kw { color: #c084fc; } .tok-ty { color: #fbbf24; } .tok-fn { color: #60a5fa; } .tok-nm { color: #fb923c; } .tok-str { color: #f472b6; } .tok-cm { color: #94a3b8; font-style: italic; }
+  .legend-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+<main class="max-w-5xl mx-auto px-4 py-6 md:py-10 space-y-4">
+
+<header class="bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl p-6 md:p-8 shadow-lg">
+  <div class="flex items-center gap-2 text-sm text-gray-300 mb-2">
+    <span class="bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-bold">MEDIUM-HARD</span>
+    <span class="text-gray-400">&middot;</span>
+    <span>Capital One GPN &middot; Senior Lead Software Engineer</span>
+  </div>
+  <h1 class="text-3xl md:text-4xl font-extrabold">Memory Manager Simulation</h1>
+  <p class="text-gray-300 mt-2 text-sm md:text-base">First-fit allocator &middot; Array + Hash Map &middot; Time O(n&middot;q) &middot; Space O(k)</p>
+</header>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <h2 class="text-xl md:text-2xl font-bold text-gray-900 mb-3">1. Problem Statement</h2>
+  <div class="text-gray-700 text-sm md:text-base space-y-3">
+    <p>Implement <span class="mono bg-gray-100 px-1 rounded">solution(memory, queries)</span> for a memory manager simulation. <span class="mono bg-gray-100 px-1 rounded">memory</span> starts as an array of 0s and 1s, where <strong>0 = free</strong> and <strong>1 = occupied</strong>. Queries are of two types:</p>
+    <ul class="space-y-1 ml-4">
+      <li class="flex gap-2"><span class="text-ed-pink font-bold">&bull;</span><span><span class="mono">[0, x]</span> (<strong>alloc</strong>): Allocate the <strong>leftmost</strong> block of <span class="mono">x</span> consecutive free units. Mark them with a unique allocation ID (starting from 1, increasing per <em>successful</em> allocation). Return the starting index, or <span class="mono">-1</span> if impossible.</span></li>
+      <li class="flex gap-2"><span class="text-ed-pink font-bold">&bull;</span><span><span class="mono">[1, id]</span> (<strong>erase</strong>): Erase the block with that allocation ID. Free all its units. Return the block length, or <span class="mono">-1</span> if that ID doesn't exist or was already erased.</span></li>
+    </ul>
+    <p>Return the result (list of integers) for every query.</p>
+    <div class="bg-gray-100 rounded-lg p-3 mt-3">
+      <p class="font-semibold text-gray-800 mb-1">Example:</p>
+      <p class="mono text-sm">memory = [0,1,0,0,0,1,0,0], queries = [[0,2], [0,2], [1,1], [0,3], [1,3]]</p>
+      <p class="text-xs text-gray-600 mt-1">[0,2] &rarr; alloc 2 at index 0 (memory[0,1] become ID 1) &rarr; 0. [0,2] &rarr; alloc 2 at index 3 (memory[3,4] become ID 2) &rarr; 3. [1,1] &rarr; erase ID 1, free memory[0,1], return length 2. [0,3] &rarr; alloc 3 at index 0 (memory[0,1,2] become ID 3) &rarr; 0. [1,3] &rarr; erase ID 3, return 3. Result: [0, 3, 2, 0, 3].</p>
+    </div>
+  </div>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details open>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">2. Pattern Recognition</h2><span class="chevron text-ed-pink text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-pink/5 border border-ed-pink/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong class="text-ed-pink">Signal words:</strong> "leftmost block of x consecutive free units", "unique allocation ID", "erase the block with that ID", "return the result for every query". This is a <strong>first-fit memory allocator</strong> &mdash; the OS classic. The array is the memory, queries are alloc/free calls.</p>
+    <p><strong class="text-ed-pink">When to reach for this pattern:</strong> Whenever a problem asks you to maintain a mutable array under "find contiguous free space" and "mark/release" operations. The key insight is that the array itself is the source of truth for occupancy, and a hash map tracks allocation metadata for O(1) erase.</p>
+    <p><strong class="text-ed-pink">Key insight:</strong> Two data structures work together: (1) the <span class="mono">memory</span> array (source of truth for what's free/occupied), and (2) an <span class="mono">active_allocations</span> dict mapping <span class="mono">id &rarr; (start, size)</span> for O(1) erase. Without the dict, erase would require scanning the array to find the block.</p>
+    <ul class="space-y-1 ml-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>"Leftmost consecutive free block" &rarr; first-fit, linear scan with run-length tracking</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>"Unique allocation ID" &rarr; increment a counter on each successful alloc</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>"Erase by ID" &rarr; hash map from ID to (start, size) for O(1) lookup</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>Initial 1s are pre-occupied, NOT allocation ID 1 &mdash; they're not erasable</span></li>
+    </ul>
+    <p class="pt-2"><strong class="text-ed-pink">Approaches considered before settling on first-fit + hash map:</strong></p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-ed-pink/10 text-ed-pink"><tr>
+          <th class="text-left px-3 py-2 font-semibold">Approach</th>
+          <th class="text-left px-3 py-2 font-semibold">Description</th>
+          <th class="text-left px-3 py-2 font-semibold">Time / Space</th>
+          <th class="text-left px-3 py-2 font-semibold">Notes (flaws or why proceed)</th>
+        </tr></thead>
+        <tbody class="text-gray-700">
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">Free-list (linked list of free blocks)</td><td class="px-3 py-2">Maintain a sorted list of free intervals. Alloc splits a free interval; erase merges freed space back.</td><td class="px-3 py-2 mono">O(n) alloc / O(n) erase / O(n) space</td><td class="px-3 py-2"><span class="text-amber-700">Valid but complex:</span> Merge logic on erase is error-prone (adjacent free blocks must merge). Same asymptotic cost as first-fit for n &le; 10&sup5;. Over-engineered for the stated bound.</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">First-fit + hash map (array as source of truth)</td><td class="px-3 py-2">Scan array for leftmost free run. Dict maps alloc_id &rarr; (start, size) for O(1) erase. (v_final in Section 10.)</td><td class="px-3 py-2 mono">O(n) alloc / O(size) erase / O(k) space</td><td class="px-3 py-2"><span class="text-emerald-700 font-semibold">Chosen:</span> Simple, correct, meets the O(n&sup2;&middot;q) bound easily. The array IS the allocator state &mdash; no separate free-list to maintain. Dict makes erase O(1) lookup + O(size) free.</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">Buddy allocator</td><td class="px-3 py-2">Power-of-2 block sizes, recursive splitting/coalescing.</td><td class="px-3 py-2 mono">O(log n) alloc/erase / O(n) space</td><td class="px-3 py-2"><span class="text-red-600">Rejected:</span> Over-engineered. Buddy allocators are for OS-level memory management with power-of-2 constraints. The problem allows arbitrary block sizes, so buddy doesn't apply cleanly.</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">Segment tree with lazy propagation</td><td class="px-3 py-2">Track max free run in each segment. Query for leftmost run of size &ge; x in O(log n).</td><td class="px-3 py-2 mono">O(log n) alloc / O(log n) erase / O(n) space</td><td class="px-3 py-2"><span class="text-red-600">Rejected:</span> Fast but very complex to implement correctly in an interview. The problem explicitly says O(n&sup2;&middot;q) is acceptable, so the linear scan is sufficient. Segment tree is over-engineering.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="text-gray-600 text-xs pt-1">The point of the table is to show you weighed alternatives. In an interview, saying "I considered a segment tree for O(log n) alloc, but the problem allows O(n&sup2;&middot;q), so the linear scan is simpler and fast enough" proves you understand the <em>why</em>, not just the <em>how</em>.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">3. Pattern Blueprint</h2><span class="chevron text-ed-blue text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-blue-50 border border-blue-200 rounded-xl p-4 md:p-6">
+    <ul class="space-y-2 text-gray-700 text-sm">
+      <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span><span>Initialize <span class="mono">next_alloc_id = 1</span> and <span class="mono">active_allocations = {}</span> (dict: id &rarr; (start, size)).</span></li>
+      <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span><span>For each <span class="mono">[query_type, value]</span> in <span class="mono">queries</span>:</span></li>
+      <li class="flex gap-3 ml-6"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span><span><strong>If alloc (type 0):</strong> Scan <span class="mono">memory</span> for the leftmost run of <span class="mono">value</span> consecutive 0s. If found, fill with <span class="mono">next_alloc_id</span>, store in dict, increment ID, append start index. Else append <span class="mono">-1</span>.</span></li>
+      <li class="flex gap-3 ml-6"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span><span><strong>If erase (type 1):</strong> Look up <span class="mono">value</span> in <span class="mono">active_allocations</span>. If found, free the block (set cells to 0), remove from dict, append size. Else append <span class="mono">-1</span>.</span></li>
+      <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">5</span><span>Return <span class="mono">results</span> list.</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">4. How to Think About It</h2><span class="chevron text-ed-blue text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-blue/5 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p>The key insight is that <strong>the memory array is the source of truth</strong>. You don't need a separate free-list or bitmap &mdash; the array already tells you what's free (0) and what's occupied (nonzero). The alloc operation scans the array for the leftmost run of zeros; the erase operation sets cells back to 0.</p>
+    <p>The <strong>allocation ID</strong> trick is what makes erase efficient. When you alloc, you write the ID into the memory cells (not just 1). This way, each allocated block is uniquely identifiable in the array. But to erase by ID, you need to know <em>where</em> the block is &mdash; that's what the <span class="mono">active_allocations</span> dict provides: <span class="mono">id &rarr; (start, size)</span>.</p>
+    <p>The <strong>leftmost</strong> requirement is what makes this "first-fit" (as opposed to "best-fit" or "worst-fit"). First-fit is the simplest allocator: take the first free block that's big enough. It's fast and tends to preserve large free blocks at the end (though it can cause external fragmentation at the front &mdash; a tradeoff the problem doesn't ask you to worry about).</p>
+    <p>The <strong>initial 1s</strong> in memory are pre-occupied cells (like OS kernel memory). They are NOT allocation ID 1 &mdash; they're just "occupied, not erasable". The allocation IDs start from 1 and increment only on <em>successful</em> allocs. If you confuse initial 1s with allocation ID 1, you'll try to erase cells that were never allocated, and get the wrong answer.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">5. Real-World Analogy</h2><span class="text-ed-teal text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong class="text-ed-teal">Parking lot allocator:</strong> A parking lot with N spots (the memory array). Some spots are permanently reserved (initial 1s). Cars arrive and need <span class="mono">x</span> consecutive spots. The attendant parks them in the <strong>leftmost</strong> available run of <span class="mono">x</span> spots and gives them a ticket with a unique ID.</p>
+    <p>When a car leaves (erase by ID), the attendant looks up the ticket ID, finds where they parked (start, size), frees those spots, and reports how many spots were freed. If someone tries to leave with a fake ticket (ID not in the dict), the attendant says "no such car" (-1).</p>
+    <p><strong class="text-ed-teal">Mapping:</strong></p>
+    <ul class="space-y-1 ml-4">
+      <li><strong>memory array</strong> = parking spots (0 = empty, nonzero = occupied with ticket ID)</li>
+      <li><strong>alloc [0, x]</strong> = "I need x consecutive spots" &rarr; park in leftmost run</li>
+      <li><strong>erase [1, id]</strong> = "Car with ticket id is leaving" &rarr; free their spots</li>
+      <li><strong>active_allocations dict</strong> = the attendant's ticket ledger (ID &rarr; spot, count)</li>
+      <li><strong>initial 1s</strong> = permanently reserved spots (not ticketed, not freeable)</li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">6. Build Your Intuition</h2><span class="text-ed-amber text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-amber/5 border border-ed-amber/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p>Trace <span class="mono">memory=[0,1,0,0,0,1,0,0], queries=[[0,2],[0,2],[1,1],[0,3],[1,3]]</span> by hand:</p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-amber-100 text-amber-700"><tr>
+          <th class="text-left px-3 py-2">Step</th>
+          <th class="text-left px-3 py-2">Query</th>
+          <th class="text-left px-3 py-2">Action</th>
+          <th class="text-left px-3 py-2">memory (after)</th>
+          <th class="text-left px-3 py-2">active_allocations</th>
+          <th class="text-left px-3 py-2">Result</th>
+        </tr></thead>
+        <tbody class="text-gray-700 mono">
+          <tr class="border-t"><td class="px-3 py-2">0</td><td class="px-3 py-2">(init)</td><td class="px-3 py-2">&mdash;</td><td class="px-3 py-2">[0,1,0,0,0,1,0,0]</td><td class="px-3 py-2">{}</td><td class="px-3 py-2">&mdash;</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">1</td><td class="px-3 py-2">[0,2]</td><td class="px-3 py-2">alloc 2 at idx 0 (ID 1)</td><td class="px-3 py-2">[1,1,0,0,0,1,0,0]</td><td class="px-3 py-2">{1:(0,2)}</td><td class="px-3 py-2 text-emerald-600">0</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">2</td><td class="px-3 py-2">[0,2]</td><td class="px-3 py-2">alloc 2 at idx 3 (ID 2)</td><td class="px-3 py-2">[1,1,0,2,2,1,0,0]</td><td class="px-3 py-2">{1:(0,2),2:(3,2)}</td><td class="px-3 py-2 text-emerald-600">3</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">3</td><td class="px-3 py-2">[1,1]</td><td class="px-3 py-2">erase ID 1, free idx 0-1</td><td class="px-3 py-2">[0,0,0,2,2,1,0,0]</td><td class="px-3 py-2">{2:(3,2)}</td><td class="px-3 py-2 text-emerald-600">2</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">4</td><td class="px-3 py-2">[0,3]</td><td class="px-3 py-2">alloc 3 at idx 0 (ID 3)</td><td class="px-3 py-2">[3,3,3,2,2,1,0,0]</td><td class="px-3 py-2">{2:(3,2),3:(0,3)}</td><td class="px-3 py-2 text-emerald-600">0</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">5</td><td class="px-3 py-2">[1,3]</td><td class="px-3 py-2">erase ID 3, free idx 0-2</td><td class="px-3 py-2">[0,0,0,2,2,1,0,0]</td><td class="px-3 py-2">{2:(3,2)}</td><td class="px-3 py-2 text-emerald-600">3</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="pt-2 text-emerald-700 font-semibold">Result: [0, 3, 2, 0, 3]</p>
+    <p class="text-xs text-gray-600">Note step 4: after erasing ID 1, the leftmost run of 3 zeros is at index 0 (memory[0,1,2] are all 0). The alloc fills them with ID 3. The initial 1 at index 5 is never touched &mdash; it's not in active_allocations, so erase can't free it.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details open>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">7. Interactive Visualization</h2><span class="text-ed-pink text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-pink/5 border border-ed-pink/15 rounded-xl p-4 md:p-6">
+    <div class="flex flex-wrap gap-2 mb-4">
+      <button id="mm-play" class="bg-ed-pink text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-pink-700" style="min-height:44px">Play</button>
+      <button id="mm-pause" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-300" style="min-height:44px">Pause</button>
+      <button id="mm-step" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-300" style="min-height:44px">Step</button>
+      <button id="mm-reset" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-300" style="min-height:44px">Reset</button>
+    </div>
+    <div class="flex flex-wrap items-center gap-2 mb-4 text-sm">
+      <label class="font-semibold text-gray-700">memory:</label>
+      <input id="mm-mem" type="text" value="0,1,0,0,0,1,0,0" class="w-40 px-2 py-1 border border-gray-300 rounded text-sm mono" style="min-height:44px">
+      <label class="font-semibold text-gray-700">queries:</label>
+      <input id="mm-q" type="text" value="0,2;0,2;1,1;0,3;1,3" class="w-48 px-2 py-1 border border-gray-300 rounded text-sm mono" style="min-height:44px">
+    </div>
+    <div class="flex items-center gap-4 mb-4 text-sm">
+      <span class="text-gray-600">Step: <span id="mm-step-num" class="mono font-bold text-gray-900">0</span></span>
+      <span class="text-gray-600">Status: <span id="mm-status" class="mono font-bold text-ed-pink">ready</span></span>
+      <span class="text-gray-600">next_alloc_id: <span id="mm-next-id" class="mono font-bold text-ed-teal">1</span></span>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+      <div class="text-xs text-gray-500 mb-1">memory (0=free, nonzero=alloc ID):</div>
+      <div id="mm-cells" class="flex flex-wrap gap-1 mb-3"></div>
+      <div class="text-xs text-gray-500 mb-1">active_allocations:</div>
+      <div id="mm-allocs" class="mono text-xs text-gray-700 mb-3">{}</div>
+      <div class="text-xs text-gray-500 mb-1">Results:</div>
+      <div id="mm-results" class="mono text-sm text-gray-700">[]</div>
+    </div>
+    <div class="bg-gray-900 text-gray-100 rounded-lg p-3 max-h-48 overflow-y-auto mono text-xs">
+      <div id="mm-log"></div>
+    </div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">8. How It Works (Step by Step)</h2><span class="text-ed-sky text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-sky/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <div class="flex gap-3"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span><span><strong>Initialize:</strong> <span class="mono">next_alloc_id = 1</span>, <span class="mono">active_allocations = {}</span>, <span class="mono">results = []</span>.</span></div>
+    <div class="flex gap-3"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span><span><strong>For each query:</strong> Destructure as <span class="mono">[query_type, value]</span>.</span></div>
+    <div class="flex gap-3 ml-6"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span><span><strong>Alloc (type 0):</strong> Call <span class="mono">find_leftmost_free_block(value)</span> &mdash; a linear scan tracking the current run of zeros. If a run of length <span class="mono">value</span> is found, return its start index; else return -1.</span></div>
+    <div class="flex gap-3 ml-6"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span><span>If <span class="mono">start_index == -1</span>: append -1 to results, continue. Else: fill <span class="mono">memory[start_index : start_index + value]</span> with <span class="mono">next_alloc_id</span>, store <span class="mono">(start_index, value)</span> in the dict, increment <span class="mono">next_alloc_id</span>, append <span class="mono">start_index</span>.</span></div>
+    <div class="flex gap-3 ml-6"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">5</span><span><strong>Erase (type 1):</strong> Look up <span class="mono">value</span> in <span class="mono">active_allocations</span>. If not found, append -1. Else: get <span class="mono">(start, size)</span>, set <span class="mono">memory[start : start + size]</span> back to 0, remove the ID from the dict, append <span class="mono">size</span>.</span></div>
+    <div class="flex gap-3"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">6</span><span>Return <span class="mono">results</span>.</span></div>
+    <p class="pt-2 text-gray-600">The <span class="mono">find_leftmost_free_block</span> helper is the heart of alloc: it scans once, tracking <span class="mono">run_start</span> and <span class="mono">run_length</span>. When <span class="mono">run_length == block_size</span>, return <span class="mono">run_start</span>. If a 1 is hit, reset <span class="mono">run_length = 0</span>. This is O(n) per alloc.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">9. Dry Run</h2><span class="text-ed-amber text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-amber-50 border border-amber-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p>Input: <span class="mono">memory=[0,1,0,0,0,1,0,0], queries=[[0,2],[0,2],[1,1],[0,3],[1,3]]</span></p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-amber-100 text-amber-700"><tr>
+          <th class="text-left px-3 py-2">Query</th>
+          <th class="text-left px-3 py-2">Type</th>
+          <th class="text-left px-3 py-2">Scan/lookup</th>
+          <th class="text-left px-3 py-2">Found</th>
+          <th class="text-left px-3 py-2">Action</th>
+          <th class="text-left px-3 py-2">Result</th>
+        </tr></thead>
+        <tbody class="text-gray-700 mono">
+          <tr class="border-t"><td class="px-3 py-2">[0,2]</td><td class="px-3 py-2">alloc</td><td class="px-3 py-2">scan from idx 0</td><td class="px-3 py-2">run of 2 at idx 0</td><td class="px-3 py-2">fill [0,1] with ID 1</td><td class="px-3 py-2 text-emerald-600">0</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">[0,2]</td><td class="px-3 py-2">alloc</td><td class="px-3 py-2">scan from idx 0 (idx 0,1 now ID 1)</td><td class="px-3 py-2">run of 2 at idx 3</td><td class="px-3 py-2">fill [3,4] with ID 2</td><td class="px-3 py-2 text-emerald-600">3</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">[1,1]</td><td class="px-3 py-2">erase</td><td class="px-3 py-2">dict[1] = (0,2)</td><td class="px-3 py-2">ID 1 exists</td><td class="px-3 py-2">free [0,1], remove ID 1</td><td class="px-3 py-2 text-emerald-600">2</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">[0,3]</td><td class="px-3 py-2">alloc</td><td class="px-3 py-2">scan from idx 0 (0,1 now free again)</td><td class="px-3 py-2">run of 3 at idx 0</td><td class="px-3 py-2">fill [0,1,2] with ID 3</td><td class="px-3 py-2 text-emerald-600">0</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">[1,3]</td><td class="px-3 py-2">erase</td><td class="px-3 py-2">dict[3] = (0,3)</td><td class="px-3 py-2">ID 3 exists</td><td class="px-3 py-2">free [0,1,2], remove ID 3</td><td class="px-3 py-2 text-emerald-600">3</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="pt-2 text-emerald-700 font-semibold">Result: [0, 3, 2, 0, 3]</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details open>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">10. From Brute Force to Optimal &mdash; Every Decision &amp; Why</h2><span class="text-ed-teal text-xl">&#9654;</span></summary>
+  <div class="mt-5 space-y-5">
+    <div class="bg-red-500/5 border border-red-500/15 rounded-xl p-4 md:p-5">
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+        <h3 class="font-bold text-red-500 text-sm md:text-base">v0 &mdash; Brute Force: scan + erase without dict</h3>
+        <div class="flex gap-2">
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700 border border-red-200">Time: O(n&middot;q) alloc, O(n) erase-by-scan</span>
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">Space: O(1)</span>
+        </div>
+      </div>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def solution_bruteforce(memory, queries):
+    result = []
+    next_id = 1
+    allocations = {}
+    for query_type, value in queries:
+        if query_type == 0:
+            # Scan for leftmost run of 'value' zeros
+            run_start = 0
+            run_len = 0
+            found = -1
+            for i in range(len(memory)):
+                if memory[i] == 0:
+                    if run_len == 0:
+                        run_start = i
+                    run_len += 1
+                    if run_len == value:
+                        found = run_start
+                        break
+                else:
+                    run_len = 0
+            if found == -1:
+                result.append(-1)
+                continue
+            alloc_id = next_id
+            next_id += 1
+            for i in range(found, found + value):
+                memory[i] = alloc_id
+            allocations[alloc_id] = (found, value)
+            result.append(found)
+        else:
+            alloc_id = value
+            if alloc_id not in allocations:
+                result.append(-1)
+                continue
+            start, size = allocations.pop(alloc_id)
+            for i in range(start, start + size):
+                memory[i] = 0
+            result.append(size)
+    return result</pre>
+      <p class="text-gray-700 text-sm mt-2"><strong class="text-red-500">Flaw:</strong> This is actually already quite good &mdash; it uses the dict for erase. The "brute force" aspect is the O(n) linear scan for alloc, which can't be avoided without a segment tree. But the code is verbose: the alloc scan is inline, making it hard to read. No helper function.</p>
+    </div>
+    <div class="bg-emerald-50 border border-emerald-300 rounded-xl p-4 md:p-5">
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+        <h3 class="font-bold text-emerald-700 text-sm md:text-base">v_final &mdash; Clean solution with helper function</h3>
+        <div class="flex gap-2">
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">Time: O(n&middot;q)</span>
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">Space: O(k)</span>
+        </div>
+      </div>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def solution(memory, queries):
+    results = []
+    next_allocation_id = 1
+    active_allocations = {}
+    n = len(memory)
+
+    def find_leftmost_free_block(block_size):
+        run_start = 0
+        run_length = 0
+        for i in range(n):
+            if memory[i] == 0:
+                if run_length == 0:
+                    run_start = i
+                run_length += 1
+                if run_length == block_size:
+                    return run_start
+            else:
+                run_length = 0
+        return -1
+
+    for query_type, value in queries:
+        if query_type == 0:
+            start_index = find_leftmost_free_block(value)
+            if start_index == -1:
+                results.append(-1)
+                continue
+            allocation_id = next_allocation_id
+            next_allocation_id += 1
+            for i in range(start_index, start_index + value):
+                memory[i] = allocation_id
+            active_allocations[allocation_id] = (start_index, value)
+            results.append(start_index)
+        else:
+            allocation_id = value
+            if allocation_id not in active_allocations:
+                results.append(-1)
+                continue
+            start_index, block_size = active_allocations.pop(allocation_id)
+            for i in range(start_index, start_index + block_size):
+                memory[i] = 0
+            results.append(block_size)
+    return results</pre>
+      <p class="text-gray-700 text-sm mt-2"><strong class="text-emerald-700">Why final:</strong> Same O(n&middot;q) time, but the <span class="mono">find_leftmost_free_block</span> helper separates the scan logic from the alloc logic, making each readable. Clear variable names (<span class="mono">start_index</span>, <span class="mono">block_size</span>, <span class="mono">active_allocations</span>). This is the version used in Section 20.</p>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-gray-100 text-gray-700"><tr>
+          <th class="text-left px-3 py-2 font-semibold">Version</th>
+          <th class="text-left px-3 py-2 font-semibold">Edge case that forced it</th>
+          <th class="text-left px-3 py-2 font-semibold">Enhancement added</th>
+        </tr></thead>
+        <tbody class="text-gray-700">
+          <tr class="border-t"><td class="px-3 py-2 mono">v0</td><td class="px-3 py-2">None &mdash; most direct (inline scan + dict)</td><td class="px-3 py-2">Linear scan for alloc, dict for erase</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 mono">v_final</td><td class="px-3 py-2">Readability &mdash; v0's inline scan is hard to follow</td><td class="px-3 py-2">Extract <span class="mono">find_leftmost_free_block</span> helper; clear variable names</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-indigo-700 text-sm">
+      <strong>Principle:</strong> Every line of complexity was earned by a specific input the previous version failed on. Here, the "failure" was readability, not correctness. The helper function doesn't change the complexity &mdash; it makes the code maintainable. In an interview, clean code IS the optimization: fewer bugs, faster to explain, easier to extend.
+    </div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">11. Complexity Deep Dive</h2><span class="text-ed-teal text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong class="text-ed-teal">Time: O(n &middot; q)</strong> &mdash; Each alloc scans the memory array once (O(n)). Each erase is O(size) to zero out the cells. With q queries, worst case is O(n &middot; q) (all allocs). The problem explicitly allows O(n&sup2; &middot; q), so this is well within bounds.</p>
+    <p><strong class="text-ed-teal">Space: O(k)</strong> &mdash; The <span class="mono">active_allocations</span> dict holds at most k entries, where k is the number of active allocations. The memory array is modified in place (not copied), so no extra O(n) space.</p>
+    <p><strong class="text-ed-teal">Why not O(log n) per alloc?</strong> A segment tree tracking max-free-run per segment could find the leftmost valid block in O(log n). But implementing it correctly in an interview is very hard (lazy propagation, merge logic). The problem's O(n&sup2;&middot;q) bound makes the linear scan sufficient. A senior should mention the segment tree as the "production" answer but implement the simple version first.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">12. Edge Cases &amp; Gotchas</h2><span class="text-ed-orange text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-orange/5 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Initial 1s are NOT allocation ID 1:</strong> The initial 1s in memory are pre-occupied cells. They are not erasable. Allocation IDs start from 1 and increment only on <em>successful</em> allocs. Do not confuse the initial 1s with allocation ID 1.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Increment ID only on success:</strong> If an alloc fails (not enough contiguous space), do NOT increment <span class="mono">next_alloc_id</span>. IDs must be unique per successful allocation.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Erase a non-existent ID:</strong> If the ID isn't in <span class="mono">active_allocations</span> (never allocated or already erased), return -1. Do NOT throw an error.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Double erase:</strong> If ID 1 is erased, then erased again, the second erase returns -1 (ID 1 was removed from the dict on the first erase).</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Alloc size larger than memory:</strong> If <span class="mono">x &gt; len(memory)</span>, the scan finds no run of that length, return -1.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Alloc size 0:</strong> Edge case &mdash; a run of 0 zeros is "found" at index 0 immediately. The problem likely won't test this, but handle it: if <span class="mono">block_size == 0</span>, return 0 (or -1, depending on interpretation).</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Leftmost requirement:</strong> Must find the FIRST (leftmost) run of sufficient length, not any run. The linear scan with <span class="mono">run_start</span> tracking naturally gives leftmost.</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">13. Common Mistakes</h2><span class="text-ed-orange text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-orange/5 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Incrementing ID on failed alloc:</strong> <span class="mono">next_alloc_id += 1</span> before checking if the alloc succeeded. This wastes IDs and breaks uniqueness. Only increment on success.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Returning allocation ID instead of start index:</strong> The problem says "return the starting index" for alloc. Not the ID. Read carefully.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Not removing erased IDs from the dict:</strong> If you forget <span class="mono">active_allocations.pop(alloc_id)</span>, a second erase of the same ID will return the size again (wrong &mdash; should be -1).</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Treating initial 1s as allocation ID 1:</strong> Trying to erase ID 1 when no alloc has happened. The initial 1s are not in the dict, so erase returns -1 (correct), but some candidates try to scan for cells with value 1 and free them &mdash; wrong.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Not resetting run_length on hitting a nonzero cell:</strong> The scan must reset <span class="mono">run_length = 0</span> when it hits a nonzero cell. Forgetting this gives false positives (counts occupied cells as part of the free run).</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">14. Flashcards</h2><span class="text-ed-purple text-xl">&#9654;</span></summary>
+  <div class="mt-5 space-y-3">
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: What are the two data structures and their roles?</summary><p class="mt-2 text-gray-700">(1) The <span class="mono">memory</span> array &mdash; source of truth for occupancy (0 = free, nonzero = alloc ID). (2) The <span class="mono">active_allocations</span> dict &mdash; maps alloc ID to (start, size) for O(1) erase lookup.</p></details></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: When do you increment <span class="mono">next_alloc_id</span>?</summary><p class="mt-2 text-gray-700">Only on a <em>successful</em> alloc. If the alloc fails (not enough contiguous space), do NOT increment. IDs must be unique per successful allocation.</p></details></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: What does alloc return? What does erase return?</summary><p class="mt-2 text-gray-700">Alloc returns the <strong>start index</strong> (or -1 if no space). Erase returns the <strong>block size</strong> (or -1 if ID not found). Not the allocation ID &mdash; read the problem carefully.</p></details></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: Are the initial 1s in memory erasable?</summary><p class="mt-2 text-gray-700">No. The initial 1s are pre-occupied cells (like OS kernel memory). They are NOT allocation ID 1 &mdash; they're just "occupied, not in the dict". Erase only works on IDs that were created by a successful alloc.</p></details></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: How do you find the leftmost run of <span class="mono">x</span> free cells?</summary><p class="mt-2 text-gray-700">Linear scan with <span class="mono">run_start</span> and <span class="mono">run_length</span> tracking. When <span class="mono">memory[i] == 0</span>, extend the run. When <span class="mono">run_length == x</span>, return <span class="mono">run_start</span>. If a nonzero cell is hit, reset <span class="mono">run_length = 0</span>. O(n) per alloc.</p></details></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: What happens on a double erase (same ID twice)?</summary><p class="mt-2 text-gray-700">First erase: look up ID in dict, free the block, remove from dict, return size. Second erase: ID no longer in dict, return -1. The <span class="mono">pop</span> on the first erase is what prevents the double-free.</p></details></div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">15. Where It Is Used (Real World)</h2><span class="text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-gray-100 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong>OS memory allocators:</strong> This IS the classic first-fit allocator. Real OS allocators (malloc, jemalloc) use more sophisticated variants (segregated free lists, slab allocators) but the core idea is the same: find a free block, mark it allocated, track it for later free.</p>
+    <p><strong>Disk space allocation:</strong> File systems track free blocks with bitmaps or free lists. Allocating a file = finding consecutive free blocks. Deleting = marking them free. The bitmap is the "memory array".</p>
+    <p><strong>Resource reservation systems:</strong> Hotel rooms, parking spots, server capacity &mdash; any system where you reserve a contiguous block of resources and release them later. The "leftmost" requirement maps to "assign the first available slot".</p>
+    <p><strong>Container orchestration:</strong> Kubernetes scheduling: find a node with enough contiguous resources (CPU, memory). The scheduler scans nodes (the "memory array") for a fit. Simpler schedulers use first-fit; advanced ones use bin-packing.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">16. Interview Tips</h2><span class="text-ed-purple text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong class="text-ed-purple">Say this first:</strong> "This is a first-fit memory allocator. I'll use the memory array as the source of truth for occupancy and a hash map from allocation ID to (start, size) for O(1) erase. Alloc is a linear scan for the leftmost run of free cells; erase is a dict lookup plus zeroing the cells. Overall O(n &middot; q), well within the stated bound."</p>
+    <p><strong class="text-ed-purple">Write on the whiteboard first:</strong> The two data structures (array + dict) and the alloc/erase flow. The key edge cases: initial 1s are not erasable, increment ID only on success, remove from dict on erase.</p>
+    <p><strong class="text-ed-purple">If asked to optimize:</strong> "A segment tree tracking max-free-run per segment could find the leftmost valid block in O(log n) per alloc, giving O(q log n). But implementing it correctly in an interview is risky. For the stated O(n&sup2;&middot;q) bound, the linear scan is simpler and fast enough. I'd reach for the segment tree in production if n were 10&sup6;+."</p>
+    <p><strong class="text-ed-purple">Watch for:</strong> The interviewer testing the "initial 1s" edge case. They'll ask "what happens if I erase ID 1 before any alloc?" The answer: -1, because ID 1 isn't in the dict (the initial 1s are not allocation ID 1).</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">17. Similar Problems</h2><span class="text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-gray-100 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-2">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>LeetCode 146. LRU Cache</strong> <span class="bg-amber-100 text-amber-700 px-1.5 rounded text-xs">Medium</span> &mdash; design a data structure supporting get/put with O(1) operations. Same "design + hash map" pattern.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>LeetCode 380. Insert Delete GetRandom O(1)</strong> <span class="bg-amber-100 text-amber-700 px-1.5 rounded text-xs">Medium</span> &mdash; hash map + array combo for O(1) operations.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>LeetCode 604. Design Compressed String Iterator</strong> <span class="bg-emerald-100 text-emerald-700 px-1.5 rounded text-xs">Easy</span> &mdash; design with state tracking.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>LeetCode 715. Range Module</strong> <span class="bg-red-100 text-red-700 px-1.5 rounded text-xs">Hard</span> &mdash; track ranges with add/remove/query. A harder version of interval management.</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">18. Related Algorithms</h2><span class="text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-gray-100 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-2">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>First-fit allocation:</strong> The simplest allocator strategy &mdash; take the first free block that fits. Fast but can cause external fragmentation.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>Best-fit / worst-fit:</strong> Alternative strategies. Best-fit finds the smallest free block that fits (less waste, slower scan). Worst-fit finds the largest (leaves big blocks for future allocs).</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>Buddy allocator:</strong> Power-of-2 block sizes with recursive splitting/coalescing. O(log n) alloc/erase. Used in Linux kernel for physical page allocation.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>Slab allocator:</strong> Pre-allocated pools for fixed-size objects. O(1) alloc/erase for common sizes. Used in Linux kernel for inode/task_struct allocation.</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">19. Where This Pattern Meets System Design</h2><span class="text-indigo-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-indigo-50 border border-indigo-200 rounded-xl p-4 md:p-6 text-indigo-700 text-sm space-y-3">
+    <p>In a real system, this pattern is the <strong>memory allocator</strong> &mdash; the foundation of every heap allocation. Real allocators (glibc malloc, jemalloc, tcmalloc) use segregated free lists (bins by size class) for O(1) alloc for common sizes, falling back to first-fit for large allocations.</p>
+    <p><strong>Scale considerations:</strong></p>
+    <ul class="space-y-1 ml-4">
+      <li>For n = 10&sup6; (1M memory cells), O(n) per alloc is 1ms &mdash; acceptable for q &lt; 1000. For q = 10&sup6;, you'd need the segment tree (O(q log n)).</li>
+      <li>Fragmentation: first-fit causes external fragmentation over time (small free blocks scattered). A compaction pass (defragment) can merge them, but it requires moving allocated blocks (updating all pointers) &mdash; expensive.</li>
+      <li>Concurrency: real allocators use locks or per-thread arenas. This problem is single-threaded, but a production allocator must handle concurrent alloc/erase.</li>
+      <li>Persistence: if the memory state must survive crashes, persist the array and dict to disk (or reconstruct the dict from the array on startup by scanning for unique IDs).</li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">20. Code Solutions</h2><span class="text-ed-sky text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-sky/5 border border-ed-sky/15 rounded-xl p-4 md:p-6">
+    <div class="flex flex-wrap gap-3 mb-4 text-xs">
+      <span class="legend-chip bg-purple-100 text-purple-700"><span class="tok-kw">keyword</span></span>
+      <span class="legend-chip bg-yellow-100 text-yellow-700"><span class="tok-ty">type</span></span>
+      <span class="legend-chip bg-blue-100 text-blue-700"><span class="tok-fn">function</span></span>
+      <span class="legend-chip bg-orange-100 text-orange-700"><span class="tok-nm">number</span></span>
+      <span class="legend-chip bg-pink-100 text-pink-700"><span class="tok-str">string</span></span>
+      <span class="legend-chip bg-gray-200 text-gray-700"><span class="tok-cm">comment</span></span>
+    </div>
+    <h3 class="font-bold text-ed-sky text-sm md:text-base mb-2">Python</h3>
+    <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def solution(memory, queries):
+    results = []
+    next_allocation_id = 1
+    active_allocations = {}
+    n = len(memory)
+
+    def find_leftmost_free_block(block_size):
+        run_start = 0
+        run_length = 0
+        for i in range(n):
+            if memory[i] == 0:
+                if run_length == 0:
+                    run_start = i
+                run_length += 1
+                if run_length == block_size:
+                    return run_start
+            else:
+                run_length = 0
+        return -1
+
+    for query_type, value in queries:
+        if query_type == 0:
+            start_index = find_leftmost_free_block(value)
+            if start_index == -1:
+                results.append(-1)
+                continue
+            allocation_id = next_allocation_id
+            next_allocation_id += 1
+            for i in range(start_index, start_index + value):
+                memory[i] = allocation_id
+            active_allocations[allocation_id] = (start_index, value)
+            results.append(start_index)
+        else:
+            allocation_id = value
+            if allocation_id not in active_allocations:
+                results.append(-1)
+                continue
+            start_index, block_size = active_allocations.pop(allocation_id)
+            for i in range(start_index, start_index + block_size):
+                memory[i] = 0
+            results.append(block_size)
+    return results</pre>
+    <h3 class="font-bold text-ed-sky text-sm md:text-base mb-2 mt-4">Java</h3>
+    <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">import java.util.*;
+
+public class Solution {
+    public List&lt;Integer&gt; solution(int[] memory, int[][] queries) {
+        List&lt;Integer&gt; results = new ArrayList&lt;&gt;();
+        int nextAllocationId = 1;
+        Map&lt;Integer, int[]&gt; activeAllocations = new HashMap&lt;&gt;();
+        int n = memory.length;
+
+        for (int[] query : queries) {
+            int queryType = query[0], value = query[1];
+            if (queryType == 0) {
+                int startIndex = findLeftmostFreeBlock(memory, value, n);
+                if (startIndex == -1) {
+                    results.add(-1);
+                    continue;
+                }
+                int allocationId = nextAllocationId++;
+                for (int i = startIndex; i &lt; startIndex + value; i++) {
+                    memory[i] = allocationId;
+                }
+                activeAllocations.put(allocationId, new int[]{startIndex, value});
+                results.add(startIndex);
+            } else {
+                int allocationId = value;
+                if (!activeAllocations.containsKey(allocationId)) {
+                    results.add(-1);
+                    continue;
+                }
+                int[] block = activeAllocations.remove(allocationId);
+                int startIndex = block[0], blockSize = block[1];
+                for (int i = startIndex; i &lt; startIndex + blockSize; i++) {
+                    memory[i] = 0;
+                }
+                results.add(blockSize);
+            }
+        }
+        return results;
+    }
+
+    private int findLeftmostFreeBlock(int[] memory, int blockSize, int n) {
+        int runStart = 0, runLength = 0;
+        for (int i = 0; i &lt; n; i++) {
+            if (memory[i] == 0) {
+                if (runLength == 0) runStart = i;
+                runLength++;
+                if (runLength == blockSize) return runStart;
+            } else {
+                runLength = 0;
+            }
+        }
+        return -1;
+    }
+}</pre>
+    <h3 class="font-bold text-ed-sky text-sm md:text-base mb-2 mt-4">C++</h3>
+    <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">#include &lt;vector&gt;
+#include &lt;unordered_map&gt;
+
+class Solution {
+public:
+    std::vector&lt;int&gt; solution(std::vector&lt;int&gt;& memory, std::vector&lt;std::vector&lt;int&gt;&gt;& queries) {
+        std::vector&lt;int&gt; results;
+        int next_allocation_id = 1;
+        std::unordered_map&lt;int, std::pair&lt;int,int&gt;&gt; active_allocations;
+        int n = memory.size();
+
+        for (auto& query : queries) {
+            int query_type = query[0], value = query[1];
+            if (query_type == 0) {
+                int start_index = findLeftmostFreeBlock(memory, value, n);
+                if (start_index == -1) {
+                    results.push_back(-1);
+                    continue;
+                }
+                int allocation_id = next_allocation_id++;
+                for (int i = start_index; i &lt; start_index + value; i++) {
+                    memory[i] = allocation_id;
+                }
+                active_allocations[allocation_id] = {start_index, value};
+                results.push_back(start_index);
+            } else {
+                int allocation_id = value;
+                auto it = active_allocations.find(allocation_id);
+                if (it == active_allocations.end()) {
+                    results.push_back(-1);
+                    continue;
+                }
+                int start_index = it-&gt;second.first;
+                int block_size = it-&gt;second.second;
+                active_allocations.erase(it);
+                for (int i = start_index; i &lt; start_index + block_size; i++) {
+                    memory[i] = 0;
+                }
+                results.push_back(block_size);
+            }
+        }
+        return results;
+    }
+
+private:
+    int findLeftmostFreeBlock(std::vector&lt;int&gt;& memory, int block_size, int n) {
+        int run_start = 0, run_length = 0;
+        for (int i = 0; i &lt; n; i++) {
+            if (memory[i] == 0) {
+                if (run_length == 0) run_start = i;
+                run_length++;
+                if (run_length == block_size) return run_start;
+            } else {
+                run_length = 0;
+            }
+        }
+        return -1;
+    }
+};</pre>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">21. Follow-Up Questions</h2><span class="text-indigo-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-indigo-50 border border-indigo-200 rounded-xl p-4 md:p-6 text-indigo-700 text-sm space-y-3">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2.5"></span><span><strong>Can you do better than O(n) per alloc?</strong> Yes &mdash; a segment tree tracking max-free-run per segment can find the leftmost valid block in O(log n). But it's complex to implement. For the stated bound, linear scan is sufficient.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2.5"></span><span><strong>What about fragmentation?</strong> First-fit causes external fragmentation over time. A compaction pass can merge adjacent free blocks, but it requires moving allocated blocks (updating all pointers). In practice, allocators use segregated free lists (bins by size class) to mitigate.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2.5"></span><span><strong>What if queries can also "resize" an allocation?</strong> Add a third query type: <span class="mono">[2, id, new_size]</span>. Resize in place if the adjacent space is free; else allocate a new block, copy, and free the old one. This is how <span class="mono">realloc</span> works.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2.5"></span><span><strong>What if memory is very large (10&sup9;)?</strong> Can't store it as an array. Use a free-list of intervals (sorted by start). Alloc splits a free interval; erase merges freed space back (checking for adjacent free intervals to coalesce). O(n) per operation where n is the number of free intervals.</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">22. Quick Reference</h2><span class="text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-gray-100 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong>One-line summary:</strong> First-fit allocator. Array = source of truth (0=free, nonzero=alloc ID). Dict = ID&rarr;(start,size) for O(1) erase. Alloc: linear scan for leftmost run of free cells. Erase: dict lookup + zero cells. O(n&middot;q) time, O(k) space.</p>
+    <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def solution(memory, queries):
+    res, nid, allocs = [], 1, {}
+    for qt, val in queries:
+        if qt == 0:
+            rs, rl, found = 0, 0, -1
+            for i in range(len(memory)):
+                if memory[i] == 0:
+                    if rl == 0: rs = i
+                    rl += 1
+                    if rl == val: found = rs; break
+                else: rl = 0
+            if found == -1: res.append(-1); continue
+            for i in range(found, found+val): memory[i] = nid
+            allocs[nid] = (found, val); nid += 1; res.append(found)
+        else:
+            if val not in allocs: res.append(-1); continue
+            s, sz = allocs.pop(val)
+            for i in range(s, s+sz): memory[i] = 0
+            res.append(sz)
+    return res</pre>
+  </div>
+</details></section>
+
+</main>
+<footer class="bg-gray-900 text-gray-400 text-center text-xs py-6 mt-8">
+  Generated by dsa-generator skill &middot; Memory Manager Simulation &middot; Capital One GPN Senior Lead Software Engineer
+</footer>
+<script>
+(function(){
+  const memInput=document.getElementById('mm-mem');
+  const qInput=document.getElementById('mm-q');
+  const stepEl=document.getElementById('mm-step-num');
+  const statusEl=document.getElementById('mm-status');
+  const nextIdEl=document.getElementById('mm-next-id');
+  const cellsEl=document.getElementById('mm-cells');
+  const allocsEl=document.getElementById('mm-allocs');
+  const resultsEl=document.getElementById('mm-results');
+  const logEl=document.getElementById('mm-log');
+  let memory=[], queries=[], nextId=1, allocs={}, results=[], stepIdx=0, playing=false, timer=null;
+  function parseInputs(){
+    memory=memInput.value.split(',').map(s=>parseInt(s.trim())).filter(x=>!isNaN(x));
+    queries=qInput.value.split(';').map(pair=>{
+      const [t,v]=pair.split(',').map(s=>parseInt(s.trim()));
+      return [t, v];
+    }).filter(p=>!isNaN(p[0])&&!isNaN(p[1]));
+  }
+  function render(){
+    stepEl.textContent=stepIdx;
+    nextIdEl.textContent=nextId;
+    cellsEl.innerHTML=memory.map(v=>{
+      let cls='bg-white border border-gray-300 text-gray-700';
+      if(v===0) cls='bg-emerald-50 border border-emerald-200 text-emerald-700';
+      else if(v===1) cls='bg-gray-300 border border-gray-400 text-gray-600';
+      else cls='bg-ed-pink/20 border border-ed-pink/40 text-ed-pink';
+      return `<span class="mono w-8 h-8 flex items-center justify-center rounded text-sm font-bold ${cls}">${v}</span>`;
+    }).join('');
+    allocsEl.textContent='{'+Object.entries(allocs).map(([id,[s,sz]])=>`${id}:(${s},${sz})`).join(', ')+'}';
+    resultsEl.textContent='['+results.join(', ')+']';
+  }
+  function log(msg){
+    logEl.innerHTML+=`<div>${msg}</div>`;
+    logEl.parentElement.scrollTop=logEl.parentElement.scrollHeight;
+  }
+  function reset(){
+    if(timer){clearInterval(timer);timer=null;}
+    playing=false;statusEl.textContent='ready';statusEl.className='mono font-bold text-ed-pink';
+    parseInputs();nextId=1;allocs={};results=[];stepIdx=0;logEl.innerHTML='';render();
+  }
+  function findLeftmost(blockSize){
+    let rs=0, rl=0;
+    for(let i=0;i<memory.length;i++){
+      if(memory[i]===0){
+        if(rl===0) rs=i;
+        rl++;
+        if(rl===blockSize) return rs;
+      } else { rl=0; }
+    }
+    return -1;
+  }
+  function step(){
+    if(stepIdx>=queries.length){
+      if(timer){clearInterval(timer);timer=null;}
+      playing=false;statusEl.textContent='done';statusEl.className='mono font-bold text-emerald-600';
+      return;
+    }
+    const [qt, val]=queries[stepIdx];
+    stepIdx++;
+    if(qt===0){
+      const start=findLeftmost(val);
+      if(start===-1){ results.push(-1); log(`alloc ${val} → FAIL (-1)`); }
+      else {
+        const id=nextId; nextId++;
+        for(let i=start;i<start+val;i++) memory[i]=id;
+        allocs[id]=[start, val];
+        results.push(start);
+        log(`alloc ${val} → start=${start}, ID=${id}`);
+      }
+    } else {
+      if(!(val in allocs)){ results.push(-1); log(`erase ID ${val} → FAIL (-1, not found)`); }
+      else {
+        const [s, sz]=allocs[val];
+        delete allocs[val];
+        for(let i=s;i<s+sz;i++) memory[i]=0;
+        results.push(sz);
+        log(`erase ID ${val} → freed ${sz} cells at [${s}, ${s+sz-1}]`);
+      }
+    }
+    render();
+  }
+  document.getElementById('mm-play').onclick=()=>{
+    if(playing)return;
+    if(stepIdx>=queries.length)reset();
+    playing=true;statusEl.textContent='running';statusEl.className='mono font-bold text-ed-pink';
+    timer=setInterval(()=>{step();if(!playing){clearInterval(timer);timer=null;}},800);
+  };
+  document.getElementById('mm-pause').onclick=()=>{
+    if(timer){clearInterval(timer);timer=null;}
+    playing=false;statusEl.textContent='paused';statusEl.className='mono font-bold text-amber-600';
+  };
+  document.getElementById('mm-step').onclick=()=>{
+    if(timer){clearInterval(timer);timer=null;}
+    playing=false;statusEl.textContent='paused';statusEl.className='mono font-bold text-amber-600';
+    step();
+  };
+  document.getElementById('mm-reset').onclick=reset;
+  [memInput,qInput].forEach(el=>el.onchange=reset);
+  reset();
+})();
+</script>
+<script>
+(function(){
+  const master=/(#[^\n]*|\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b\d+\b)|([A-Za-z_][A-Za-z_0-9]*)/g;
+  const kw=new Set(['def','class','while','if','else','elif','for','return','continue','break','pass','import','from','in','not','and','or','is','None','True','False','lambda','try','except','finally','with','as','yield','global','nonlocal','assert','del','raise','public','private','static','void','int','new','this','const','let','var','function','typeof','instanceof','extends','implements','package','class','interface','enum','struct','vector','std','cout','cin','endl','using','namespace','char','bool','long','double','float','short','unsigned','signed','size_t','include']);
+  const ty=new Set(['str','int','bool','List','Solution','list','dict','set','tuple','float','double','char','long','short','void','auto','string','vector','map','unordered_map','set','unordered_set','pair','Integer','Math','Collections','ArrayList','HashMap','Map']);
+  function highlight(pre){
+    if(pre.dataset.highlighted)return;
+    const html=pre.innerHTML;
+    let result='';let last=0;let m;
+    master.lastIndex=0;
+    while((m=master.exec(html))!==null){
+      result+=html.slice(last,m.index);
+      if(m[1]){result+=`<span class="tok-cm">${m[1]}</span>`;}
+      else if(m[2]){result+=`<span class="tok-str">${m[2]}</span>`;}
+      else if(m[3]){result+=`<span class="tok-nm">${m[3]}</span>`;}
+      else if(m[4]){
+        const next=html[master.index]||'';
+        if(kw.has(m[4])){result+=`<span class="tok-kw">${m[4]}</span>`;}
+        else if(ty.has(m[4])){result+=`<span class="tok-ty">${m[4]}</span>`;}
+        else if(next==='('){result+=`<span class="tok-fn">${m[4]}</span>`;}
+        else{result+=m[4];}
+      }
+      last=master.lastIndex;
+    }
+    result+=html.slice(last);
+    pre.innerHTML=result;pre.dataset.highlighted='true';
+  }
+  document.querySelectorAll('pre.mono').forEach(highlight);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: Search Autocomplete — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] hero-glow pointer-events-none"></div>
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">SD</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">Search Autocomplete</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">System Design Workbook</span>
+      </div>
+    </div>
+    <a href="../README.md" class="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">&larr; Back to System Design Hub</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Architectural Study Guide</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">High Scale &bull; Distributed Systems</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+      <span class="gradient-text">Search Autocomplete</span>
+    </h1>
+    <p class="text-gray-600 text-base max-w-3xl leading-relaxed">
+      Comprehensive architectural deep-dive covering high-level data flow, data models, edge case failure modes, scaling strategies, and interview trade-off defenses.
+    </p>
+  </div>
+</div>
+
+<!-- CONTENT MAIN -->
+<main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+  <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm prose prose-blue max-w-none space-y-6">
+    <h1 class="text-2xl font-black text-gray-900 border-b border-gray-200 pb-3 mb-4 mt-6">Chapter 13: Design a Search Autocomplete System</h1>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Introduction</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Autocomplete, also known as typeahead or incremental search, provides real-time suggestions to users as they type in search boxes. The system must efficiently deliver top-k relevant and popular suggestions based on historical query data.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Key Features</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Suggest up to <strong class="text-gray-900 font-bold">5 autocomplete results</strong>.</li>
+<li>Based on <strong class="text-gray-900 font-bold">query popularity</strong> (frequency).</li>
+<li>Support only <strong class="text-gray-900 font-bold">lowercase English characters</strong>.</li>
+<li>Fast response time (<100 ms) and scalable.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 1: Understanding the Problem</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Requirements</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Real-Time Suggestions:</strong> Display relevant matches as the user types.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Top-k Results:</strong> Return up to 5 results sorted by popularity.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Scalability:</strong> Handle <strong class="text-gray-900 font-bold">10 million DAU</strong> with a peak QPS of <strong class="text-gray-900 font-bold">48,000</strong>.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">High Availability:</strong> Handle failures without system downtime.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">5. <strong class="text-gray-900 font-bold">Data Growth:</strong> Support daily storage growth of <strong class="text-gray-900 font-bold">0.4 GB</strong> for new query data.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 2: High-Level Design</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">At the high-level, the system is broken down into two services:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Data Gathering Service:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Collects user queries and aggregates them for frequency analysis in real-time.</li>
+<li>Real-time processing is not practical for large data sets; however, it is a good starting point</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Query Service:</strong> Provides the top-k suggestions based on the user’s input.</p>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Data Gathering Service</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/data-gathering.png" alt="Data Gathering" width="600"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Aggregates query data from analytics logs and updates the frequency table.</li>
+<li>Processes historical data weekly to build a <strong class="text-gray-900 font-bold">trie</strong> (prefix tree).</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Query Service</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/frequency-table.png" alt="Frequency Table" width="400"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/basic-search-suggestions.png" alt="Search Suggestions" width="360"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Uses the frequency table from data gathering service.</li>
+<li>Processes user input and retrieves top-k suggestions from the frequency table using a Trie.</li>
+<li>Optimized for fast lookups using caching and efficient data structures.</li>
+<li>For example when a user types “tw” in the search box, the following top 5 searched queries are displayed.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 3: Design Deep Dive</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Trie Data Structure</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The <strong class="text-gray-900 font-bold">trie</strong> is a tree-like data structure used to store and retrieve query strings efficiently.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Key Features</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Compact Storage:</strong> Represents prefixes hierarchically to minimize redundancy.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Frequency Information:</strong> Stores the popularity of queries at each node.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Steps to get top k most searched queries</strong></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/trie-structure.png" alt="Trie Structure" width="500"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Find the prefix</li>
+<li>Traverse the subtree from prefix node to get all valid children</li>
+<li>Sort the children and get top k</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Optimizations:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Cache top-k queries at each node to speed up retrieval and avoid traversing the whole trie.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/cached-trie.png" alt="Cached Trie" width="600"></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Limit prefix length to reduce search space as users rarely type a loong search query (say 50).</li>
+</ul>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Trie Operations</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Create:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Built weekly using aggregated query data.</li>
+<li>The source of data is from Analytics Log/DB.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Update:</strong> Rarely updated in real-time; weekly updates replace old data.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Delete:</strong></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/delete-kv.png" alt="Delete KV" width="500"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Filters remove unwanted or harmful suggestions (e.g., hate speech).</li>
+<li>Having a filter layer gives us the flexibility of removing results based on different filter rules.</li>
+<li>Unwanted suggestions are removed physically from the database asynchronically.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Query Processing Flow</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Prefix Search:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Identify the prefix node corresponding to the user’s input.</li>
+<li>Traverse the subtree to collect valid suggestions.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Top-k Sorting:</strong></p>
+<li>Cache top-k suggestions at each node to minimize sorting overhead.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Response Construction:</strong></p>
+<li>Construct results using cached data for fast response times.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Optimizations</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Cache at Each Node:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Store the top-k queries to avoid redundant traversals.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Limit Prefix Length:</strong></p>
+<li>Cap prefix length to a small value (e.g., 50 characters) for faster lookups.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">AJAX Requests:</strong></p>
+<li>Use lightweight asynchronous requests for real-time responses.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Browser Caching:</strong></p>
+<li>Save autocomplete results in the browser cache for frequently searched terms.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Data Gathering Pipeline</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In the high-level design, whenever a user types a search query, data is updated in real-time. This appraoch is not practical.</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Users may enter billions of queries per day. Updating the trie on every query is not feasible.</li>
+<li>Top suggestions may not change much one the trie is built.</li>
+</ul>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Updated Design</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/data-gathering-flow.png" alt="Updated Data Gathering Flow" width="600"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Analytics Logs:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Stores raw query data as logs for weekly aggregation.</li>
+<li>Logs are append-only and are not indexed</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Aggregators:</strong></p>
+<li>Process logs into frequency tables, suitable for trie construction.</li>
+<li>For real-time applications such as Twitter, aggregate data in a shorter time interval.</li>
+<li>For other cases, aggregating data less frequently, say once per week is good enough.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Workers:</strong></p>
+<li>Asynchronous servers rebuild the trie and store it in persistent storage.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Storage Options:</strong></p>
+<li><strong class="text-gray-900 font-bold">Trie Cache</strong>: Trie Cache is a distributed cache system that keeps trie in memory for fast read.</li>
+<li><strong class="text-gray-900 font-bold">Trie DB</strong></li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Document Store (e.g., MongoDB)</strong>: Since a new trie is built weekly, we can periodically take a snapshot of it, serialize it, and store the serialized data in the database like MongoDB</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Key-Value Store:</strong></p>
+<li>Maps prefixes to node data for fast access.</li>
+<li>Every prefix in the trie is mapped to a key in a hash table.</li>
+<li>Data on each trie node is mapped to a value in a hash table.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/trie-db.png" alt="Trie DB" width="600"></p>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Scalability</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Sharding:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Distribute trie nodes across servers based on prefix ranges (e.g., <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">a-m</code>, <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">n-z</code>).</li>
+<li>Further shard within prefixes to balance uneven distributions (e.g., <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">aa-ag</code>, <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">ah-an</code>).</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Load Balancing:</strong></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/sharding.png" alt="Sharding" width="400"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Use a shard map manager to route requests to the appropriate server.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 4: Advanced Features</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Multi-Language Support</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Unicode Characters:</strong> Use Unicode to support non-English languages.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Country-Specific Tries:</strong> Build separate tries for different countries or regions.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Trending Queries</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Handle real-time events by dynamically updating trie nodes or weighting recent queries more heavily.</li>
+</ul>
+  </div>
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>System Design Interactive Study Suite &bull; AntiGravity IDE</p>
+</footer>
+</body>
+</html>

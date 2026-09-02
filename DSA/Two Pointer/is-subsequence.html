@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>392. Is Subsequence — Algorithm Study Guide</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        'ed-pink': '#db2777', 'ed-blue': '#2563eb', 'ed-teal': '#0d9488',
+        'ed-amber': '#d97706', 'ed-sky': '#0284c7', 'ed-purple': '#7c3aed', 'ed-orange': '#ea580c',
+      },
+      fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+    },
+  },
+};
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; -webkit-text-size-adjust: 100%; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  details > summary { cursor: pointer; list-style: none; min-height: 44px; display: flex; align-items: center; }
+  details > summary::-webkit-details-marker { display: none; }
+  details[open] > summary .chevron { transform: rotate(90deg); }
+  .chevron { transition: transform 0.2s; }
+  pre, .overflow-x-auto, table { -webkit-overflow-scrolling: touch; }
+  @media (max-width: 768px) { .section-pad { padding: 1rem; } }
+  @media (min-width: 769px) { .section-pad { padding: 1.75rem; } }
+  .tok-kw { color: #c084fc; }        /* purple  — keywords */
+  .tok-ty { color: #fbbf24; }        /* yellow  — types / type hints */
+  .tok-fn { color: #60a5fa; }        /* blue    — function / method names */
+  .tok-nm { color: #fb923c; }        /* orange  — numbers */
+  .tok-str { color: #f472b6; }       /* pink    — strings */
+  .tok-cm { color: #94a3b8; font-style: italic; } /* gray — comments */
+  .legend-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: #94a3b8; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-850 antialiased">
+
+<header class="bg-gradient-to-br from-amber-50 via-white to-amber-50/40 border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-10">
+    <div class="flex items-center gap-2 md:gap-3 mb-4 flex-wrap">
+      <span class="mono text-sm text-gray-500">LeetCode 392</span>
+      <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">Medium</span>
+      <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200">Two Pointers</span>
+    </div>
+    <h1 class="text-2xl md:text-4xl font-extrabold tracking-tight text-gray-900 mb-3">Is Subsequence</h1>
+    <div class="flex flex-wrap gap-2">
+      <span class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-amber-50 text-amber-700 border border-amber-200">Time: O(M + N)</span>
+      <span class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-amber-50 text-amber-700 border border-amber-200">Space: O(1)</span>
+      <span class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-pink-50 text-ed-pink border border-pink-200">Two Pointers</span>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-10 space-y-4 md:space-y-6">
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <h2 class="text-xl md:text-2xl font-bold text-gray-900 mb-4">1. Problem Statement</h2>
+  <p class="text-gray-700 mb-4">Solve the <strong>Is Subsequence</strong> problem using the two-pointer technique. Refer to the original LeetCode problem page for the full statement, constraints, and examples.</p>
+  <div class="bg-gray-100/60 border border-gray-200 rounded-xl p-4 md:p-5 mono text-xs md:text-sm overflow-x-auto">
+    <div class="text-gray-500 mb-2">Approach notes (from solution file):</div>
+    <div class="text-gray-700">Method 1 :<br>
+    Using Dynamic Programming, just using exact code of 'Longest common Subsequence'</div>
+  </div>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details open>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">2. Pattern Recognition</h2><span class="chevron text-ed-pink text-xl">&#9654;</span></summary>
+    <div class="mt-5 bg-ed-pink/5 border border-ed-pink/15 rounded-xl p-4 md:p-6">
+      <p class="text-gray-700 mb-4"><span class="font-semibold text-ed-pink">Two Pointers</span> — place one pointer at the start and one at the end, move them inward based on a comparison condition.</p>
+      <ul class="space-y-2 text-gray-700 text-sm">
+        <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>Symmetric comparison from both ends</span></li>
+        <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>In-place, O(1) extra space</span></li>
+        <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>Linear scan with shrinking window</span></li>
+        <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>Early exit on condition match / mismatch</span></li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">3. Pattern Blueprint</h2><span class="chevron text-ed-blue text-xl">&#9654;</span></summary>
+    <div class="mt-5 bg-blue-50 border border-blue-200 rounded-xl p-4 md:p-6">
+      <ol class="space-y-3">
+        <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span><span class="text-gray-700">Initialize <span class="mono">left_index = 0</span>, <span class="mono">right_index = len(input_array) - 1</span></span></li>
+        <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span><span class="text-gray-700">While <span class="mono">left_index &lt; right_index</span>: evaluate condition</span></li>
+        <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span><span class="text-gray-700">Move the pointer that improves the condition</span></li>
+        <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span><span class="text-gray-700">Track best answer / return on match</span></li>
+      </ol>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">4. How to Think About It</h2><span class="chevron text-ed-blue text-xl">&#9654;</span></summary>
+    <div class="mt-5 bg-ed-blue/5 border border-gray-300 rounded-xl p-4 md:p-6 space-y-3 text-gray-700 text-sm">
+      <p><strong>1.</strong> What is being compared? (sum, difference, area, equality, order)</p>
+      <p><strong>2.</strong> Which pointer should move and why? (sorted input &rarr; move toward target; unsorted &rarr; move the limiting side)</p>
+      <p><strong>3.</strong> When to stop? (pointers cross, target found, all pairs checked)</p>
+      <p><strong>4.</strong> What to track? (max/min answer, matched pairs, valid window)</p>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">5. Real-World Analogy</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+    <div class="mt-5 bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+      <p>Two people at opposite ends of a shelf, walking toward each other. Each holds an item. They compare items at each step and decide who moves next based on what they're looking for.</p>
+      <p><strong>Mappings:</strong> You = <span class="mono text-ed-teal">left_index</span>, Friend = <span class="mono text-ed-teal">right_index</span>, compare = the problem's condition, move = advance the pointer that doesn't satisfy the goal.</p>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">6. Build Your Intuition</h2><span class="chevron text-ed-amber text-xl">&#9654;</span></summary>
+    <div class="mt-5 bg-ed-amber/5 border border-ed-amber/15 rounded-xl p-4 md:p-5 text-gray-700 text-sm">
+      <p class="mb-2"><strong>Q: Why not brute force?</strong> Brute force checks all pairs &rarr; O(n&sup2;) or worse. Two pointers exploit ordering to prune to O(n).</p>
+      <p><strong>Q: Why does moving the smaller side work?</strong> The answer is bounded by the smaller side. Moving the larger side can only shrink the window without gaining height — no benefit.</p>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">7. How It Works (Step by Step)</h2><span class="chevron text-ed-sky text-xl">&#9654;</span></summary>
+    <div class="mt-5 bg-ed-sky/5 border border-ed-sky/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm">
+      <ol class="space-y-3">
+        <li class="flex gap-3"><span class="bg-ed-sky/15 text-ed-sky rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold flex-shrink-0">1</span><span>Place <span class="mono">left_index</span> at index 0, <span class="mono">right_index</span> at last index</span></li>
+        <li class="flex gap-3"><span class="bg-ed-sky/15 text-ed-sky rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold flex-shrink-0">2</span><span>Evaluate the problem condition on <span class="mono">input_array[left_index]</span> and <span class="mono">input_array[right_index]</span></span></li>
+        <li class="flex gap-3"><span class="bg-ed-sky/15 text-ed-sky rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold flex-shrink-0">3</span><span>Move the pointer that doesn't satisfy the goal inward</span></li>
+        <li class="flex gap-3"><span class="bg-ed-sky/15 text-ed-sky rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold flex-shrink-0">4</span><span>Update the answer or return when condition is met</span></li>
+      </ol>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">8. Dry Run</h2><span class="chevron text-ed-amber text-xl">&#9654;</span></summary>
+    <div class="mt-5 overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-amber-200 rounded-lg overflow-hidden">
+        <thead class="bg-amber-50 text-amber-700"><tr>
+          <th class="text-left px-3 py-2 font-semibold">Step</th>
+          <th class="text-left px-3 py-2 font-semibold">left</th>
+          <th class="text-left px-3 py-2 font-semibold">right</th>
+          <th class="text-left px-3 py-2 font-semibold">Action</th>
+        </tr></thead>
+        <tbody class="mono">
+          <tr class="border-t border-amber-100"><td class="px-3 py-2">0</td><td class="px-3 py-2">0</td><td class="px-3 py-2">n-1</td><td class="px-3 py-2">init pointers</td></tr>
+          <tr class="border-t border-amber-100 bg-gray-50"><td class="px-3 py-2">1</td><td class="px-3 py-2">0</td><td class="px-3 py-2">n-1</td><td class="px-3 py-2">evaluate condition</td></tr>
+          <tr class="border-t border-amber-100"><td class="px-3 py-2">...</td><td class="px-3 py-2" colspan="3">move pointer inward, repeat</td></tr>
+          <tr class="border-t border-amber-100 bg-emerald-50"><td class="px-3 py-2">final</td><td class="px-3 py-2">l&rarr;r</td><td class="px-3 py-2">—</td><td class="px-3 py-2 text-emerald-700 font-semibold">return answer</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">9. Complexity Deep Dive</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+    <div class="mt-5 grid md:grid-cols-2 gap-4">
+      <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-4 md:p-5">
+        <h3 class="font-bold text-ed-teal mb-2">Time: O(M + N)</h3>
+        <p class="text-gray-700 text-sm">Each pointer traverses the array at most once. No nested loops, no sorting (unless required for dedup).</p>
+      </div>
+      <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 md:p-5">
+        <h3 class="font-bold text-ed-purple mb-2">Space: O(1)</h3>
+        <p class="text-gray-700 text-sm">Only two index variables and a few temporaries. No auxiliary data structures.</p>
+      </div>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">10. From Brute Force to Optimal</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+    <div class="mt-5 grid md:grid-cols-2 gap-4">
+      <div class="bg-red-500/5 border border-red-500/15 rounded-xl p-4 md:p-5 text-red-500">
+        <h3 class="font-bold mb-2">Brute Force</h3>
+        <p class="text-gray-700 text-sm">Check all pairs with nested loops. Time O(n&sup2;) or O(n&sup3;), space O(1).</p>
+      </div>
+      <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-4 md:p-5 text-ed-teal">
+        <h3 class="font-bold mb-2">Optimal: Two Pointers</h3>
+        <p class="text-gray-700 text-sm">Exploit sorted order or end-to-end symmetry. Time O(M + N), space O(1).</p>
+      </div>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">11. Edge Cases &amp; Gotchas</h2><span class="chevron text-ed-orange text-xl">&#9654;</span></summary>
+    <div class="mt-5 bg-ed-orange/5 border border-gray-300 rounded-xl p-4 md:p-6 space-y-3 text-gray-700 text-sm">
+      <p><strong class="text-ed-orange">Empty / single element:</strong> loop never enters, return default (0, true, etc.)</p>
+      <p><strong class="text-ed-orange">All identical elements:</strong> ensure dedup logic doesn't skip valid pairs</p>
+      <p><strong class="text-ed-orange">Off-by-one:</strong> use <span class="mono">left &lt; right</span> not <span class="mono">&le;</span> to avoid comparing an element with itself</p>
+      <p><strong class="text-ed-orange">Sorted vs unsorted:</strong> two pointers need sorted input for sum-target problems; for container/area problems, unsorted is fine</p>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">12. Common Mistakes</h2><span class="chevron text-ed-orange text-xl">&#9654;</span></summary>
+    <div class="mt-5 bg-ed-orange/5 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-2">
+      <p>&#9679; Moving the wrong pointer (the one that can't improve the answer)</p>
+      <p>&#9679; Forgetting to skip duplicates after finding a match</p>
+      <p>&#9679; Using <span class="mono">&le;</span> instead of <span class="mono">&lt;</span> in the while condition</p>
+      <p>&#9679; Not handling the case where input is not sorted (sort first or use a different approach)</p>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">13. Flashcards</h2><span class="chevron text-ed-purple text-xl">&#9654;</span></summary>
+    <div class="mt-5 space-y-3">
+      <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 md:p-5"><p class="font-semibold text-ed-purple mb-1">Q: When does the two-pointer pattern apply?</p><p class="text-gray-700 text-sm">When the input is sorted or when you're comparing from both ends of a sequence.</p></div>
+      <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 md:p-5"><p class="font-semibold text-ed-purple mb-1">Q: Time complexity?</p><p class="text-gray-700 text-sm">O(M + N) — each pointer moves at most n steps total.</p></div>
+      <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 md:p-5"><p class="font-semibold text-ed-purple mb-1">Q: Space complexity?</p><p class="text-gray-700 text-sm">O(1) — only index variables, no extra storage.</p></div>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">14. Where It Is Used (Real World)</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+    <div class="mt-5 grid md:grid-cols-2 gap-3 text-sm">
+      <div class="bg-amber-100 border border-amber-300 rounded-xl p-4 text-amber-700"><p class="font-semibold mb-1">Container / shipping optimization</p><p class="text-gray-700">Maximize volume between two walls — same as Container With Most Water.</p></div>
+      <div class="bg-rose-100 border border-rose-300 rounded-xl p-4 text-rose-700"><p class="font-semibold mb-1">Pair-finding in sorted data</p><p class="text-gray-700">Find two records summing to a target in sorted logs/streams.</p></div>
+      <div class="bg-indigo-100 border border-indigo-300 rounded-xl p-4 text-indigo-700"><p class="font-semibold mb-1">Palindrome validation</p><p class="text-gray-700">DNA restriction sites, token symmetry checks, mirrored data.</p></div>
+      <div class="bg-gray-100 border border-gray-300 rounded-xl p-4 text-gray-700"><p class="font-semibold mb-1">In-place dedup / removal</p><p class="text-gray-700">Remove duplicates, move zeroes, sort colors — all in O(1) space.</p></div>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">15. Interview Tips</h2><span class="chevron text-ed-purple text-xl">&#9654;</span></summary>
+    <div class="mt-5 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-2">
+      <p>&#9679; <strong>State the pattern first:</strong> "Two pointers from both ends, move the one that doesn't satisfy the condition."</p>
+      <p>&#9679; <strong>Clarify sortedness:</strong> Ask if the input is sorted. If not, sort first (O(n log n)) then two-pointer.</p>
+      <p>&#9679; <strong>Narrate pointer movement:</strong> Explain why you move THIS pointer and not the other.</p>
+      <p>&#9679; <strong>Mention early exit:</strong> Return as soon as the answer is found — no need to scan the rest.</p>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">16. Similar Problems</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+    <div class="mt-5 space-y-2 text-sm">
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">167. Two Sum II — Input Array Is Sorted</div>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">15. 3Sum</div>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">11. Container With Most Water</div>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">75. Sort Colors</div>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">283. Move Zeroes</div>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">17. Related Algorithms</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+    <div class="mt-5 grid md:grid-cols-2 gap-3 text-sm">
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-4"><span class="font-semibold text-gray-800">Sliding Window</span><p class="text-gray-600 mt-1">Both pointers move in the same direction with a dynamic window.</p></div>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-4"><span class="font-semibold text-gray-800">Binary Search</span><p class="text-gray-600 mt-1">Sorted input + elimination half — related but single-pointer.</p></div>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-4"><span class="font-semibold text-gray-800">Hash Map complement</span><p class="text-gray-600 mt-1">Alternative to two-pointer for unsorted two-sum.</p></div>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-4"><span class="font-semibold text-gray-800">Sort + Two Pointers</span><p class="text-gray-600 mt-1">Pre-sort O(n log n) then two-pointer O(n) — common combo.</p></div>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">18. Where This Pattern Meets System Design</h2><span class="chevron text-indigo-500 text-xl">&#9654;</span></summary>
+    <div class="mt-5 bg-indigo-50 border border-indigo-200 rounded-xl p-4 md:p-6 text-indigo-700 text-sm space-y-3">
+      <p><strong>Load balancing:</strong> Distribute requests between two endpoints — two-pointer scan picks the less-loaded node.</p>
+      <p><strong>Log reconciliation:</strong> Compare two sorted log streams from opposite ends to find matching transaction IDs.</p>
+      <p><strong>Rate limiter:</strong> Sliding window with two pointers (left = window start, right = current request) — same discipline.</p>
+      <p><strong>Shard rebalancing:</strong> Move data between two shards by comparing key ranges from both ends.</p>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">19. Code Solutions</h2><span class="chevron text-ed-sky text-xl">&#9654;</span></summary>
+    <div class="mt-5 space-y-5">
+      <div class="flex flex-wrap gap-3 mb-2 p-3 bg-gray-100 rounded-lg">
+        <span class="legend-chip"><span class="legend-dot" style="background:#c084fc"></span>keyword</span>
+        <span class="legend-chip"><span class="legend-dot" style="background:#fbbf24"></span>type</span>
+        <span class="legend-chip"><span class="legend-dot" style="background:#60a5fa"></span>function</span>
+        <span class="legend-chip"><span class="legend-dot" style="background:#fb923c"></span>number</span>
+        <span class="legend-chip"><span class="legend-dot" style="background:#f472b6"></span>string</span>
+        <span class="legend-chip"><span class="legend-dot" style="background:#94a3b8"></span>comment</span>
+      </div>
+      <h3 class="text-ed-sky font-bold mb-2">Python</h3>
+      <pre class="mono text-xs bg-gray-900 text-gray-100 rounded-xl p-4 overflow-x-auto leading-relaxed">class Solution:
+    def isSubsequence(self, s: str, t: str) -&gt; bool:
+        x,y= len(s), len(t)
+        lcs_length= self.lcs(x,y,s,t)
+        if lcs_length== x:  # check if length of lcs= len(substring)
+            return True
+        return False
+    def lcs(self,x,y,s1,s2):
+        dp= [[0 for j in range(y+1)] for i in range(x+1)]
+        for i in range(1,x+1):
+            for j in range(1,y+1):
+                if s1[i-1]== s2[j-1]:
+                    dp[i][j]= 1+ dp[i-1][j-1]
+                else:
+                    dp[i][j]= max(dp[i-1][j], dp[i][j-1])
+        return dp[x][y]
+
+
+# Java</pre>
+      <div>
+        <h3 class="text-ed-sky font-bold mb-2">Java</h3>
+        <pre class="mono text-xs bg-gray-900 text-gray-100 rounded-xl p-4 overflow-x-auto leading-relaxed">import java.util.Stack;
+
+class Solution {
+    public boolean isSubsequence(String s, String t) {
+        Stack&lt;Character&gt; stack = new Stack&lt;&gt;();
+        for (char c : s.toCharArray()) {
+            stack.push(c);
+        }
+
+        for (int i = t.length() - 1; i &gt;= 0; i--) {
+            if (stack.isEmpty())
+                return true;
+            if (t.charAt(i) == stack.peek())
+                stack.pop();
+        }
+
+        return stack.isEmpty();
+    }
+}</pre>
+      </div>
+      <div>
+        <h3 class="text-ed-sky font-bold mb-2">C++</h3>
+        <pre class="mono text-xs bg-gray-900 text-gray-100 rounded-xl p-4 overflow-x-auto leading-relaxed">class Solution {
+public:
+    bool isSubsequence(string s, string t) {
+        int x = s.length(), y = t.length();
+        int lcs_length = lcs(x, y, s, t);
+        if (lcs_length == x)  // check if length of lcs = len(substring)
+            return true;
+        return false;
+    }
+
+    int lcs(int x, int y, string&amp; s1, string&amp; s2) {
+        vector&lt;vector&lt;int&gt;&gt; dp(x + 1, vector&lt;int&gt;(y + 1, 0));
+        for (int i = 1; i &lt;= x; i++) {
+            for (int j = 1; j &lt;= y; j++) {
+                if (s1[i - 1] == s2[j - 1])
+                    dp[i][j] = 1 + dp[i - 1][j - 1];
+                else
+                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1]);
+            }
+        }
+        return dp[x][y];
+    }
+};</pre>
+      </div>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">20. Follow-Up Questions</h2><span class="chevron text-indigo-500 text-xl">&#9654;</span></summary>
+    <div class="mt-5 space-y-3 text-sm">
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-xl p-4"><summary class="font-semibold text-indigo-700">What if the input is not sorted?</summary><p class="text-gray-700 mt-3">Sort first (O(n log n)) then apply two pointers. Or use a hash map for O(n) time + O(n) space.</p></details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-xl p-4"><summary class="font-semibold text-indigo-700">What if there are duplicates?</summary><p class="text-gray-700 mt-3">After finding a match, skip consecutive duplicate values on both pointers to avoid duplicate answers.</p></details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-xl p-4"><summary class="font-semibold text-indigo-700">Can you do it in one pass?</summary><p class="text-gray-700 mt-3">Yes — two pointers IS one pass. Each element is visited at most twice total (once by each pointer).</p></details>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">21. Quick Reference</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+    <div class="mt-5 grid md:grid-cols-3 gap-4">
+      <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
+        <h3 class="font-bold text-gray-800 mb-2 text-sm">Core Shape</h3>
+        <pre class="mono text-xs text-gray-700 bg-white border border-gray-200 rounded p-3 overflow-x-auto">l, r = 0, n-1
+while l &lt; r:
+  if condition:
+    update answer
+    l++; r--
+  elif move_left:
+    l++
+  else:
+    r--</pre>
+      </div>
+      <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-4 text-sm">
+        <h3 class="font-bold text-ed-teal mb-2">Complexity</h3>
+        <p class="text-gray-700">Time: <strong>O(M + N)</strong></p>
+        <p class="text-gray-700">Space: <strong>O(1)</strong></p>
+      </div>
+      <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm">
+        <h3 class="font-bold text-ed-purple mb-2">Watch Outs</h3>
+        <ul class="space-y-1 text-gray-700"><li>&#9679; <span class="mono">l &lt; r</span> not <span class="mono">&le;</span></li><li>&#9679; Sort first if unsorted</li><li>&#9679; Skip duplicates</li><li>&#9679; Move the right pointer</li></ul>
+      </div>
+    </div>
+  </details>
+</section>
+
+</main>
+
+<footer class="border-t border-gray-200 mt-10">
+  <div class="max-w-5xl mx-auto px-4 py-6 text-center text-sm text-gray-500">
+    LeetCode 392 &middot; Is Subsequence &middot; Two Pointers
+  </div>
+</footer>
+
+</body>
+<script>
+(function() {
+  const KEYWORDS = new Set([
+    'class','def','while','if','else','elif','return','and','or','not','in','is',
+    'None','True','False','self','for','import','from','as','lambda','try','except',
+    'finally','with','pass','break','continue','yield','assert','del','raise','async','await',
+    'public','private','protected','static','void','new','this','super','extends','implements',
+    'throw','catch','switch','case','default','goto','sizeof','const','unsigned','signed',
+    'long','short','float','double','auto','struct','enum','union','typedef','namespace',
+    'using','template','typename','virtual','override','final','nullptr','cout','cin','endl'
+  ]);
+  const TYPES = new Set([
+    'str','bool','int','float','list','dict','set','tuple','bytes','bytearray','range','object',
+    'String','Integer','Boolean','Character','void','Solution','char','boolean'
+  ]);
+  function highlight(rawCode) {
+    let code = rawCode.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const master = /(#[^\n]*|\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b\d+\b)|([A-Za-z_][A-Za-z_0-9]*)/g;
+    let out = '', last = 0, m;
+    while ((m = master.exec(code)) !== null) {
+      out += code.slice(last, m.index);
+      if (m[1]) out += '<span class="tok-cm">' + m[1] + '</span>';
+      else if (m[2]) out += '<span class="tok-str">' + m[2] + '</span>';
+      else if (m[3]) out += '<span class="tok-nm">' + m[3] + '</span>';
+      else if (m[4]) {
+        const w = m[4];
+        if (KEYWORDS.has(w)) out += '<span class="tok-kw">' + w + '</span>';
+        else if (TYPES.has(w) || /^[A-Z]/.test(w)) out += '<span class="tok-ty">' + w + '</span>';
+        else {
+          const rest = code.slice(m.index + w.length);
+          if (/^\s*\(/.test(rest)) out += '<span class="tok-fn">' + w + '</span>';
+          else out += w;
+        }
+      }
+      last = m.index + m[0].length;
+    }
+    out += code.slice(last);
+    return out;
+  }
+  document.querySelectorAll('pre.mono').forEach(function(pre) {
+    if (pre.closest('script')) return;
+    pre.innerHTML = highlight(pre.textContent);
+  });
+})();
+</script>
+</html>

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: Scaling — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] hero-glow pointer-events-none"></div>
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">SD</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">Scaling</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">System Design Workbook</span>
+      </div>
+    </div>
+    <a href="../README.md" class="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">&larr; Back to System Design Hub</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Architectural Study Guide</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">High Scale &bull; Distributed Systems</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+      <span class="gradient-text">Scaling</span>
+    </h1>
+    <p class="text-gray-600 text-base max-w-3xl leading-relaxed">
+      Comprehensive architectural deep-dive covering high-level data flow, data models, edge case failure modes, scaling strategies, and interview trade-off defenses.
+    </p>
+  </div>
+</div>
+
+<!-- CONTENT MAIN -->
+<main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+  <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm prose prose-blue max-w-none space-y-6">
+    <h1 class="text-2xl font-black text-gray-900 border-b border-gray-200 pb-3 mb-4 mt-6">Chapter 1: Scale from Zero to Millions of Users</h1>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Introduction</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Scaling a system to support millions of users is a complex, iterative journey requiring refinement and optimization. This chapter outlines how to begin with a single server setup and scale the architecture step by step to handle millions of users.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Section 1: Single Server Setup</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Initially, all components (web app, database, cache) run on a single server.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/single-server.png" width="400" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Request Flow</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. Users access the application via domain names (e.g., <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">api.mysite.com</code>), resolved to IP addresses using DNS.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. IP address of the web-server is returned to the browser or mobile app.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. HTTP requests are sent to the web server, which returns HTML or JSON responses.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Traffic Sources</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Web Applications:</strong> Use server-side languages (e.g., Python, Java) for business logic and client-side languages (e.g., JavaScript, HTML) for presentation.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Mobile Applications:</strong> Communicate with the web server using HTTP and JSON for lightweight data exchange.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Section 2: Database Separation</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">As the user base grows, the database is moved to a dedicated server to allow independent scaling of web and database tiers.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/database.png" width="400" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Database Choices</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Relational Databases (SQL):</strong> Structured data stored in tables. Examples: MySQL, PostgreSQL.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Non-Relational Databases (NoSQL):</strong> Suitable for unstructured data or low-latency requirements. Categories include:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Key-Value Stores</li>
+<li>Graph Databases</li>
+<li>Column Stores</li>
+<li>Document Stores</li>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Non-relational databases might be the right choice if:</li>
+<li>application requires super-low latency.</li>
+<li>data is unstructured, or  there is no relational data.</li>
+<li>only need to serialize and deserialize data (JSON, XML, YAML, etc.).</li>
+<li>need to store a massive amount of data.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Section 3: Vertical vs Horizontal Scaling</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Vertical Scaling</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Adds more resources (CPU, RAM) to existing servers.</li>
+<li>Limited by hardware constraints and lacks redundancy.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Horizontal Scaling</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Adds more servers to the pool, making it more suitable for large-scale systems.</li>
+<li>A load balancer is used to handle the request routing between the servers.</li>
+<hr class="border-gray-200 my-6">
+</ul>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Section 4: Load Balancer</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/load-balancer.png" width="400" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A <strong class="text-gray-900 font-bold">load balancer</strong> distributes traffic among multiple servers. Benefits include:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. Redundancy: If a server goes offline, traffic is rerouted.</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li> If server 1 goes offline, all the traffic will be routed to server 2.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. Scalability: Easily add servers to handle traffic spikes.</p>
+<li> If the website traffic grows rapidly, subsequent servers can be added to handle the additional traffic.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Section 5: Database Replication</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/database-replication.png" width="400" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Master-Slave Model</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Master Database:</strong> Handles write operations.</li>
+<li>All the data-modifying commands like insert, delete, or update must be sent to the master database.</li>
+<li><strong class="text-gray-900 font-bold">Slave Databases:</strong> Handle read operations, improving performance and reliability.</li>
+<li>Since the ratio of reads to writes is higher is most applications; thus, the number of slave</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">databases in a system is usually larger than the number of master databases.</p>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Benefits</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. Improved performance through parallel read operations.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. High availability and data reliability through redundancy.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Failure Handling</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>If only one slave database is available and it goes offline, read operations will be directed</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">to the master database temporarily.</p>
+<li>In case multiple slave databases are available, read operations are</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">redirected to other healthy slave databases and a new server will replace the old one.</p>
+<li> If the master database goes offline, a slave database will be promoted to be the new</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">master.</p>
+<li>In production system the chosen slave database might not be up to date, hence data needs to be updated by running data</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">recovery scripts (methods like multi-masters and circular replication could help).</p>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Section 6: Caching</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A <strong class="text-gray-900 font-bold">cache</strong> stores frequently accessed data in memory to reduce database load. The cache tier is a temporary data store layer, much faster than the database.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/cache.png" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Caching considerations</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Use case</strong>: Consider using cache when data is read frequently but modified infrequently.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Expiration Policies:</strong> Once cached data is expired, it is removed from the cache. When there is no expiration policy, cached</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">data will be stored in the memory permanently.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Consistency:</strong> This means keeping the data store and the cache in sync. Inconsistency</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">can happen because data-modifying operations on the data store and cache are not in a single transaction.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Mitigating failures</strong>: A single cache server represents a potential single point of failure, multiple</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">cache servers across different data centers are recommended to avoid SPOF.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">5. <strong class="text-gray-900 font-bold">Eviction Policies:</strong>: Once the cache is full, items need to be evicted to free up memory. LRU is the most popular cache eviction policy.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Section 7: Content Delivery Network (CDN)</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A <strong class="text-gray-900 font-bold">CDN</strong> improves load times by caching static content (images, CSS, JavaScript) on geographically distributed servers.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/cdn.png" width="400" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Workflow</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. User requests content from the nearest CDN server.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. If unavailable, content is fetched from the origin server and cached.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">CDN considerations</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Cost:</strong> CDNs are run by third-party providers which charge for data transfers in and out of the CDN.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Cache Expiry:</strong> The cache expiry time should neither be too long nor too short.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">CDN fallback:</strong> If there is a temporary CDN outage, clients should be able to detect the problem</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">and request resources from the origin.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Invalidating files:</strong> If files are updated the cache should be invalidated to point to the updated files.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Section 8: Stateless Web Tier</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">By moving session data to a shared datastore, web servers become stateless. This allows:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. Easier horizontal scaling.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. Auto-scaling based on traffic.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/stateless.png" width="400" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Section 9: Multi-Data Center Setup</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Deploying across multiple data centers improves availability and reduces latency. Strategies include:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/data-center.png" width="400" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">GeoDNS Routing:</strong> Direct users to the nearest data center.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Data Replication:</strong> Synchronize data across centers to prevent inconsistencies.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Key considerations</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Traffic redirection:</strong> Effective tools are needed to direct traffic to the correct data center.</li>
+<li><strong class="text-gray-900 font-bold">Data synchronization:</strong> A common strategy is to replicate data across multiple data centers.</li>
+<li><strong class="text-gray-900 font-bold">Test and deployment:</strong>  Automated deployment tools are vital to keep services consistent through all the data centers.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Section 10: Message Queue</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A <strong class="text-gray-900 font-bold">message queue</strong> is a durable component, stored in memory, that supports asynchronous</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">communication. It serves as a buffer and distributes asynchronous requests.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images//message-queue.png" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Input services, called producers/publishers, create messages, and publish them to a message queue.</li>
+<li>Other services called consumers/subscribers, connect to the queue, and perform actions defined by the messages.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Section 11: Logging, Metrics, and Automation</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/logging.png" width="400" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Importance</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Logging:</strong> Tracks errors and system health.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Metrics:</strong> Provides insights into performance and user activity.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Automation:</strong> Streamlines testing, deployment, and scaling.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Section 12: Database Scaling</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Vertical Scaling</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Adds hardware resources but has physical and cost limitations.</li>
+<li>Has multiple drawbacks:</li>
+<li> Greater risk of single point of failures.</li>
+<li> Overall cost of vertical scaling is high</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Horizontal Scaling (Sharding)</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/horizontal-scaling.png" width="400" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Divides data across multiple shards using keys (e.g., <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">user_id</code>).</li>
+<li>Sharding separates large databases into smaller, more easily managed parts called shards.</li>
+<li>Each shard shares the same schema, though the actual data on each shard is unique to the shard.</li>
+<li> Sharding key is critical when implementing a sharding strategy. When choosing a sharding key it is important to choose a key that can evenly distribute data.</li>
+</ul>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Challenges</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Resharding data:</strong> Resharding data is needed when:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Single shard could no longer hold more data due to rapid growth.</li>
+<li>Certain shards might experience shard exhaustion faster than others due to uneven data distribution.</li>
+<li>Consistent Hashing is used to overcome these problems</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Celebrity problem:</strong>  Excessive access to a specific shard could cause server overload.</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>To solve this problem, we may need to allocate a shard for each celebrity.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Join and de-normalization:</strong> Once a database has been sharded across multiple servers, it is hard to perform join operations across database shards.</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li> A common workaround is to de-normalize the database so that queries can be performed in a single table.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Conclusion</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Key Takeaways</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. Keep the web tier stateless.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. Build redundancy at every tier.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. Use caching and CDNs to optimize performance.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. Scale the data tier with sharding.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">5. Decouple components for flexibility.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This chapter provides a solid foundation for building scalable systems that can handle millions of users.</p>
+  </div>
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>System Design Interactive Study Suite &bull; AntiGravity IDE</p>
+</footer>
+</body>
+</html>

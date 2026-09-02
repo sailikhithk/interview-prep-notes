@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: URL Shortener — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] hero-glow pointer-events-none"></div>
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">SD</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">URL Shortener</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">System Design Workbook</span>
+      </div>
+    </div>
+    <a href="../README.md" class="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">&larr; Back to System Design Hub</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Architectural Study Guide</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">High Scale &bull; Distributed Systems</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+      <span class="gradient-text">URL Shortener</span>
+    </h1>
+    <p class="text-gray-600 text-base max-w-3xl leading-relaxed">
+      Comprehensive architectural deep-dive covering high-level data flow, data models, edge case failure modes, scaling strategies, and interview trade-off defenses.
+    </p>
+  </div>
+</div>
+
+<!-- CONTENT MAIN -->
+<main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+  <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm prose prose-blue max-w-none space-y-6">
+    <h1 class="text-2xl font-black text-gray-900 border-b border-gray-200 pb-3 mb-4 mt-6">Chapter 8: Design a URL Shortener</h1>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Introduction</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This chapter discusses the design of a URL shortening service like TinyURL. The system's main goals include <strong class="text-gray-900 font-bold">URL shortening</strong>, <strong class="text-gray-900 font-bold">redirecting</strong>, and <strong class="text-gray-900 font-bold">high scalability</strong> to handle large traffic volumes.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Requirements</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Shortened URLs must be <strong class="text-gray-900 font-bold">unique</strong> and as <strong class="text-gray-900 font-bold">short as possible</strong>.</li>
+<li>Handle <strong class="text-gray-900 font-bold">100 million URL generations per day</strong> with a 10-year support capacity.</li>
+<li>Support <strong class="text-gray-900 font-bold">efficient read operations</strong> with a 10:1 read-to-write ratio.</li>
+<li>Store 365 billion records, requiring approximately <strong class="text-gray-900 font-bold">365 TB</strong> of storage over 10 years.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 1: High-Level Design</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">API Endpoints</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">URL Shortening:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Endpoint: <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">POST api/v1/data/shorten</code></li>
+<li>Parameters: <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">{longUrl: longURLString}</code></li>
+<li>Returns: <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">shortURL</code></li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">URL Redirecting:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Endpoint: <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">GET api/v1/shortUrl</code></li>
+<li>Returns: <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">longURL</code> for redirection.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><p align="center"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/url-redirection.png" alt="URL Redirection" width="600"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></p></p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">URL Redirection</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">301 Redirect:</strong>  A 301 redirect shows that the requested URL is “permanently” moved to the long URL. The browser caches the response, and</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">subsequent requests for the same URL will not be sent to the URL shortening service.</p>
+<li><strong class="text-gray-900 font-bold">302 Redirect:</strong> Temporary; useful for analytics like tracking clicks.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">URL Shortening</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><p align="center"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/url-shortening.png" alt="URL Shortening" width="400"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></p></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Use a <strong class="text-gray-900 font-bold">hash function</strong> to generate a short URL, mapping long URLs to unique shortened versions.</li>
+<li>The hash function must satisfy the following requirements:</li>
+<li>Each longURL must be hashed to one hashValue.</li>
+<li>Each hashValue can be mapped back to the longURL.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 2: Deep Dive into Design</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Data Model</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Store <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]"><shortURL, longURL></code> mappings in a relational database to optimize memory usage. The table schema includes:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">id</code> (primary key),</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">shortURL</code>,</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">longURL</code>.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/table-schema.png" alt="Table Schema" width="300"></p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Hash Function</h3>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">1. Base 62 Conversion:</h4>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Encodes numbers using characters <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">[0-9, a-z, A-Z]</code>, providing <strong class="text-gray-900 font-bold">62 possible characters</strong>.</li>
+<li>Base conversion is another approach commonly used for URL shorteners.</li>
+<li>A unique id can be assigned to the short url and ID can be base 62 converted to get the short URL.</li>
+<li>A 7-character hash supports up to <strong class="text-gray-900 font-bold">3.5 trillion unique URLs</strong>, enough for 365 billion URLs.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><strong class="text-gray-900 font-bold">Example:</strong></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Convert ID <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">2009215674938</code> to Base 62:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">2009215674938</code> → <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">zn9edcu</code>.</li>
+</ul>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">2. Hash + Collision Resolution:</h4>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Use hash functions like CRC32, MD5, or SHA-1.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/hash-function.png" alt="Hash Function" width="500"></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>One approach is to collect the first 7 characters of a hash value; however, this method can lead to hash collisions.</li>
+<li>To resolve collisions,recursively append a new predefined string until no more collision but this can be expensive.</li>
+<li>Resolve collisions with <strong class="text-gray-900 font-bold">Bloom Filters</strong> for efficient lookup.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><p align="center"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/url-lookup.png" alt="URL Lookup" width="500"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></p></p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Comparison</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li> <strong class="text-gray-900 font-bold">Hash + Collision Resolution:</strong></li>
+<li>Fixed short URL length</li>
+<li>Does not need a unique ID generator</li>
+<li>Collision is possbile and needs resolution</li>
+<li>Not possible to find the next available short URL because it does not depend on ID</li>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Base 62 Conversion</strong></li>
+<li>The length is not fixed and goes up with ID</li>
+<li>It needs a unique ID generator</li>
+<li>Collision is not possbile</li>
+<li>Easy to find the next short URL if ID increments by 1 (Can be a security concern)</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">URL Shortening Flow</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><p align="center"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/url-shortening-flow.png" alt="URL Shortening" width="500"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></p></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. Check if <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">longURL</code> exists in the database.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. If found, return the existing <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">shortURL</code>.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. Otherwise:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Generate a unique ID using a <strong class="text-gray-900 font-bold">distributed ID generator</strong>.</li>
+<li>Convert the ID to <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">shortURL</code> using Base 62.</li>
+<li>Store the <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]"><id, shortURL, longURL></code> mapping in the database.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">URL Redirecting Flow</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><p align="center"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/url-redirecting-flow.png" alt="URL Shortening" width="600"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></p></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. User clicks a <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">shortURL</code>.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. Query <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]"><shortURL, longURL></code> mapping:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Check the <strong class="text-gray-900 font-bold">cache</strong> first for faster access.</li>
+<li>If not in the cache, query the database.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. Redirect the user to <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">longURL</code>.</p>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Additional Considerations</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Rate Limiter</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Prevent abuse by setting limits on requests per IP.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Scalability</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Web Tier:</strong> Stateless, scalable by adding/removing web servers.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Database Tier:</strong> Use replication and sharding.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Analytics</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Collect data like click rates, source, and timestamps for business insights.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">High Availability and Reliability</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Ensure consistent and reliable services using database replication and fault-tolerant design.</li>
+</ul>
+  </div>
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>System Design Interactive Study Suite &bull; AntiGravity IDE</p>
+</footer>
+</body>
+</html>

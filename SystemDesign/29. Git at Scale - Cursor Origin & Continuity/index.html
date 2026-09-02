@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: Git at Scale — Cursor Origin & Continuity</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax for LaTeX Math Formatting -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<!-- Highlight.js for Code Syntax Highlighting -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  hljs.highlightAll();
+});
+</script>
+
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        ed: { pink:'#db2777', blue:'#2563eb', teal:'#0d9488', amber:'#d97706', sky:'#0284c7', purple:'#7c3aed', orange:'#ea580c' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+.g { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hg { background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(37,99,235,0.06) 0%,transparent 100%); }
+pre code.hljs { background: transparent !important; padding: 0 !important; }
+.hljs-keyword, .hljs-selector-tag { color: #c678dd !important; font-weight: 600; }
+.hljs-string { color: #98c379 !important; }
+.hljs-title.class_, .hljs-title.function_ { color: #61afef !important; font-weight: 600; }
+.hljs-comment { color: #5c6370 !important; font-style: italic; }
+.hljs-number { color: #d19a66 !important; }
+.hljs-built_in, .hljs-type { color: #e5c07b !important; }
+.hljs-attr { color: #e06c75 !important; }
+</style>
+</head>
+<body class="bg-white text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Glow Backdrop -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] bg-gradient-to-b from-blue-500/5 via-indigo-500/2 to-transparent blur-3xl pointer-events-none"></div>
+
+<!-- HERO -->
+<div class="relative overflow-hidden border-b border-gray-200 bg-gray-50 hg">
+<div class="max-w-5xl mx-auto px-6 py-12">
+  <div class="flex items-center gap-2 mb-4">
+    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">System Design Masterclass</span>
+    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200">Distributed Storage</span>
+    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">2026 State-of-the-Art</span>
+  </div>
+  
+  <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-950 mb-3">
+    Git at Any Scale: <span class="g">Cursor Origin & Continuity Architecture</span>
+  </h1>
+  <p class="text-base sm:text-lg text-gray-600 max-w-3xl leading-relaxed">
+    A comprehensive engineering study from <strong>High-Level Design (HLD)</strong> to <strong>Low-Level Design (LLD)</strong> and <strong>Data Structures & Algorithms (DSA)</strong>. Covers the paradigm shift from GitHub's 3PC Spokes consensus to S3-backed Write-Ahead Logs (WAL) and stateless warm-cache NVMe replicas.
+  </p>
+
+  <!-- Metric Badges -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8">
+    <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
+      <div class="text-xs text-gray-500 font-medium">Single-Repo Push QPS</div>
+      <div class="text-xl font-bold text-gray-900 mt-0.5">300+ /sec</div>
+      <div class="text-[11px] text-emerald-600 font-medium">S3 Express One Zone</div>
+    </div>
+    <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
+      <div class="text-xs text-gray-500 font-medium">Read Scaling</div>
+      <div class="text-xl font-bold text-gray-900 mt-0.5">Linear (100+ Replicas)</div>
+      <div class="text-[11px] text-blue-600 font-medium">Sub-10ms HTTP 304 Checks</div>
+    </div>
+    <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
+      <div class="text-xs text-gray-500 font-medium">Node State Model</div>
+      <div class="text-xl font-bold text-gray-900 mt-0.5">Stateless Cattle</div>
+      <div class="text-[11px] text-purple-600 font-medium">Warm NVMe Caches</div>
+    </div>
+    <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
+      <div class="text-xs text-gray-500 font-medium">Ephemeral Repo Cost</div>
+      <div class="text-xl font-bold text-gray-900 mt-0.5">$0 Idle Overhead</div>
+      <div class="text-[11px] text-amber-600 font-medium">AI Agent Friendly</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- MAIN CONTENT WRAPPER -->
+<div class="max-w-5xl mx-auto px-6 py-10 space-y-12">
+
+  <!-- SECTION 1: THE CORE PROBLEM -->
+  <section class="space-y-6">
+    <div class="border-b border-gray-200 pb-3">
+      <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <span class="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center text-sm font-bold">1</span>
+        Why is Hosting Git at Scale a Nightmare?
+      </h2>
+    </div>
+
+    <p class="text-gray-700 leading-relaxed">
+      Git was designed by Linus Torvalds for decentralized Linux kernel maintainers. In modern engineering, we demand <strong>strong centralization</strong> for monorepos (Google, Meta, Uber, Cursor) and millions of automated AI agents committing code concurrently.
+    </p>
+
+    <!-- Comparison of Naive Failures -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="p-5 rounded-xl border border-red-200 bg-red-50/40">
+        <div class="flex items-center gap-2 font-bold text-red-900 text-base mb-2">
+          <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          Why Distributed Key-Value Stores Fail
+        </div>
+        <p class="text-sm text-gray-700 leading-relaxed mb-3">
+          Git is content-addressable (keyed by SHA). But accessing files requires traversing a <strong>Directed Acyclic Graph (DAG)</strong>: <code>Commit &rarr; Root Tree &rarr; Sub-Trees &rarr; Blobs</code>.
+        </p>
+        <div class="p-3 bg-white rounded-lg border border-red-200 text-xs font-mono text-gray-800">
+          Latency &approx; &sum; (DAG_Depth &times; Remote_RTT) &approx; 50 &times; 2ms = 100ms per file read!
+        </div>
+      </div>
+
+      <div class="p-5 rounded-xl border border-amber-200 bg-amber-50/40">
+        <div class="flex items-center gap-2 font-bold text-amber-900 text-base mb-2">
+          <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+          Why Distributed Filesystems (NFS/GFS) Fail
+        </div>
+        <p class="text-sm text-gray-700 leading-relaxed mb-3">
+          Git stores objects compressed inside binary <strong>packfiles</strong> using sliding-window delta chains. Object bytes are placed randomly across multi-GB files.
+        </p>
+        <div class="p-3 bg-white rounded-lg border border-amber-200 text-xs font-mono text-gray-800">
+          Random seek I/O + network page faults across thousands of repos = unbearable thrashing.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 2: ARCHITECTURAL PARADIGM SHIFT -->
+  <section class="space-y-6">
+    <div class="border-b border-gray-200 pb-3">
+      <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <span class="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center text-sm font-bold">2</span>
+        Spokes (Gen 2) vs. Continuity (Gen 3) Architecture
+      </h2>
+    </div>
+
+    <!-- Architectural Comparison Diagrams -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      
+      <!-- Spokes Card -->
+      <div class="p-6 rounded-xl border border-gray-200 bg-gray-50/80 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-lg text-gray-900">GitHub Spokes (2013-2025)</h3>
+          <span class="px-2 py-0.5 text-xs font-bold rounded bg-gray-200 text-gray-700">3PC Consensus</span>
+        </div>
+        <p class="text-xs text-gray-600 leading-relaxed">
+          Replicates Git repos across local NVMe disks on 3+ nodes. Synchronizes reference transactions using <strong>Three-Phase Commit (3PC)</strong>.
+        </p>
+
+        <div class="bg-white p-4 rounded-lg border border-gray-200 text-xs overflow-x-auto">
+          <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Client as Git Client
+    participant Router as Spokes Proxy
+    participant N1 as Node 1 (NVMe)
+    participant N2 as Node 2 (NVMe)
+    participant N3 as Node 3 (Slow)
+    Client->>Router: git push (Pack + Ref Txn)
+    Router->>N1: Fan-out Packfile
+    Router->>N2: Fan-out Packfile
+    Router->>N3: Fan-out Packfile
+    Note over Router,N3: Phase 1: Voting (Can-Commit?)
+    Note over Router,N3: Phase 2: Pre-Commit (Lock Ref)
+    Note over Router,N3: Phase 3: Do-Commit (Update Ref)
+    N3-->>Router: Slow ACK (Bottleneck)
+    Router-->>Client: Push OK
+          </div>
+        </div>
+
+        <div class="text-xs text-red-700 space-y-1">
+          <div>&bull; <strong>Tail at scale:</strong> Write latency bound by slowest replica ($O(\max \text{latency})$).</div>
+          <div>&bull; <strong>Pets not cattle:</strong> Repos are authoritative; loss of 2 disks loses quorum.</div>
+          <div>&bull; <strong>Compaction storms:</strong> All replicas repack locally, causing CPU saturation.</div>
+        </div>
+      </div>
+
+      <!-- Continuity Card -->
+      <div class="p-6 rounded-xl border border-blue-200 bg-blue-50/30 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-lg text-blue-950">Cursor Continuity (2026+)</h3>
+          <span class="px-2 py-0.5 text-xs font-bold rounded bg-blue-600 text-white">S3 WAL + Cattle</span>
+        </div>
+        <p class="text-xs text-gray-600 leading-relaxed">
+          Source of truth is a <strong>Write-Ahead Log in S3</strong>. NVMe workers are stateless warm caches routed via <strong>Rendezvous Hashing</strong>.
+        </p>
+
+        <div class="bg-white p-4 rounded-lg border border-blue-200 text-xs overflow-x-auto">
+          <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Client as Git Client
+    participant Primary as Primary (NVMe Cache)
+    participant S3 as S3 Object Store (WAL)
+    participant Replica as Read Replica (NVMe)
+    Client->>Primary: git push
+    par Ingest & Upload
+        Primary->>Primary: Write Local NVMe
+        Primary->>S3: Upload Immutable Packfile
+    end
+    Primary->>S3: Atomic CAS (If-Match ETag on index.json)
+    S3-->>Primary: 200 OK (Linearized!)
+    Primary-->>Client: Push Succeeded
+    Primary--)Replica: UDP Gossip (Epoch, ETag)
+    Replica->>S3: Conditional GET (If-None-Match)
+    S3-->>Replica: 304 Not Modified (<10ms)
+          </div>
+        </div>
+
+        <div class="text-xs text-emerald-800 space-y-1">
+          <div>&bull; <strong>Linear scale:</strong> 100+ read replicas fetch directly via fast S3 304 checks.</div>
+          <div>&bull; <strong>Stateless cattle:</strong> Any node can rebuild a repo from S3 in seconds.</div>
+          <div>&bull; <strong>Single-leader compaction:</strong> Primary repacks; replicas stream pre-compacted packfiles.</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- SECTION 3: SYSTEM DESIGN (HLD) -->
+  <section class="space-y-6">
+    <div class="border-b border-gray-200 pb-3">
+      <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <span class="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center text-sm font-bold">3</span>
+        High-Level Design (HLD) & Request Lifecycle
+      </h2>
+    </div>
+
+    <!-- Big Architecture Diagram -->
+    <div class="p-6 bg-white rounded-xl border border-gray-200 shadow-sm space-y-4">
+      <h3 class="font-bold text-gray-900 text-base">End-to-End System Topology</h3>
+      <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 overflow-x-auto">
+        <div class="mermaid">
+graph TD
+    User([Git Client / AI Agents / CI Runners]) -->|HTTPS / SSH| Gateway[API / Git Gateway]
+    Gateway --> Router{Rendezvous Hash Router}
+    
+    subgraph Compute Layer [Stateless Worker Nodes - Fast NVMe Caches]
+        Router -->|Rank #1: Primary| PNode[Primary Worker Node]
+        Router -->|Rank #2..K: Read Replicas| RNode1[Replica Worker 1]
+        Router -->|Rank #2..K: Read Replicas| RNode2[Replica Worker 2]
+        PNode -.->|UDP Gossip Datagram| RNode1
+        PNode -.->|UDP Gossip Datagram| RNode2
+    end
+    
+    subgraph Storage Layer [S3-Compatible Object Store - Single Source of Truth]
+        PNode -->|Parallel Upload| S3Packs[Immutable Packfiles *.pack]
+        PNode -->|Atomic CAS PUT| S3WAL[WAL Index: index.json]
+        RNode1 -->|Conditional GET 304| S3WAL
+        RNode2 -->|Download Packs| S3Packs
+    end
+    
+    classDef highlight fill:#eff6ff,stroke:#2563eb,stroke-width:2px;
+    class PNode,S3WAL highlight;
+        </div>
+      </div>
+
+      <!-- Key Pipeline Explanations -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 text-xs">
+        <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <div class="font-bold text-gray-900 mb-1">1. Write Path (Push)</div>
+          <p class="text-gray-600">
+            Packfile streamed to disk & S3. Reference locked locally with <code>libgit2</code>. Atomic S3 CAS executed on <code>index.json</code>. ACK returned to user.
+          </p>
+        </div>
+        <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <div class="font-bold text-gray-900 mb-1">2. Read Path (Fetch/Clone)</div>
+          <p class="text-gray-600">
+            Replica validates local cache against S3 using <code>If-None-Match: ETag</code>. Receives sub-10ms HTTP 304 and streams directly from local NVMe.
+          </p>
+        </div>
+        <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <div class="font-bold text-gray-900 mb-1">3. Compaction Path</div>
+          <p class="text-gray-600">
+            Primary runs <code>git repack</code>, uploads merged packfile to S3, and commits new manifest. Replicas download merged packs without burning CPU.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 4: LOW-LEVEL DESIGN & DATA STRUCTURES -->
+  <section class="space-y-6">
+    <div class="border-b border-gray-200 pb-3">
+      <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <span class="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center text-sm font-bold">4</span>
+        Low-Level Design (LLD) & Data Structures
+      </h2>
+    </div>
+
+    <!-- WAL Manifest Schema -->
+    <div class="space-y-3">
+      <h3 class="text-lg font-bold text-gray-900">4.1 S3 WAL Manifest Schema (<code>repos/{id}/wal/index.json</code>)</h3>
+      <div class="p-4 bg-gray-900 text-gray-100 rounded-xl text-xs font-mono overflow-x-auto shadow-inner border border-gray-800">
+<pre><code class="language-json">{
+  "version": 1,
+  "repo_id": "cursor/everysphere",
+  "epoch": 1042,
+  "sequence_number": 88419,
+  "timestamp_ns": 1724000000000000000,
+  "head_commit": "c8f3a9e4b71234567890abcdef1234567890abcd",
+  "refs": {
+    "refs/heads/main": "c8f3a9e4b71234567890abcdef1234567890abcd",
+    "refs/heads/feature-ai": "87ab3211c4000000000000000000000000000000"
+  },
+  "packfiles": [
+    { "sha256": "e3b0c442...", "size_bytes": 104857600, "is_compacted": true },
+    { "sha256": "9f86d081...", "size_bytes": 40960, "is_compacted": false }
+  ]
+}</code></pre>
+      </div>
+    </div>
+
+    <!-- Python Implementation Code -->
+    <div class="space-y-3">
+      <h3 class="text-lg font-bold text-gray-900">4.2 Production Worker & Router Blueprint</h3>
+      <div class="p-4 bg-gray-900 text-gray-100 rounded-xl text-xs font-mono overflow-x-auto shadow-inner border border-gray-800">
+<pre><code class="language-python">import hashlib, json, time
+from typing import List, Dict, Optional, Tuple
+
+class RendezvousHashRouter:
+    """Highest Random Weight (HRW) Hashing for Zero-DB Routing."""
+    def __init__(self, nodes: List[str]):
+        self.nodes = sorted(nodes)
+
+    def _hash_weight(self, repo_id: str, node_id: str) -> int:
+        key = f"{repo_id}:{node_id}".encode('utf-8')
+        return int(hashlib.sha256(key).hexdigest(), 16)
+
+    def get_ranked_nodes(self, repo_id: str) -> List[str]:
+        return sorted(self.nodes, key=lambda n: self._hash_weight(repo_id, n), reverse=True)
+
+class ContinuityWorker:
+    """Stateless NVMe Worker syncing with S3 Write-Ahead Log."""
+    def __init__(self, node_id: str, s3_client):
+        self.node_id = node_id
+        self.s3 = s3_client
+        self.local_cache: Dict[str, dict] = {}
+        self.local_etags: Dict[str, str] = {}
+
+    def push(self, repo_id: str, ref: str, old_oid: str, new_oid: str, pack_bytes: bytes) -> bool:
+        # 1. Upload immutable packfile concurrently
+        pack_sha = hashlib.sha256(pack_bytes).hexdigest()
+        self.s3.put_blob(f"repos/{repo_id}/packs/{pack_sha}.pack", pack_bytes)
+
+        # 2. CAS Loop on S3 Index with Exponential Backoff
+        for attempt in range(3):
+            wal_key = f"repos/{repo_id}/wal/index.json"
+            status, wal_data, current_etag = self.s3.get_object(wal_key)
+            wal = json.loads(wal_data) if status == 200 else {"epoch": 1, "seq": 0, "refs": {}, "packfiles": []}
+
+            # Fast-forward consistency verification
+            if wal["refs"].get(ref) != old_oid and old_oid != "0000000000000000000000000000000000000000":
+                raise ValueError("Non-fast-forward push rejected")
+
+            wal["refs"][ref] = new_oid
+            wal["packfiles"].append({"sha256": pack_sha, "size": len(pack_bytes), "is_compacted": False})
+            wal["seq"] += 1
+
+            # Atomic Compare-And-Swap on S3
+            success, new_etag = self.s3.put_object_cas(wal_key, json.dumps(wal), expected_etag=current_etag)
+            if success:
+                self.local_cache[repo_id] = wal
+                self.local_etags[repo_id] = new_etag
+                return True
+            time.sleep(0.02 * (2 ** attempt))
+        return False</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 5: DSA DEEP DIVE -->
+  <section class="space-y-6">
+    <div class="border-b border-gray-200 pb-3">
+      <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <span class="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center text-sm font-bold">5</span>
+        Algorithms & Data Structures (DSA) Tested in Interviews
+      </h2>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Card 1: Rendezvous Hashing -->
+      <div class="p-5 rounded-xl border border-gray-200 bg-gray-50/50 space-y-3">
+        <div class="font-bold text-gray-900 text-base">1. Rendezvous Hashing (HRW)</div>
+        <p class="text-xs text-gray-600 leading-relaxed">
+          $$\text{Node}^*(K) = \arg\max_{i=1}^N h(K \parallel S_i)$$
+          Eliminates centralized routing databases. Unlike Ketama consistent hashing rings requiring virtual tokens, HRW provides exact top-$k$ ranked lists with $O(1)$ state.
+        </p>
+        <div class="bg-gray-900 p-3 rounded-lg text-[11px] font-mono overflow-x-auto border border-gray-800">
+<pre><code class="language-python">def get_node(repo_id: str, nodes: list[str]) -> str:
+    """Rendezvous Hashing in O(N) time with zero DB."""
+    return max(nodes, key=lambda n: int(hashlib.sha256(f"{repo_id}:{n}".encode()).hexdigest(), 16))</code></pre>
+        </div>
+      </div>
+
+      <!-- Card 2: DAG Lowest Common Ancestor -->
+      <div class="p-5 rounded-xl border border-gray-200 bg-gray-50/50 space-y-3">
+        <div class="font-bold text-gray-900 text-base">2. Merge Base (LCA on DAG)</div>
+        <p class="text-xs text-gray-600 leading-relaxed">
+          Finding the merge base between branches requires computing the <strong>Lowest Common Ancestor</strong> in a directed acyclic graph using generation numbers and multi-source BFS in $O(|V| + |E|)$ time.
+        </p>
+        <div class="bg-gray-900 p-3 rounded-lg text-[11px] font-mono overflow-x-auto border border-gray-800">
+<pre><code class="language-python">def find_merge_base(commit_a, commit_b):
+    """Multi-source BFS ancestor reachability in Git commit DAG."""
+    seen_a, seen_b = {commit_a}, {commit_b}
+    # Traverse parents until lowest common intersection found</code></pre>
+        </div>
+      </div>
+
+      <!-- Card 3: Sliding-Window Delta Encoding -->
+      <div class="p-5 rounded-xl border border-gray-200 bg-gray-50/50 space-y-3">
+        <div class="font-bold text-gray-900 text-base">3. Packfile Delta Compression (xdelta)</div>
+        <p class="text-xs text-gray-600 leading-relaxed">
+          Uses <strong>Rabin-Karp rolling hashes</strong> over 16-byte chunk boundaries to identify common byte sequences, emitting <code>COPY(offset, len)</code> and <code>INSERT(bytes)</code> instructions.
+        </p>
+        <div class="bg-gray-900 p-3 rounded-lg text-[11px] font-mono overflow-x-auto border border-gray-800">
+<pre><code class="language-python"># Byte-level sliding window hash table
+chunk_index = {rolling_hash(chunk): offset for offset, chunk in base_blocks}
+# Emits COPY(offset, length) or INSERT(raw_bytes)</code></pre>
+        </div>
+      </div>
+
+      <!-- Card 4: Roaring Bitmaps & MIDX -->
+      <div class="p-5 rounded-xl border border-gray-200 bg-gray-50/50 space-y-3">
+        <div class="font-bold text-gray-900 text-base">4. Multi-Pack Index (MIDX) & Bitmaps</div>
+        <p class="text-xs text-gray-600 leading-relaxed">
+          Roaring bitmaps accelerate reachability traversals. Calculating <code>git rev-list main ^origin/main</code> becomes a bitwise <code>Bitmap(main) AND NOT Bitmap(origin/main)</code>.
+        </p>
+        <div class="bg-gray-900 p-3 rounded-lg text-[11px] font-mono overflow-x-auto border border-gray-800">
+<pre><code class="language-python"># Hardware-accelerated bitwise reachability
+unpushed_objects = bitmap_branch_main & (~bitmap_origin_main)</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 6: INTERVIEW CHEATSHEET -->
+  <section class="space-y-6">
+    <div class="border-b border-gray-200 pb-3">
+      <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <span class="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center text-sm font-bold">6</span>
+        Senior System Design Interview Cheatsheet
+      </h2>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs text-left border border-gray-200 rounded-lg">
+        <thead class="bg-gray-100 text-gray-700 font-bold border-b border-gray-200">
+          <tr>
+            <th class="p-3">Dimension</th>
+            <th class="p-3">GitHub Spokes (Gen 2)</th>
+            <th class="p-3">Cursor Continuity (Gen 3)</th>
+            <th class="p-3">Interview Justification</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 text-gray-800">
+          <tr>
+            <td class="p-3 font-semibold">Source of Truth</td>
+            <td class="p-3">Quorum of local NVMe disks</td>
+            <td class="p-3 font-bold text-blue-700">S3 Object Store (WAL)</td>
+            <td class="p-3">Decouples compute from storage; delegates durable replication to S3.</td>
+          </tr>
+          <tr>
+            <td class="p-3 font-semibold">Consensus Mechanism</td>
+            <td class="p-3">Three-Phase Commit (3PC)</td>
+            <td class="p-3 font-bold text-blue-700">S3 Atomic CAS (If-Match)</td>
+            <td class="p-3">Eliminates tail latency bottlenecks and complex leader election state machines.</td>
+          </tr>
+          <tr>
+            <td class="p-3 font-semibold">Node Lifecycle</td>
+            <td class="p-3">Stateful Pets (Fragile)</td>
+            <td class="p-3 font-bold text-blue-700">Stateless Cattle (Caches)</td>
+            <td class="p-3">Nodes can be destroyed or added dynamically; materialized from S3 in seconds.</td>
+          </tr>
+          <tr>
+            <td class="p-3 font-semibold">Routing Topology</td>
+            <td class="p-3">Central Relational DB</td>
+            <td class="p-3 font-bold text-blue-700">Rendezvous Hashing (HRW)</td>
+            <td class="p-3">Zero state dependency; deterministic affinity computed locally.</td>
+          </tr>
+          <tr>
+            <td class="p-3 font-semibold">Compaction Policy</td>
+            <td class="p-3">All replicas repack independently</td>
+            <td class="p-3 font-bold text-blue-700">Single-leader &rarr; Replicas download</td>
+            <td class="p-3">Eliminates CPU compaction storms; trades cheap network bandwidth for CPU.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<!-- FOOTER -->
+<footer class="border-t border-gray-200 bg-gray-50 py-8 text-center text-xs text-gray-500">
+  Interview Preparation Notes &bull; System Design &bull; Git at Scale (Cursor Origin & Continuity)
+</footer>
+
+</body>
+</html>

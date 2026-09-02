@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>905. Sort Array By Parity — Algorithm Study Guide (v2 — New Skill)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        'ed-pink': '#db2777', 'ed-blue': '#2563eb', 'ed-teal': '#0d9488',
+        'ed-amber': '#d97706', 'ed-sky': '#0284c7', 'ed-purple': '#7c3aed', 'ed-orange': '#ea580c',
+      },
+      fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+    },
+  },
+};
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; -webkit-text-size-adjust: 100%; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  details > summary { cursor: pointer; list-style: none; min-height: 44px; display: flex; align-items: center; }
+  details > summary::-webkit-details-marker { display: none; }
+  details[open] > summary .chevron { transform: rotate(90deg); }
+  .chevron { transition: transform 0.2s; }
+  pre, .overflow-x-auto, table { -webkit-overflow-scrolling: touch; }
+  @media (max-width: 768px) { .section-pad { padding: 1rem; } }
+  @media (min-width: 769px) { .section-pad { padding: 1.75rem; } }
+  .tok-kw { color: #c084fc; }
+  .tok-ty { color: #fbbf24; }
+  .tok-fn { color: #60a5fa; }
+  .tok-nm { color: #fb923c; }
+  .tok-str { color: #f472b6; }
+  .tok-cm { color: #94a3b8; font-style: italic; }
+  .legend-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: #94a3b8; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+  .color-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-850 antialiased">
+
+<header class="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/40 border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-10">
+    <div class="flex items-center gap-2 md:gap-3 mb-4 flex-wrap">
+      <span class="mono text-sm text-gray-500">LeetCode 905</span>
+      <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">Easy</span>
+      <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200">Two Pointers / In-place</span>
+      <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 border border-purple-200">New Skill v2</span>
+    </div>
+    <h1 class="text-2xl md:text-4xl font-extrabold tracking-tight text-gray-900 mb-3">Sort Array By Parity</h1>
+    <div class="flex flex-wrap gap-2">
+      <span class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Time: O(n)</span>
+      <span class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Space: O(1)</span>
+      <span class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-pink-50 text-ed-pink border border-pink-200">Two Pointers</span>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-10 space-y-4 md:space-y-6">
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <h2 class="text-xl md:text-2xl font-bold text-gray-900 mb-4">1. Problem Statement</h2>
+  <div class="text-gray-700 text-sm md:text-base space-y-3">
+    <p>Given an integer array <span class="mono">nums</span>, move all the even integers to the beginning followed by all the odd integers. Return <strong>any</strong> array that satisfies this condition.</p>
+    <p><strong>Constraints:</strong></p>
+    <ul class="list-disc list-inside space-y-1 ml-2">
+      <li><span class="mono">1 &le; nums.length &le; 5000</span></li>
+      <li><span class="mono">0 &le; nums[i] &le; 5000</span></li>
+    </ul>
+    <p><strong>Example:</strong> Input: <span class="mono">[3,1,2,4]</span> &rarr; Output: <span class="mono">[2,4,3,1]</span> (or <span class="mono">[4,2,1,3]</span>, etc.)</p>
+  </div>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details open>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">2. Pattern Recognition</h2><span class="chevron text-ed-pink text-xl">&#9654;</span></summary>
+    <div class="mt-5 bg-ed-pink/5 border border-ed-pink/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+      <p><strong class="text-ed-pink">Signal words:</strong> "move all even", "followed by odd", "any array that satisfies", "in-place" (implied by follow-up).</p>
+      <p><strong class="text-ed-pink">When to reach for this pattern:</strong> Whenever you need to partition an array into two groups (even/odd, positive/negative, zero/non-zero) and <em>order within each group doesn't matter</em>.</p>
+      <p><strong class="text-ed-pink">Key signal:</strong> "any array that satisfies" &rarr; order doesn't matter &rarr; in-place swap is allowed &rarr; two pointers.</p>
+      <ul class="space-y-1 ml-2">
+        <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>Partition problem (two groups)</span></li>
+        <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>Order within groups doesn't matter</span></li>
+        <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>In-place, O(1) extra space possible</span></li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">3. Pattern Blueprint</h2><span class="chevron text-ed-blue text-xl">&#9654;</span></summary>
+    <div class="mt-5 bg-blue-50 border border-blue-200 rounded-xl p-4 md:p-6">
+      <ul class="space-y-2 text-gray-700 text-sm">
+        <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span><span>Place <span class="mono">left_index</span> at 0, <span class="mono">right_index</span> at last index</span></li>
+        <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span><span>While <span class="mono">left_index &lt; right_index</span>:</span></li>
+        <li class="flex gap-3 ml-6"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span><span>If <span class="mono">nums[left_index]</span> is odd and <span class="mono">nums[right_index]</span> is even &rarr; swap, move both</span></li>
+        <li class="flex gap-3 ml-6"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span><span>If <span class="mono">nums[left_index]</span> is even &rarr; <span class="mono">left_index++</span></span></li>
+        <li class="flex gap-3 ml-6"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">5</span><span>If <span class="mono">nums[right_index]</span> is odd &rarr; <span class="mono">right_index--</span></span></li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">4. How to Think About It</h2><span class="chevron text-ed-blue text-xl">&#9654;</span></summary>
+    <div class="mt-5 bg-ed-blue/5 border border-gray-300 rounded-xl p-4 md:p-6 space-y-3 text-gray-700 text-sm">
+      <p>The key insight is that <strong>order doesn't matter within each group</strong>. The problem says "any array that satisfies this condition" — that's the signal that we can swap freely.</p>
+      <p>If order mattered, we'd need a stable partition (preserve relative order) and two pointers wouldn't work — we'd need extra space. But since order doesn't matter, we can use the <strong>Dutch flag</strong> style two-pointer sweep.</p>
+      <p>Think of it as: <span class="mono">left_index</span> hunts for an "out of place" odd number in the even zone. <span class="mono">right_index</span> hunts for an "out of place" even number in the odd zone. When both find one, swap. Continue until they meet.</p>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">5. Real-World Analogy</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+    <div class="mt-5 bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+      <p>Imagine sorting a deck of cards into red and black piles, but you don't care about the order within each pile. You fan the deck out, point at the leftmost card with your left hand and the rightmost with your right hand.</p>
+      <p>Left hand moves right until it finds a black card in the red zone. Right hand moves left until it finds a red card in the black zone. Swap them. Repeat until your hands meet.</p>
+      <p><strong class="text-ed-teal">Mappings:</strong> You-left = <span class="mono text-ed-teal">left_index</span>, You-right = <span class="mono text-ed-teal">right_index</span>, red = even, black = odd, swap = exchange the two cards.</p>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">6. Build Your Intuition</h2><span class="chevron text-ed-amber text-xl">&#9654;</span></summary>
+    <div class="mt-5 bg-ed-amber/5 border border-ed-amber/15 rounded-xl p-4 md:p-5 text-gray-700 text-sm space-y-2">
+      <p>Trace by hand. Input: <span class="mono">[3,1,2,4]</span></p>
+      <p><strong>Step 1:</strong> <span class="mono">left_index=0</span> (3, odd), <span class="mono">right_index=3</span> (4, even) &rarr; swap &rarr; <span class="mono">[4,1,2,3]</span>, <span class="mono">left=1, right=2</span></p>
+      <p><strong>Step 2:</strong> <span class="mono">nums[1]=1</span> (odd), <span class="mono">nums[2]=2</span> (even) &rarr; swap &rarr; <span class="mono">[4,2,1,3]</span>, <span class="mono">left=2, right=1</span></p>
+      <p><strong>Step 3:</strong> <span class="mono">left &lt; right</span> is false &rarr; stop. Return <span class="mono">[4,2,1,3]</span> &#10003;</p>
+      <p class="text-gray-600 text-xs mt-2">Notice: evens first ([4,2]), odds last ([1,3]). Order within each group is whatever the swaps produced.</p>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details open>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">7. Interactive Visualization</h2><span class="chevron text-ed-pink text-xl">&#9654;</span></summary>
+    <div class="mt-5 space-y-4">
+      <p class="text-gray-700 text-sm">Watch the two pointers sweep. Pink = odd (out of place in even zone), emerald = even (out of place in odd zone), gray = not yet visited. When both pointers find an out-of-place element, they swap.</p>
+      <div class="bg-gray-900 rounded-xl p-4">
+        <div id="sap-canvas" class="space-y-2 min-h-[100px]"></div>
+        <div class="flex gap-4 mt-3 text-xs text-gray-300 items-center flex-wrap">
+          <span>step: <span id="sap-step-num" class="mono text-gray-200 font-bold">0</span></span>
+          <span>status: <span id="sap-status" class="text-white font-semibold">ready</span></span>
+          <span>left_index: <span id="sap-left" class="mono text-blue-400 font-bold">0</span></span>
+          <span>right_index: <span id="sap-right" class="mono text-pink-400 font-bold">3</span></span>
+        </div>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <button id="sap-play" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold min-h-[44px]">Play</button>
+        <button id="sap-pause" class="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm font-semibold min-h-[44px]">Pause</button>
+        <button id="sap-step-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold min-h-[44px]">Step</button>
+        <button id="sap-reset" class="px-4 py-2 bg-gray-400 text-gray-900 rounded-lg text-sm font-semibold min-h-[44px]">Reset</button>
+      </div>
+      <div class="flex gap-2 items-center flex-wrap">
+        <label class="text-sm text-gray-700 font-semibold">Input array:</label>
+        <input id="sap-input" type="text" value="[3,1,2,4]" class="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded-lg text-sm mono" />
+      </div>
+      <div id="sap-log" class="bg-gray-900 text-gray-300 text-xs mono rounded-lg p-3 h-32 overflow-y-auto"></div>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">8. Dry Run</h2><span class="chevron text-ed-amber text-xl">&#9654;</span></summary>
+    <div class="mt-5 overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-amber-50 text-amber-700"><tr>
+          <th class="text-left px-3 py-2 font-semibold">Step</th>
+          <th class="text-left px-3 py-2 font-semibold">left_index</th>
+          <th class="text-left px-3 py-2 font-semibold">right_index</th>
+          <th class="text-left px-3 py-2 font-semibold">nums[left]</th>
+          <th class="text-left px-3 py-2 font-semibold">nums[right]</th>
+          <th class="text-left px-3 py-2 font-semibold">Action</th>
+          <th class="text-left px-3 py-2 font-semibold">Array</th>
+        </tr></thead>
+        <tbody class="text-gray-700">
+          <tr class="border-t"><td class="px-3 py-2 mono">0</td><td class="px-3 py-2 mono">0</td><td class="px-3 py-2 mono">3</td><td class="px-3 py-2">3 (odd)</td><td class="px-3 py-2">4 (even)</td><td class="px-3 py-2">swap</td><td class="px-3 py-2 mono">[4,1,2,3]</td></tr>
+          <tr class="border-t bg-gray-50"><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">2</td><td class="px-3 py-2">1 (odd)</td><td class="px-3 py-2">2 (even)</td><td class="px-3 py-2">swap</td><td class="px-3 py-2 mono">[4,2,1,3]</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 mono">2</td><td class="px-3 py-2 mono">2</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2">—</td><td class="px-3 py-2">—</td><td class="px-3 py-2 text-emerald-700 font-semibold">left &ge; right, stop</td><td class="px-3 py-2 mono">[4,2,1,3]</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">9. Complexity Deep Dive</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+    <div class="mt-5 space-y-3 text-gray-700 text-sm">
+      <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-4 md:p-5">
+        <h3 class="font-bold text-ed-teal mb-2">Time: O(n)</h3>
+        <p>Each element is visited at most once. <span class="mono">left_index</span> only moves right, <span class="mono">right_index</span> only moves left. They meet in the middle after at most n comparisons total.</p>
+      </div>
+      <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 md:p-5">
+        <h3 class="font-bold text-ed-purple mb-2">Space: O(1)</h3>
+        <p>In-place swaps. Only two index variables and a temp for the swap. No extra arrays.</p>
+      </div>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details open>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">10. From Brute Force to Optimal — Every Decision &amp; Why</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+    <div class="mt-5 space-y-4">
+      <p class="text-gray-700 text-sm mb-2">Each version is <strong>forced</strong> by an edge case the previous version fails on (or a cost it can't afford).</p>
+
+      <div class="bg-red-500/5 border border-red-500/15 rounded-xl p-4 md:p-5">
+        <div class="flex items-center gap-2 mb-2"><span class="bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold">v0</span><h3 class="font-bold text-red-500">Naive: two separate lists</h3></div>
+<pre class="mono text-xs bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">even_list = []
+odd_list = []
+for val in nums:
+    if val % 2 == 0:
+        even_list.append(val)
+    else:
+        odd_list.append(val)
+return even_list + odd_list</pre>
+        <p class="text-gray-700 text-sm mt-2"><strong>Works on:</strong> everything. Correct and simple.</p>
+        <p class="text-red-600 text-sm mt-1"><strong>Breaks on:</strong> the follow-up "can you do it in-place?" — uses O(n) extra space. Also two passes when one would do.</p>
+      </div>
+
+      <div class="bg-amber-50 border border-amber-300 rounded-xl p-4 md:p-5">
+        <div class="flex items-center gap-2 mb-2"><span class="bg-amber-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold">v1</span><h3 class="font-bold text-amber-700">+ In-place swap (fixes space)</h3></div>
+<pre class="mono text-xs bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">left_index, right_index = 0, len(nums) - 1
+while left_index &lt; right_index:
+    if nums[left_index] % 2 != 0:
+        nums[left_index], nums[right_index] = nums[right_index], nums[left_index]
+        right_index -= 1
+    else:
+        left_index += 1
+return nums</pre>
+        <p class="text-gray-700 text-sm mt-2"><strong>Decision:</strong> Swap odd-at-left with whatever is at right, then shrink right. If even-at-left, advance left. O(1) space, O(n) time. &#10003;</p>
+        <p class="text-red-600 text-sm mt-1"><strong>Breaks on:</strong> <span class="mono">[1,2,3,4]</span> &rarr; left=0 (1, odd), right=3 (4, even) &rarr; swap &rarr; <span class="mono">[4,2,3,1]</span>, right=2. Now left=0 (4, even) &rarr; left=1 (2, even) &rarr; left=2 (3, odd), right=2 &rarr; swap with self, right=1. left=2, right=1 &rarr; stop. Result <span class="mono">[4,2,3,1]</span>... actually works but does unnecessary swaps when right is already odd. Not a correctness bug, but a wasted-swap inefficiency.</p>
+      </div>
+
+      <div class="bg-emerald-50 border border-emerald-300 rounded-xl p-4 md:p-5">
+        <div class="flex items-center gap-2 mb-2"><span class="bg-emerald-600 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold">v2</span><h3 class="font-bold text-emerald-700">+ Skip-forward on both sides (fixes wasted swaps) — FINAL</h3></div>
+<pre class="mono text-xs bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">left_index, right_index = 0, len(nums) - 1
+while left_index &lt; right_index:
+    while left_index &lt; right_index and nums[left_index] % 2 == 0:
+        left_index += 1
+    while left_index &lt; right_index and nums[right_index] % 2 == 1:
+        right_index -= 1
+    nums[left_index], nums[right_index] = nums[right_index], nums[left_index]
+return nums</pre>
+        <p class="text-gray-700 text-sm mt-2"><strong>Decision:</strong> Before swapping, skip <span class="mono">left_index</span> forward past any already-even elements, and skip <span class="mono">right_index</span> backward past any already-odd elements. Only swap when both are out of place. No wasted swaps. &#10003;</p>
+        <p class="text-emerald-700 text-sm mt-1"><strong>Handles everything:</strong> all-even, all-odd, single element, empty (via constraint), already-partitioned. Time O(n), space O(1).</p>
+      </div>
+
+      <div class="mt-4 overflow-x-auto">
+        <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+          <thead class="bg-gray-100"><tr>
+            <th class="text-left px-3 py-2 font-semibold">Version</th>
+            <th class="text-left px-3 py-2 font-semibold">Edge case that forced it</th>
+            <th class="text-left px-3 py-2 font-semibold">Enhancement added</th>
+          </tr></thead>
+          <tbody class="text-gray-700">
+            <tr class="border-t"><td class="px-3 py-2 mono">v0 &rarr; v1</td><td class="px-3 py-2">follow-up: "in-place?" &rarr; O(n) space</td><td class="px-3 py-2">two-pointer in-place swap</td></tr>
+            <tr class="border-t bg-gray-50"><td class="px-3 py-2 mono">v1 &rarr; v2</td><td class="px-3 py-2">wasted swaps when right is already odd</td><td class="px-3 py-2">skip-forward loops on both sides</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-4 bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-indigo-700 text-sm">
+        <p><strong>The principle:</strong> Every line of complexity in the optimal solution was <em>earned</em> by a specific input the previous version failed on. If you can't name the edge case that forced a line, you don't understand why it's there.</p>
+      </div>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">11. Edge Cases &amp; Gotchas</h2><span class="chevron text-ed-orange text-xl">&#9654;</span></summary>
+    <div class="mt-5 bg-ed-orange/5 border border-gray-300 rounded-xl p-4 md:p-6 space-y-3 text-gray-700 text-sm">
+      <p><strong class="text-ed-orange">All even:</strong> <span class="mono">[2,4,6,8]</span> &rarr; <span class="mono">left_index</span> skips to end, no swaps, return as-is.</p>
+      <p><strong class="text-ed-orange">All odd:</strong> <span class="mono">[1,3,5,7]</span> &rarr; <span class="mono">right_index</span> skips to start, no swaps, return as-is.</p>
+      <p><strong class="text-ed-orange">Single element:</strong> <span class="mono">[2]</span> &rarr; <span class="mono">left=0, right=0</span>, loop doesn't enter, return <span class="mono">[2]</span>.</p>
+      <p><strong class="text-ed-orange">Already partitioned:</strong> <span class="mono">[2,4,1,3]</span> &rarr; skip-forward handles it, no swaps needed.</p>
+      <p><strong class="text-ed-orange">Alternating:</strong> <span class="mono">[1,2,3,4]</span> &rarr; swaps (1,4) then (3,2) &rarr; <span class="mono">[4,2,1,3]</span>.</p>
+      <p><strong class="text-ed-orange">Zeros:</strong> <span class="mono">0 % 2 == 0</span> &rarr; zero is even. Handled.</p>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">12. Common Mistakes</h2><span class="chevron text-ed-orange text-xl">&#9654;</span></summary>
+    <div class="mt-5 bg-ed-orange/5 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-2">
+      <p>&#9679; Forgetting the inner <span class="mono">while</span> loops and swapping every time left is odd — works but does unnecessary swaps.</p>
+      <p>&#9679; Not checking <span class="mono">left_index &lt; right_index</span> inside the inner while loops &rarr; can go out of bounds or cross over.</p>
+      <p>&#9679; Using <span class="mono">left_index &le; right_index</span> in the outer loop &rarr; one extra swap of the middle element with itself.</p>
+      <p>&#9679; Modifying the array when the problem expects a new array (read the problem — this one allows in-place).</p>
+      <p>&#9679; Using <span class="mono">nums[i] % 2 == 1</span> for odd — breaks on negative numbers in some languages (Python is fine, but Java <span class="mono">-3 % 2 == -1</span>). Use <span class="mono">!= 0</span> for safety.</p>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">13. Flashcards</h2><span class="chevron text-ed-purple text-xl">&#9654;</span></summary>
+    <div class="mt-5 space-y-3 text-gray-700 text-sm">
+      <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3"><strong>Q:</strong> Time and space? <span class="text-gray-400">|</span> <strong>A:</strong> O(n) time, O(1) space (in-place swaps).</div>
+      <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3"><strong>Q:</strong> Why does two-pointer work here? <span class="text-gray-400">|</span> <strong>A:</strong> Order within each group doesn't matter ("any array that satisfies"), so we can swap freely.</div>
+      <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3"><strong>Q:</strong> What does the skip-forward inner loop do? <span class="text-gray-400">|</span> <strong>A:</strong> Advances <span class="mono">left_index</span> past already-even elements and <span class="mono">right_index</span> past already-odd elements, so we only swap when both are out of place.</div>
+      <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3"><strong>Q:</strong> When would two pointers NOT work? <span class="text-gray-400">|</span> <strong>A:</strong> If the problem required stable partition (preserve relative order), you'd need extra space.</div>
+      <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3"><strong>Q:</strong> Is zero even or odd? <span class="text-gray-400">|</span> <strong>A:</strong> Even. <span class="mono">0 % 2 == 0</span>.</div>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">14. Where It Is Used (Real World)</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+    <div class="mt-5 text-gray-700 text-sm space-y-2">
+      <p>&#9679; <strong>Stream processing:</strong> partitioning messages by type before different downstream handlers.</p>
+      <p>&#9679; <strong>Memory allocators:</strong> segregating free/used blocks in a heap.</p>
+      <p>&#9679; <strong>Image processing:</strong> separating pixel channels (alpha vs color) for masking.</p>
+      <p>&#9679; <strong>Scheduling:</strong> partitioning tasks by priority before round-robin dispatch.</p>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">15. Interview Tips</h2><span class="chevron text-ed-purple text-xl">&#9654;</span></summary>
+    <div class="mt-5 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-2">
+      <p><strong>Say this first:</strong> "Since order doesn't matter within each group, I'll use two pointers — one from each end — and swap out-of-place pairs. O(n) time, O(1) space."</p>
+      <p><strong>Write the skip-forward version directly.</strong> It shows you understand why the inner loops are there (avoid wasted swaps), not just the basic swap.</p>
+      <p><strong>Narrate the pointers:</strong> "left_index hunts for an odd in the even zone, right_index hunts for an even in the odd zone. When both find one, swap."</p>
+      <p><strong>Test with all-even and all-odd</strong> — these are the edge cases that catch missing bounds checks in the inner loops.</p>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">16. Similar Problems</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+    <div class="mt-5 text-gray-700 text-sm space-y-2">
+      <p>&#9679; <strong>283. Move Zeroes</strong> — same pattern, partition zero vs non-zero (but order matters here, so two-pointer is different).</p>
+      <p>&#9679; <strong>27. Remove Element</strong> — partition keep vs remove, in-place.</p>
+      <p>&#9679; <strong>75. Sort Colors</strong> — Dutch national flag, three-way partition.</p>
+      <p>&#9679; <strong>922. Sort Array By Parity II</strong> — even/odd but interleaved (harder constraint).</p>
+      <p>&#9679; <strong>26. Remove Duplicates from Sorted Array</strong> — in-place partition, order matters.</p>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">17. Related Algorithms</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+    <div class="mt-5 text-gray-700 text-sm space-y-2">
+      <p>&#9679; <strong>Dutch National Flag</strong> — three-way partition (75. Sort Colors).</p>
+      <p>&#9679; <strong>Stable partition</strong> — preserves relative order; needs O(n) space or a clever rotate.</p>
+      <p>&#9679; <strong>Quicksort partition</strong> — same swap idea, but around a pivot value instead of parity.</p>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">18. Where This Pattern Meets System Design</h2><span class="chevron text-indigo-500 text-xl">&#9654;</span></summary>
+    <div class="mt-5 bg-indigo-50 border border-indigo-200 rounded-xl p-4 md:p-6 text-indigo-700 text-sm space-y-3">
+      <p><strong>Shard routing:</strong> Partitioning requests by type (read vs write) before routing to different backend pools — same idea, different scale.</p>
+      <p><strong>Compaction:</strong> Log-structured stores partition live vs tombstoned records during compaction.</p>
+      <p><strong>Load shedding:</strong> Partitioning requests by priority before dropping low-priority traffic under load.</p>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">19. Code Solutions</h2><span class="chevron text-ed-sky text-xl">&#9654;</span></summary>
+    <div class="mt-5 space-y-5">
+      <div class="flex flex-wrap gap-3 mb-2 p-3 bg-gray-100 rounded-lg">
+        <span class="legend-chip"><span class="legend-dot" style="background:#c084fc"></span>keyword</span>
+        <span class="legend-chip"><span class="legend-dot" style="background:#fbbf24"></span>type</span>
+        <span class="legend-chip"><span class="legend-dot" style="background:#60a5fa"></span>function</span>
+        <span class="legend-chip"><span class="legend-dot" style="background:#fb923c"></span>number</span>
+        <span class="legend-chip"><span class="legend-dot" style="background:#f472b6"></span>string</span>
+        <span class="legend-chip"><span class="legend-dot" style="background:#94a3b8"></span>comment</span>
+      </div>
+      <h3 class="text-ed-sky font-bold mb-2">Python (v2 — skip-forward, optimal)</h3>
+<pre class="mono text-xs bg-gray-900 text-gray-100 rounded-xl p-4 overflow-x-auto leading-relaxed">class Solution:
+    def sortArrayByParity(self, nums: List[int]) -> List[int]:
+        left_index, right_index = 0, len(nums) - 1
+        while left_index < right_index:
+            while left_index < right_index and nums[left_index] % 2 == 0:
+                left_index += 1
+            while left_index < right_index and nums[right_index] % 2 == 1:
+                right_index -= 1
+            nums[left_index], nums[right_index] = nums[right_index], nums[left_index]
+        return nums</pre>
+      <div>
+        <h3 class="text-ed-sky font-bold mb-2">Python (v0 — two lists, O(n) space)</h3>
+<pre class="mono text-xs bg-gray-900 text-gray-100 rounded-xl p-4 overflow-x-auto leading-relaxed">class Solution:
+    def sortArrayByParity(self, nums: List[int]) -> List[int]:
+        even_list = [val for val in nums if val % 2 == 0]
+        odd_list = [val for val in nums if val % 2 != 0]
+        return even_list + odd_list</pre>
+      </div>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">20. Follow-Up Questions</h2><span class="chevron text-indigo-500 text-xl">&#9654;</span></summary>
+    <div class="mt-5 space-y-3 text-gray-700 text-sm">
+      <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3"><strong>Q1:</strong> Can you do it in-place? <span class="text-gray-400">|</span> <strong>A:</strong> Yes — two pointers from both ends, swap out-of-place pairs. O(1) space.</div>
+      <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3"><strong>Q2:</strong> What if order within each group must be preserved (stable partition)? <span class="text-gray-400">|</span> <strong>A:</strong> Two-pointer swap doesn't work. Use a stable approach: build two lists and concatenate (O(n) space), or rotate elements in-place (O(n²) worst case).</div>
+      <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3"><strong>Q3:</strong> What if there are three groups (e.g., negative, zero, positive)? <span class="text-gray-400">|</span> <strong>A:</strong> Dutch national flag problem — three pointers (low, mid, high).</div>
+      <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3"><strong>Q4:</strong> What if the input is a stream (can't index)? <span class="text-gray-400">|</span> <strong>A:</strong> Two-list approach — append to even_list or odd_list as each element arrives, concatenate at the end.</div>
+    </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 section-pad shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">21. Quick Reference</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+    <div class="mt-5 space-y-3 text-gray-700 text-sm">
+      <p>Two pointers from both ends. Skip <span class="mono">left_index</span> forward past evens, skip <span class="mono">right_index</span> backward past odds. When both out of place, swap. O(n) time, O(1) space. Works because order within each group doesn't matter.</p>
+<pre class="mono text-xs bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">left, right = 0, len(nums) - 1
+while left < right:
+    while left < right and nums[left] % 2 == 0: left += 1
+    while left < right and nums[right] % 2 == 1: right -= 1
+    nums[left], nums[right] = nums[right], nums[left]
+return nums</pre>
+    </div>
+  </details>
+</section>
+
+</main>
+
+<footer class="bg-gray-900 text-gray-400 text-center text-xs py-6 mt-8">
+  Generated by dsa-generator skill (v2) &middot; Sort Array By Parity &middot; LeetCode 905
+</footer>
+
+<script>
+(function() {
+  const canvas = document.getElementById('sap-canvas');
+  const stepEl = document.getElementById('sap-step-num');
+  const statusEl = document.getElementById('sap-status');
+  const leftEl = document.getElementById('sap-left');
+  const rightEl = document.getElementById('sap-right');
+  const logEl = document.getElementById('sap-log');
+  const input = document.getElementById('sap-input');
+  const playBtn = document.getElementById('sap-play');
+  const pauseBtn = document.getElementById('sap-pause');
+  const stepBtn = document.getElementById('sap-step-btn');
+  const resetBtn = document.getElementById('sap-reset');
+
+  let nums = [], leftIndex = 0, rightIndex = 0, stepNum = 0, playing = false, timer = null, done = false, phase = 'check';
+
+  function parseInput(text) {
+    try {
+      const arr = JSON.parse(text);
+      if (Array.isArray(arr) && arr.every(v => typeof v === 'number')) return arr;
+    } catch (e) {}
+    return [3,1,2,4];
+  }
+
+  function render() {
+    canvas.innerHTML = '';
+    const row = document.createElement('div');
+    row.className = 'flex gap-1 flex-wrap';
+    nums.forEach((val, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'w-12 h-12 rounded-lg flex items-center justify-center text-sm font-bold mono transition-all duration-300 ';
+      let bg = 'bg-gray-700 text-gray-300';
+      let border = '';
+      if (i === leftIndex && i === rightIndex) {
+        bg = val % 2 === 0 ? 'bg-emerald-500 text-white' : 'bg-pink-500 text-white';
+        border = 'ring-2 ring-blue-400';
+      } else if (i === leftIndex) {
+        bg = val % 2 === 0 ? 'bg-emerald-500 text-white' : 'bg-pink-500 text-white';
+        border = 'ring-2 ring-blue-400';
+      } else if (i === rightIndex) {
+        bg = val % 2 === 0 ? 'bg-emerald-500 text-white' : 'bg-pink-500 text-white';
+        border = 'ring-2 ring-pink-400';
+      } else if (i < leftIndex) {
+        bg = val % 2 === 0 ? 'bg-emerald-700 text-emerald-100' : 'bg-pink-700 text-pink-100';
+      } else if (i > rightIndex) {
+        bg = val % 2 === 0 ? 'bg-emerald-700 text-emerald-100' : 'bg-pink-700 text-pink-100';
+      }
+      cell.className += bg + ' ' + border;
+      cell.textContent = val;
+      row.appendChild(cell);
+    });
+    canvas.appendChild(row);
+    stepEl.textContent = stepNum;
+    leftEl.textContent = leftIndex;
+    rightEl.textContent = rightIndex;
+  }
+
+  function log(msg) {
+    const line = document.createElement('div');
+    line.textContent = '[' + stepNum + '] ' + msg;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function setStatus(text, color) {
+    statusEl.textContent = text;
+    statusEl.className = 'font-semibold ' + (color || 'text-white');
+  }
+
+  function reset() {
+    nums = parseInput(input.value);
+    leftIndex = 0;
+    rightIndex = nums.length - 1;
+    stepNum = 0;
+    done = false;
+    playing = false;
+    phase = 'check';
+    if (timer) { clearInterval(timer); timer = null; }
+    logEl.innerHTML = '';
+    setStatus('ready', 'text-white');
+    log('init: left_index=0, right_index=' + rightIndex);
+    render();
+  }
+
+  function step() {
+    if (done || nums.length === 0) return;
+    if (leftIndex >= rightIndex) {
+      setStatus('DONE \u2713', 'text-emerald-400');
+      log('left_index >= right_index \u2192 stop. result: [' + nums.join(',') + ']');
+      done = true;
+      if (timer) { clearInterval(timer); timer = null; playing = false; }
+      return;
+    }
+    stepNum++;
+    const leftVal = nums[leftIndex];
+    const rightVal = nums[rightIndex];
+    if (leftVal % 2 === 0) {
+      log('nums[' + leftIndex + ']=' + leftVal + ' is even \u2192 left_index++');
+      leftIndex++;
+    } else if (rightVal % 2 === 1) {
+      log('nums[' + rightIndex + ']=' + rightVal + ' is odd \u2192 right_index--');
+      rightIndex--;
+    } else {
+      log('nums[' + leftIndex + ']=' + leftVal + ' odd, nums[' + rightIndex + ']=' + rightVal + ' even \u2192 swap');
+      nums[leftIndex] = rightVal;
+      nums[rightIndex] = leftVal;
+      leftIndex++;
+      rightIndex--;
+    }
+    render();
+  }
+
+  function play() {
+    if (done) reset();
+    if (playing) return;
+    playing = true;
+    setStatus('running', 'text-emerald-400');
+    timer = setInterval(function() {
+      if (done) { clearInterval(timer); playing = false; return; }
+      step();
+    }, 700);
+  }
+
+  function pause() {
+    if (timer) { clearInterval(timer); timer = null; }
+    playing = false;
+    setStatus('paused', 'text-amber-400');
+  }
+
+  input.addEventListener('input', reset);
+  playBtn.addEventListener('click', play);
+  pauseBtn.addEventListener('click', pause);
+  stepBtn.addEventListener('click', function() { pause(); step(); });
+  resetBtn.addEventListener('click', reset);
+
+  reset();
+})();
+</script>
+
+<script>
+(function() {
+  const KEYWORDS = new Set([
+    'class','def','while','if','else','elif','return','and','or','not','in','is',
+    'None','True','False','self','for','import','from','as','lambda','try','except',
+    'finally','with','pass','break','continue','yield','assert','del','raise','async','await',
+    'public','private','protected','static','void','new','this','super','extends','implements',
+    'throw','catch','switch','case','default','goto','sizeof','const','unsigned','signed',
+    'long','short','float','double','auto','struct','enum','union','typedef','namespace',
+    'using','virtual','override','final','explicit','friend','inline','mutable','volatile',
+    'template','typename','nullptr','bool','char','int','string','List','ArrayList','Vector',
+    'Math','Arrays','System','Solution','max','min','sort','len','range','print'
+  ]);
+  const TYPES = new Set([
+    'int','str','bool','float','double','char','void','long','short','unsigned','signed',
+    'List','ArrayList','Vector','Map','HashMap','Set','HashSet','Dict','Dictionary',
+    'Solution','String','Integer','Boolean','Object','vector','string','size_t'
+  ]);
+
+  function highlight(pre) {
+    if (pre.dataset.highlighted) return;
+    const text = pre.textContent;
+    const master = /(#[^\n]*|\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b\d+\b)|([A-Za-z_][A-Za-z_0-9]*)/g;
+    let out = '';
+    let last = 0;
+    let m;
+    while ((m = master.exec(text)) !== null) {
+      out += text.slice(last, m.index).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      if (m[1]) {
+        out += '<span class="tok-cm">' + m[1].replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>';
+      } else if (m[2]) {
+        out += '<span class="tok-str">' + m[2].replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>';
+      } else if (m[3]) {
+        out += '<span class="tok-nm">' + m[3] + '</span>';
+      } else if (m[4]) {
+        const word = m[4];
+        const after = text.slice(master.lastIndex, master.lastIndex + 1);
+        if (KEYWORDS.has(word)) {
+          out += '<span class="tok-kw">' + word + '</span>';
+        } else if (TYPES.has(word)) {
+          out += '<span class="tok-ty">' + word + '</span>';
+        } else if (after === '(') {
+          out += '<span class="tok-fn">' + word + '</span>';
+        } else if (/^[A-Z]/.test(word)) {
+          out += '<span class="tok-ty">' + word + '</span>';
+        } else {
+          out += word;
+        }
+      }
+      last = master.lastIndex;
+    }
+    out += text.slice(last).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    pre.innerHTML = out;
+    pre.dataset.highlighted = '1';
+  }
+
+  function run() {
+    document.querySelectorAll('pre.mono').forEach(highlight);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', run);
+  } else {
+    run();
+  }
+})();
+</script>
+
+</body>
+</html>

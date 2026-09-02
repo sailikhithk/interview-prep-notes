@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: S3-like Object Storage — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] hero-glow pointer-events-none"></div>
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">SD</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">S3-like Object Storage</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">System Design Workbook</span>
+      </div>
+    </div>
+    <a href="../README.md" class="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">&larr; Back to System Design Hub</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Architectural Study Guide</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">High Scale &bull; Distributed Systems</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+      <span class="gradient-text">S3-like Object Storage</span>
+    </h1>
+    <p class="text-gray-600 text-base max-w-3xl leading-relaxed">
+      Comprehensive architectural deep-dive covering high-level data flow, data models, edge case failure modes, scaling strategies, and interview trade-off defenses.
+    </p>
+  </div>
+</div>
+
+<!-- CONTENT MAIN -->
+<main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+  <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm prose prose-blue max-w-none space-y-6">
+    <h1 class="text-2xl font-black text-gray-900 border-b border-gray-200 pb-3 mb-4 mt-6">Chapter 24: S3-like Object Storage</h1>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Introduction</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In this chapter, we'll be designing an <strong class="text-gray-900 font-bold">object storage</strong> service, similar to <strong class="text-gray-900 font-bold">Amazon S3</strong>.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Storage systems fall into three broad categories:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Block storage</strong></li>
+<li><strong class="text-gray-900 font-bold">File storage</strong></li>
+<li><strong class="text-gray-900 font-bold">Object storage</strong></li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><strong class="text-gray-900 font-bold">Block storage</strong> are devices, which came out in 1960s. HDDs and SSDs are such examples.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">These devices are typically physically attached to a server, although they can also be network-attached via high-speed network protocols.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Servers can format the raw blocks and use them as a file system or it can hand control of them to servers directly.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><strong class="text-gray-900 font-bold">File storage</strong> is built on top of block storage. It provides a higher level of abstraction, making it easier to manage folders and files.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><strong class="text-gray-900 font-bold">Object storage</strong> sacrifices performance for high durability, vast scale and low cost.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">It targets "cold" data and is mainly used for archival and backup.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">There is no hierarchical directory structure, all data is stored as objects in a flat structure.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">It is relatively slow compared to other storage types. Most cloud providers have an object storage offering - Amazon S3, Google GCS, etc.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/storage-comparison.png" alt="storage-comparison" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<div class="text-xs text-gray-700 font-mono py-0.5">|                 | Block Storage                    | File Storage                            | Object Storage                 |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">|-----------------|----------------------------------|-----------------------------------------|--------------------------------|</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| Mutable Content | Y                                | Y                                       | N (has object versioning）     |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| Cost            | High                             | Medium to high                          | Low                            |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| Performance     | Medium to high, very high        | Medium to high                          | Low to medium                  |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| Consistency     | Strong consistency               | Strong consistency                      | Strong consistency [5]         |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| Data access     | SAS/iSCSI/FC                     | Standard file access, CIFS/SMB, and NFS | RESTful API                    |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| Scalability     | Medium scalability               | High scalability                        | Vast scalability               |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| Good for        | Virtual machines (VM), databases | General-purpose file system access      | Binary data, unstructured data |</div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Some terminology, related to object storage:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Bucket</strong> - logical container for objects. Name is globally unique.</li>
+<li><strong class="text-gray-900 font-bold">Object</strong> - An individual piece of data, stored in a bucket. Contains object data and metadata.</li>
+<li><strong class="text-gray-900 font-bold">Versioning</strong> - A feature keeping multiple variants of an object in the same bucket.</li>
+<li><strong class="text-gray-900 font-bold">Uniform Resource Identifier (URI)</strong> - each resource is uniquely identified by a URI.</li>
+<li><strong class="text-gray-900 font-bold">Service-level Agreement (SLA)</strong> - contract between service provider and client.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Amazon S3 Standard-Infrequent Access storage class SLAs:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Durability of 99.999999999% across multiple Availability Zones</li>
+<li>Data is resilient in the event of entire Availability Zone being destroyed</li>
+<li>Designed for 99.9% availability</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 1: Understand the Problem and Establish Design Scope</h2>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>C: Which features should be included?</li>
+<li>I: Bucket creation, Object upload/download, versioning, Listing objects in a bucket</li>
+<li>C: What is the typical data size?</li>
+<li>I: We need to store both massive objects and small objects efficiently</li>
+<li>C: How much data do we store in a year?</li>
+<li>I: 100 petabytes</li>
+<li>C: Can we assume 6 nines of data durbility (99.9999%) and service availability of 4 nines (99.99%)?</li>
+<li>I: Yes, sounds reasonable</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Non-functional requirements**</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">100 PB of data</strong></li>
+<li><strong class="text-gray-900 font-bold">6 nines of data durability</strong></li>
+<li><strong class="text-gray-900 font-bold">4 nines of service availability</strong></li>
+<li>Storage efficiency. Reduce storage cost while maintaining high reliability and performance</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Back-of-the-envelope estimation**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Object storage is likely to have bottlenecks in disk capacity or IO per second (IOPS).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Assumptions:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>we have 20% small (less than 1mb), 60% mid-size (1-64mb) and 20% large objects (greater than 64mb),</li>
+<li>One hard disk (SATA, 7200rpm) is capable of doing 100-150 random seeks per second (100-150 IOPS)</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Given the assumptions, we can estimate the total number of objects the system can persist.</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Let's use median size per object type to simplify calculation - 0.5mb for small, 32mb for medium, 200mb for large.</li>
+<li>Given 100PB of storage (10^11 MB) and 40% of storage usage results in 0.68bil objects</li>
+<li>If we assume metadata is 1kb, then we need 0.68tb space to store metadata info</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 2: Propose High-Level Design and Get Buy-In</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Let's explore some interesting properties of object storage before diving into the design:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Object immutability</strong> - objects in object storage are immutable (not the case in other storage systems). We may delete them or replace them, but no update.</li>
+<li><strong class="text-gray-900 font-bold">Key-value store</strong> - an object URI is its key and we can get its contents by making an HTTP call</li>
+<li><strong class="text-gray-900 font-bold">Write once, read many times</strong> - data access pattern is writing once and reading many times. According to some Linkedin research, 95% of operations are reads</li>
+<li>Support both small and large objects</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Design philosophy of object storage is similar to UNIX - when we save a file, it creates the filename in a data structure, called inode and file data is stored in different disk locations.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The inode contains a list of file block pointers, which point to different locations on disk.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">When accessing a file, we first fetch its metadata from the inode, prior to fetching the file contents.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Object storage works similarly - metadata store is used for file information, but contents are stored on disk:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/object-store-vs-unix.png" alt="object-store-vs-unix" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">By separating metadata from file contents, we can scale the different stores independently:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/bucket-and-object.png" alt="bucket-and-object" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**High-level design**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/high-level-design.png" alt="high-level-design" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Load balancer</strong> - distributes API requests across service replicas</li>
+<li><strong class="text-gray-900 font-bold">API service</strong> - Stateless server, orchestrating calls to metadata and object store, as well as IAM service.</li>
+<li><strong class="text-gray-900 font-bold">Identity and access management (IAM)</strong> - central place for auth, authz, access control.</li>
+<li><strong class="text-gray-900 font-bold">Data store</strong> - stores and retrieves actual data. Operations are based on object ID (UUID).</li>
+<li><strong class="text-gray-900 font-bold">Metadata store</strong> - stores object metadata</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Uploading an object**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/uploading-object.png" alt="uploading-object" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Create a bucket named "bucket-to-share" via HTTP PUT request</li>
+<li>API service calls IAM to ensure user is authorized and has write permissions</li>
+<li>API service calls metadata store to create a bucket entry. Once created, success response is returned.</li>
+<li>After bucket is created, HTTP PUT is sent to create an object named "script.txt"</li>
+<li>API service verifies user identity and ensures user has write permissions</li>
+<li>Once validation passes, object payload is sent via HTTP PUT to the data store. Data store persists it and returns a UUID.</li>
+<li>API service calls metadata store to create a new entry with object_id, bucket_id and bucket_name, among other metadata.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Example object upload request:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>PUT /bucket-to-share/script.txt HTTP/1.1
+Host: foo.s3example.org
+Date: Sun, 12 Sept 2021 17:51:00 GMT
+Authorization: authorization string
+Content-Type: text/plain
+Content-Length: 4567
+x-amz-meta-author: Alex
+
+[4567 bytes of object data]</code></pre></div>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Downloading an object**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Buckets have no directory hierarchy, buy we can create a logical hierarchy by concatenating bucket name and object name to simulate a folder structure.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Example GET request for fetching an object:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>GET /bucket-to-share/script.txt HTTP/1.1
+Host: foo.s3example.org
+Date: Sun, 12 Sept 2021 18:30:01 GMT
+Authorization: authorization string</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/download-object.png" alt="download-object" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Client sends an HTTP GET request to the load balancer, ie <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">GET /bucket-to-share/script.txt</code></li>
+<li>API service queries IAM to verify the user has correct permissions to read the bucket</li>
+<li>Once validated, UUID of object is retrieved from metadata store</li>
+<li>Object payload is retrieved from data store based on UUID and returned to the client</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">// sprint 1</p>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 3: Design Deep Dive</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Data store**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Here's how the API service interacts with the data store:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/data-store-interactions.png" alt="data-store-interactions" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The data store's main components:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/data-store-main-components.png" alt="data-store-main-components" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The data routing service provides a RESTful or gRPC API to access the data node cluster.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">It is a stateless service, which scales by adding more servers.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">It's main responsibilities are:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>querying the placement service to get the best data node to store data</li>
+<li>reading data from data nodes and returning it to the API service</li>
+<li>Writing data to data nodes</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The placement service determines which data nodes should store an object.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">It maintains a virtual cluster map, which determines the physical topology of a cluster.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/virtual-cluster-map.png" alt="virtual-cluster-map" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The service also sends heartbeats to all data nodes to determine if they should be removed from the virtual cluster.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Since this is a critical service, it is recommended to maintain a cluster of 5 or 7 replicas, synchronized via Paxos or Raft consensus algorithms.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Eg a 7 node cluster can tolerate 3 nodes failing.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Data nodes store the actual object data.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Reliability and durability is ensured by replicating data to multiple data nodes.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Each data node has a daemon running, which sends heartbeats to the placement service.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The heartbeat includes:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>How many disk drives (HDD or SSD) does the data node manage?</li>
+<li>How much data is stored on each drive?</li>
+</ul>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Data persistence flow</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/data-persistence-flow.png" alt="data-persistence-flow" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>API service forwards the object data to data store</li>
+<li>Data routing service sends the data to the primary data node</li>
+<li>Primary data node saves the data locally and replicates it to two secondary data nodes. Response is sent after successful replication.</li>
+<li>The UUID of the object is returned to the API service.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Caveats:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Given an object UUID, it's replication group is deterministically chosen by using consistent hashing</li>
+<li>In step 4, the primary data node replicates the object data before returning a response. This favors strong consistency over higher latency.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/consistency-vs-latency.png" alt="consistency-vs-latency" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">How data is organized</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">One simple approach to managing data is to store each object in a separate file.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This works, but is not performant with many small files in a file system:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Data blocks on HDD are wasted, because every file uses the whole block size. Typical block size is 4kb.</li>
+<li>Many files means many inodes. Operating systems don't deal well with too many inodes and there is also a max inode limit.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">These issues can be addressed by merging many small files into bigger ones via a write-ahead log (WAL). Once the file reaches its capacity (typically a few GB), a new file is created:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/wal-optimization.png" alt="wal-optimization" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The downside of this approach is that write access to the file needs to be serialized. Multiple cores accessing the same file must wait for each other.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">To fix this, we can confine files to specific cores to avoid lock contention.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Object lookup</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">To support storing multiple objects in the same file, we need to maintain a table, which tells the data node:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">object_id</code></li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">filename</code> where object is stored</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">file_offset</code> where object starts</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">object_size</code></li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We can deploy this table in a file-based db like RocksDB or a traditional relational database.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Since the access pattern is low write+high read, a relational database works better.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">How should we deploy it?</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We could deploy the db and scale it separately in a cluster, accessed by all data nodes.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Downsides:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>we'd need to aggressively scale the cluster to serve all requests</li>
+<li>there's additional network latency between data node and db cluster</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">An alternative is to take advantage of the fact that data nodes are only interested to data related to them,</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">so we can deploy the relational db within the data node itself.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">SQLite is a good option as it's a lightweight file-based relational database.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Updated data persistence flow</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/updated-data-persistence-flow.png" alt="updated-data-persistence-flow" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>API Service sends a request to save a new object</li>
+<li>Data node service appends the new object at the end of a file, named "/data/c"</li>
+<li>A new record for the object is inserted into the object mapping table</li>
+</ul>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Durability</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Data durability is an important requirement in our design. In order to achieve 6 nines of durability, every failure case needs to be properly examined.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">First problem to address is hardware failures. We can achieve that by replicating data nodes to minimize probability of failure.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">But in addition to that, we also ought to replicate across different failure domains (cross-rack, cross-dc, separate networks, etc).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A critical event can cause multiple hardware failures within the same domain:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/failure-domain-isolation.png" alt="failure-domain-isolation" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Assuming annual failure rate of a typical HDD is 0.81%, making three copies gives us 6 nines of durability.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Replicating the data nodes like that grants us the durability we want, but we could also leverage erasure coding to reduce storage costs.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Erasure coding enables us to use parity bits, which allow us to reconstruct lost bits in the event of a failure:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/erasure-coding.png" alt="erasure-coding" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Imagine those bits are data nodes. If two of them go down, they can be recovered using the remaining four ones.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">There are different erasure coding schemes. In our case, we could use 8+4 erasure coding, split across different failure domains to maximize reliability:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/erasure-coding-across-failure-domains.png" alt="erasure-coding-across-failure-domains" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Erasure coding enables us to achieve a much lower storage cost (50% improvement) at the expense of access speed due to the data routing service having to collect data from multiple locations:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/erasure-coding-vs-replication.png" alt="erasure-coding-vs-replication" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Other caveats:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Replication requires 200% storage overhead (in case of 3 replicas) vs. 50% via erasure coding</li>
+<li>Erasure coding [gives us 11 nines of durability](https://github.com/Backblaze/erasure-coding-durability) vs 6 nines via replication</li>
+<li>Erasure coding requires more computation to calculate and store parities</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In sum, replication is more useful for latency-sensitive applications, whereas erasure coding is attractive for storage cost efficiency and durability.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Erasure coding is also much harder to implement.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Correctness verification</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">If a disk fails entirely, then the failure is easy to detect. This is less straightforward in the event part of the disk memory gets corrupted.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">To detect this, we can use checksums - a hash of the file contents, which can be used to verify the file's integrity.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In our case, we'll store checksums for each file and each object:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/checksums-for-correctness.png" alt="checksums-for-correctness" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In the case of erasure coding (8+4), we'll need to fetch each of the 8 pieces of data separately and verify each of their checksums.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">// sprint 2</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Metadata data model**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Table schemas:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/metadata-data-model.png" alt="metadata-data-model" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Queries we need to support:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Find an object ID by name</li>
+<li>Insert/delete object based on name</li>
+<li>List objects in a bucket sharing the same prefix</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">There is usually a limit on the number of buckets a user can create, hence, the size of the buckets table is small and can fit into a single db server.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">But we still need to scale the server for read throughput.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The object table will probably not fit into a single database server, though. Hence, we can scale the table via sharding:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Sharding by bucket_id will lead to hotspot issues as a bucket can have billions of objects</li>
+<li>Sharding by bucket_id makes the load more evenly distributed, but our queries will be slow</li>
+<li>We choose sharding by <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">hash(bucket_name, object_name)</code> since most queries are based on the object/bucket name.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Even with this sharding scheme, though, listing objects in a bucket will be slow.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Listing objects in a bucket**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In a single database, listing an object based on its prefix (looks like a directory) works like this:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>SELECT * FROM object WHERE bucket_id = "123" AND object_name LIKE `abc/%`</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This is challenging to fulfill when the database is sharded. To achieve it, we can run the query on every shard and aggregate the results in-memory.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This makes pagination challenging though, since different shards contain a different result size and we need to maintain separate limit/offset for each.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We can leverage the fact that typically object stores are not optimized for listing objects, so we can sacrifice listing performance.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We can also create a denormalized table for listing objects, sharded by bucket ID.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">That would make our listing query sufficiently fast as it's isolated to a single database instance.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Object versioning**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Versioning works by having another <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">object_version</code> column which is of type TIMEUUID, enabling us to sort records based on it.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Each new version produces a new <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">object_id</code>:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/object-versioning.png" alt="object-versioning" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Deleting an object creates a new version with a special <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">object_id</code> indicating that the object was deleted. Queries for it return 404:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/deleting-versioned-object.png" alt="deleting-versioned-object" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Optimizing uploads of large files**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Uploading large files can be optimized by using multipart uploads - splitting a big file into several chunks, uploaded independently:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/multipart-upload.png" alt="multipart-upload" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Client calls service to initiate a multipart upload</li>
+<li>Data store returns an upload ID which uniquely identifies the upload</li>
+<li>Client splits the large file into several chunks, uploaded independently using the upload id</li>
+<li>When a chunk is uploaded, the data store returns an etag, which is a md5 checksum, identifying that upload chunk</li>
+<li>After all parts are uploaded, client sends a complete multipart upload request, which includes upload_id, part numbers and all etags</li>
+<li>Data store reassembles the object from its parts. The process can take a few minutes. After that, success response is returned to the client.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Old parts, which are no longer useful can be removed at this point. We can introduce a garbage collector to deal with it.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Garbage collection**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Garbage collection is the process of reclaiming storage space, which is no longer used. There are a few ways data becomes garbage:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">lazy object deletion</strong> - object is marked as deleted without actually getting deleted</li>
+<li><strong class="text-gray-900 font-bold">orphan data</strong> - eg an upload failed mid-flight and old parts need to be deleted</li>
+<li><strong class="text-gray-900 font-bold">corrupted data</strong> - data which failed checksum verification</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The garbage collector is also responsible for reclaiming unused space in replicas.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">With replication, data is deleted from both primaries and replicas. With erasure coding (8+4), data is deleted from all 12 nodes.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">To facilitate the deletion, we'll use a process called compaction:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Garbage collector copies objects which are not deleted from "data/b" to "data/d"</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">object_mapping</code> table is updated once copying is complete using a database transaction</li>
+<li>To avoid making too many small files, compaction is done on files which grow beyond a certain threshold</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/compaction.png" alt="compaction" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 4: Wrap Up</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Things we covered:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Designing an S3-like object storage</li>
+<li>Comparing differences between object, block and file storages</li>
+<li>Covered uploading, downloading, listing, versioning of objects in a bucket</li>
+<li>Deep dived in the design - data store and metadata store, replication and erasure coding, multipart uploads, sharding</li>
+</ul>
+  </div>
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>System Design Interactive Study Suite &bull; AntiGravity IDE</p>
+</footer>
+</body>
+</html>

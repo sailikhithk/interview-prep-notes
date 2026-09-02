@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: Youtube — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] hero-glow pointer-events-none"></div>
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">SD</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">Youtube</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">System Design Workbook</span>
+      </div>
+    </div>
+    <a href="../README.md" class="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">&larr; Back to System Design Hub</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Architectural Study Guide</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">High Scale &bull; Distributed Systems</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+      <span class="gradient-text">Youtube</span>
+    </h1>
+    <p class="text-gray-600 text-base max-w-3xl leading-relaxed">
+      Comprehensive architectural deep-dive covering high-level data flow, data models, edge case failure modes, scaling strategies, and interview trade-off defenses.
+    </p>
+  </div>
+</div>
+
+<!-- CONTENT MAIN -->
+<main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+  <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm prose prose-blue max-w-none space-y-6">
+    <h1 class="text-2xl font-black text-gray-900 border-b border-gray-200 pb-3 mb-4 mt-6">Chapter 14: Design YouTube</h1>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Introduction</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">YouTube is a massive video streaming platform supporting video uploads, playback, and various interactions. This chapter focuses on designing a scalable video streaming system with the following core features:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Fast video uploads</strong></li>
+<li><strong class="text-gray-900 font-bold">Smooth video streaming</strong></li>
+<li><strong class="text-gray-900 font-bold">Ability to change video quality</strong></li>
+<li><strong class="text-gray-900 font-bold">Low infrastructure cost</strong></li>
+<li><strong class="text-gray-900 font-bold">High availability and reliability</strong></li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Key Statistics (2020)</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">2 billion monthly active users</strong></li>
+<li><strong class="text-gray-900 font-bold">5 billion videos watched per day</strong></li>
+<li><strong class="text-gray-900 font-bold">37% of mobile internet traffic comes from YouTube</strong></li>
+<li>Available in <strong class="text-gray-900 font-bold">80 languages</strong></li>
+<li><strong class="text-gray-900 font-bold">$15.1 billion ad revenue</strong> in 2019</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 1: Understand the Problem and Scope</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Core Functionalities</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. Upload videos</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. Watch videos</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Supported Platforms</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Mobile apps, web browsers, and smart TVs</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Assumptions</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Daily Active Users (DAU):</strong> 5 million</li>
+<li><strong class="text-gray-900 font-bold">Average Video Size:</strong> 300 MB</li>
+<li><strong class="text-gray-900 font-bold">Upload Limits:</strong> Max 1 GB per video</li>
+<li><strong class="text-gray-900 font-bold">Daily Storage Need:</strong> 150 TB</li>
+<li><strong class="text-gray-900 font-bold">CDN Costs:</strong> 5 million * 5 videos * 0.3GB * $0.02 =  $150,000/day (using Amazon CloudFront)</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 2: High-Level Design</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Components</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/high-level-design.png" alt="High Level Design" width="400"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Client:</strong> Devices like smartphones, computers, and TVs.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">CDN (Content Delivery Network):</strong> Stores and streams videos.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">API Servers:</strong> Handles all user interactions except video streaming (e.g., uploads, metadata updates).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Metadata Database:</strong> Stores video metadata (e.g., title, description, size).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">5. <strong class="text-gray-900 font-bold">Original Storage:</strong> Blob storage for uploaded videos.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">6. <strong class="text-gray-900 font-bold">Transcoding Servers:</strong> Convert videos into multiple resolutions and formats.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">7. <strong class="text-gray-900 font-bold">Transcoded Storage:</strong> Blob storage for transcoded videos.</p>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Core Workflows</h3>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">1. Video Uploading Flow</h4>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Parallel Processes:</strong></li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. Upload video to original storage.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. Update video metadata in the database.</p>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Video Upload (Steps):</strong></li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/video-uploading-flow.png" alt="Video Upload Flow" width="500"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>[1] Videos are uploaded to blob storage.</li>
+<li>[2] Transcoding servers convert videos to multiple formats.</li>
+<li>[3] One trasncoding is complete, following two steps are exectued in parallel.</li>
+<li>[3a] Transcoded videos are sent to transcoded storage.</li>
+<li>[3b] Transcoding completion events are queued in the completion queue.</li>
+<li>[3a.1] Videos are distributed to the CDN.</li>
+<li>[3b.1] Completion handlers update metadata and inform users.</li>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Metadata Upload (Steps):</strong></li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/metadata-upload.png" alt="Metadata Upload" height="500"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>The client in parallel sends a request to update the video metadata</li>
+<li>The request contains video metadata, including file name, size, format, etc.</li>
+</ul>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">2. Video Streaming Flow</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left: 3em;"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/video-streaming-flow.png" alt="Video Streaming Flow" height="400"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Videos are streamed directly from the CDN using edge servers to minimize latency.</li>
+<li>Some of te popular streaming protocols are MPEG_DASH, Apple HLS, Adobe HDS.</li>
+<li> *Different streaming protocols support different video encodings and playback players.*</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 3: Design Deep Dive</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Video Transcoding</h3>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Importance</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. Raw video consumes large amounts of storage space. It Reduces storage space.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. Ensures compatibility across devices and browsers.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. Adapts video quality to network conditions.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Components</h4>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Container:</strong> Encapsulates video, audio, and metadata (e.g., MP4, AVI).</li>
+<li><strong class="text-gray-900 font-bold">Codecs:</strong> Compression and Decompression algorithms (e.g., H.264, VP9).</li>
+</ul>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Directed Acyclic Graph (DAG) Model</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left: 3em;"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/dag-video-transcoding.png" alt="DAG Video Transcoding" width="600"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Transcoding a video is computationally expensive and time-consuming.</li>
+<li>DAG Model defines tasks like encoding, thumbnail generation, and watermarking.</li>
+<li>Allows high parallelism in video processing.</li>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>The original video is split into video, audio, and metadata.</li>
+<li>Video encodings: Videos are converted to support different resolutions, codec, bitrates.</li>
+<li>Thumbnail: It can either be uploaded by a user or automatically generated bythe system.</li>
+<li>Watermark: Image overlay on top of your video contains identifying information about the video.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Video Transcoding Architecture</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left: 3em;"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/video-transcoding-architecture.png" alt="Video Transcoding" width="600"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Preprocessor:</strong> Splits videos into smaller chunks (GOP alignment). It has 4 responsibilities.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left: 3em;"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/dag-config.png" alt="DAG Config" width="500"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Video splitting: Video stream is split or further split into smaller Group of Pictures (GOP) alignment.</li>
+<li>It split videos by GOP alignment for old clients.</li>
+<li>It generates DAG based on configuration files client programmers write.</li>
+<li>It stores GOPs and metadata in temporary storage in case the encoding fails, the system could use persisted data for retry operations.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">DAG Scheduler:</strong> Organizes tasks into sequential or parallel stages.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left: 3em;"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/dag-scheduler.png" alt="DAG Scheduler" width="500"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>It splits a DAG graph into stages of tasks and puts them in the task queue in the resource manager.</li>
+<li>Stage 1: video, audio, and metadata.</li>
+<li>The video file is further split into two tasks in stage 2: video encoding and thumbnail.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Resource Manager:</strong> Responsible for managing the efficiency of resource allocation.It</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">contains 3 queues and a task scheduler.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left: 3em;"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/resource-manager.png" alt="Resource Manager" width="700"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Task queue: priority queue that contains tasks to be executed.</li>
+<li>Worker queue: priority queue that contains worker utilization info.</li>
+<li>Running queue: contains  currently running tasks and workers running the tasks.</li>
+<li>Task scheduler: picks the optimal task/worker, and instructs the chosen task worker to execute the job.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Task Workers:</strong> Perform transcoding and other operations.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left: 3em;"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/task-worker.png" alt="Task Worker" width="250"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Different task workers may run different tasks</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">5. <strong class="text-gray-900 font-bold">Temporary Storage:</strong> Stores intermediate data for retries.</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>The choice of storage system depends on factors like data type, data size, access frequency, data life span, etc.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">6. <strong class="text-gray-900 font-bold">Output:</strong> Transcoded videos ready for distribution.</p>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">System Optimizations</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Speed Optimizations</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Parallel Video Uploads:</strong> Split videos into smaller chunks for faster, resumable uploads.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/video-split.png" alt="Video Split" width="600"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Distributed Upload Centers:</strong> Use CDNs as upload hubs close to users.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Parallel Processing:</strong> Decouple modules using message queues for high parallelism.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/message-queue1.png" alt="Message Queue" width="600"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/message-queue2.png" alt="Message Queue" height="170" width="500"></p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Safety Optimizations</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Pre-Signed URLs:</strong> Restrict video uploads to authorized users.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/pres-signed-urls.png" alt="Pre Signed" width="500"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Protect Videos:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">DRM Systems</strong> (e.g., Apple FairPlay, Google Widevine).</li>
+<li><strong class="text-gray-900 font-bold">AES Encryption.</strong></li>
+<li><strong class="text-gray-900 font-bold">Watermarking.</strong></li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Cost-Saving Optimizations</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. Serve only popular videos via CDN; less popular ones from high-capacity servers.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. Encode on-demand for rarely accessed videos.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. Regionalize video distribution based on popularity.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. Build custom CDNs and partner with ISPs to reduce bandwidth costs.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Error Handling</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Recoverable Errors</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Retry failed uploads, transcoding, or resource allocation tasks.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Non-Recoverable Errors</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Stop malformed video processing and return error codes.</li>
+</ul>
+  </div>
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>System Design Interactive Study Suite &bull; AntiGravity IDE</p>
+</footer>
+</body>
+</html>

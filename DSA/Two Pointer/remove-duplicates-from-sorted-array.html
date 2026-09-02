@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>26. Remove Duplicates from Sorted Array — Algorithm Study Guide</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = { theme: { extend: { colors: { 'ed-pink': '#db2777', 'ed-blue': '#2563eb', 'ed-teal': '#0d9488', 'ed-amber': '#d97706', 'ed-sky': '#0284c7', 'ed-purple': '#7c3aed', 'ed-orange': '#ea580c' }, fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] } } } };
+</script>
+<style>
+body{font-family:'Inter',sans-serif;-webkit-text-size-adjust:100%}
+.mono{font-family:'JetBrains Mono',monospace}
+details>summary{cursor:pointer;list-style:none;min-height:44px;display:flex;align-items:center}
+details>summary::-webkit-details-marker{display:none}
+details[open]>summary .chevron{transform:rotate(90deg)}
+.chevron{transition:transform .2s}
+pre,.overflow-x-auto,table{-webkit-overflow-scrolling:touch}
+.tok-kw{color:#c084fc}.tok-ty{color:#fbbf24}.tok-fn{color:#60a5fa}.tok-nm{color:#fb923c}.tok-str{color:#f472b6}.tok-cm{color:#94a3b8;font-style:italic}
+.legend-chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#94a3b8}
+.legend-dot{width:10px;height:10px;border-radius:2px}
+</style>
+</head>
+<body class="bg-gray-50 text-gray-850 antialiased">
+
+<header class="bg-gradient-to-br from-amber-50 via-white to-amber-50/40 border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-10">
+    <div class="flex items-center gap-2 md:gap-3 mb-4 flex-wrap">
+      <span class="mono text-sm text-gray-500">LeetCode 26</span>
+      <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">Easy</span>
+      <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200">Two Pointers / In-place</span>
+    </div>
+    <h1 class="text-2xl md:text-4xl font-extrabold tracking-tight text-gray-900 mb-3">Remove Duplicates from Sorted Array</h1>
+    <div class="flex flex-wrap gap-2">
+      <span class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-amber-50 text-amber-700 border border-amber-200">Time: O(n)</span>
+      <span class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-amber-50 text-amber-700 border border-amber-200">Space: O(1)</span>
+      <span class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-pink-50 text-ed-pink border border-pink-200">Two Pointers</span>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-10 space-y-4 md:space-y-6">
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <h2 class="text-xl md:text-2xl font-bold text-gray-900 mb-4">1. Problem Statement</h2>
+  <div class="text-gray-700 text-sm md:text-base space-y-3">
+    <p>You are given an integer array <span class="mono">nums</span> sorted in non-decreasing order. Remove the duplicates <strong>in-place</strong> so that each element appears only once, preserving the original relative order. Return <span class="mono">k</span>, the count of unique elements.</p>
+    <p>The first <span class="mono">k</span> positions of <span class="mono">nums</span> must contain the unique elements in sorted order. Values beyond index <span class="mono">k-1</span> are ignored.</p>
+    <p><strong>Constraints:</strong></p>
+    <ul class="list-disc list-inside space-y-1 ml-2">
+      <li><span class="mono">1 &le; nums.length &le; 3 &times; 10^4</span></li>
+      <li><span class="mono">-100 &le; nums[i] &le; 100</span></li>
+      <li><span class="mono">nums</span> is sorted in non-decreasing order</li>
+    </ul>
+    <p><strong>Example:</strong> Input: <span class="mono">nums = [0,0,1,1,1,2,2,3,3,4]</span> &rarr; Output: <span class="mono">5</span>, <span class="mono">nums = [0,1,2,3,4,_,_,_,_,_]</span></p>
+    <p class="text-gray-600 text-xs">The first 5 positions hold <span class="mono">[0,1,2,3,4]</span>. The remaining positions are irrelevant.</p>
+  </div>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details open>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">2. Pattern Recognition</h2><span class="chevron text-ed-pink text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-pink/5 border border-ed-pink/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong class="text-ed-pink">Signal words:</strong> "sorted array", "remove duplicates", "in-place", "return the count", "preserve order". Any problem asking for in-place modification of a sorted array to keep unique elements is a two-pointer overwrite problem.</p>
+    <p><strong class="text-ed-pink">When to reach for this pattern:</strong> Whenever the input is sorted and you must deduplicate or partition in-place with O(1) extra space. The sorted property guarantees that duplicates are adjacent, so a single sweep with a "write pointer" suffices.</p>
+    <p><strong class="text-ed-pink">Key insight:</strong> Use a <em>write pointer</em> (<span class="mono">last_distinct_index</span>) marking where the next unique element should be placed. A <em>read pointer</em> (<span class="mono">scan_index</span>) scans forward. When <span class="mono">nums[scan_index]</span> differs from the last written element, write it at <span class="mono">last_distinct_index</span> and advance the write pointer.</p>
+    <ul class="space-y-1 ml-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>Sorted input &rarr; duplicates are adjacent</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>In-place requirement &rarr; overwrite, don't allocate</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>Two pointers: read scans, write places uniques</span></li>
+    </ul>
+    <p class="pt-2"><strong class="text-ed-pink">Approaches considered before settling on two pointers:</strong> Always brainstorm variants before committing. The sorted + in-place constraints rule out most of them, but naming them forces you to understand <em>why</em> the chosen pattern wins.</p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-ed-pink/10 text-ed-pink"><tr>
+          <th class="text-left px-3 py-2 font-semibold">Approach</th>
+          <th class="text-left px-3 py-2 font-semibold">Description</th>
+          <th class="text-left px-3 py-2 font-semibold">Time / Space</th>
+          <th class="text-left px-3 py-2 font-semibold">Notes (flaws or why proceed)</th>
+        </tr></thead>
+        <tbody class="text-gray-700">
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">Hash set dedupe</td><td class="px-3 py-2">Walk the array, push each value into a set, then copy the set back. Order lost.</td><td class="px-3 py-2 mono">O(n) / O(n)</td><td class="px-3 py-2"><span class="text-red-600">Rejected:</span> O(n) extra space violates the O(1) constraint; a set also loses sorted order (would need a re-sort).</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">New array, copy back</td><td class="px-3 py-2">Build a deduplicated list, then overwrite <span class="mono">nums</span> from it. (This is v0 in Section 10.)</td><td class="px-3 py-2 mono">O(n) / O(n)</td><td class="px-3 py-2"><span class="text-red-600">Rejected:</span> O(n) auxiliary memory. Clean and readable but fails the in-place requirement.</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">Sort + unique (stdlib)</td><td class="px-3 py-2">Call <span class="mono">sorted(set(nums))</span> and write back. Relies on Python's set.</td><td class="px-3 py-2 mono">O(n) / O(n)</td><td class="px-3 py-2"><span class="text-red-600">Rejected:</span> Same O(n) space issue; also redundant since input is already sorted. Hides the algorithm from the interviewer.</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">Two pointers (read + write)</td><td class="px-3 py-2">Read pointer scans, write pointer places uniques in-place. (v_final in Section 10.)</td><td class="px-3 py-2 mono">O(n) / O(1)</td><td class="px-3 py-2"><span class="text-emerald-700 font-semibold">Chosen:</span> Meets both constraints. Sorted input means duplicates are adjacent, so one pass suffices.</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">Two pointers (nested while)</td><td class="px-3 py-2">Outer loop + inner while that skips duplicate runs. (v1 in Section 10.)</td><td class="px-3 py-2 mono">O(n) / O(1)</td><td class="px-3 py-2"><span class="text-amber-700">Valid but verbose:</span> Same asymptotic cost as v_final, but 3 variables + nested loop = more state. Demoted to a teaching step, not the final answer.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="text-gray-600 text-xs pt-1">The point of the table is to show you weighed alternatives. In an interview, saying "I considered a hash set but it costs O(n) space, which violates the in-place constraint" proves you understand the <em>why</em>, not just the <em>how</em>.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">3. Pattern Blueprint</h2><span class="chevron text-ed-blue text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-blue-50 border border-blue-200 rounded-xl p-4 md:p-6">
+    <ul class="space-y-2 text-gray-700 text-sm">
+      <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span><span>Initialize <span class="mono">last_distinct_index = 0</span> (first element is always unique)</span></li>
+      <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span><span>For each <span class="mono">scan_index</span> from 1 to <span class="mono">n-1</span>:</span></li>
+      <li class="flex gap-3 ml-6"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span><span>If <span class="mono">nums[scan_index] != nums[last_distinct_index]</span>: it's a new unique</span></li>
+      <li class="flex gap-3 ml-12"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span><span>Increment <span class="mono">last_distinct_index</span>, then <span class="mono">nums[last_distinct_index] = nums[scan_index]</span></span></li>
+      <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">5</span><span>Return <span class="mono">last_distinct_index + 1</span> (count of uniques)</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">4. How to Think About It</h2><span class="chevron text-ed-blue text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-blue/5 border border-gray-300 rounded-xl p-4 md:p-6 space-y-3 text-gray-700 text-sm">
+    <p>Because the array is sorted, all duplicates of a value sit next to each other. So a single left-to-right scan sees each unique value as the first element of a run.</p>
+    <p>Maintain a "write frontier" <span class="mono">last_distinct_index</span>. Everything at index <span class="mono">&le; last_distinct_index</span> is the deduplicated prefix. The read pointer <span class="mono">scan_index</span> walks the array. Whenever it finds a value larger than <span class="mono">nums[last_distinct_index]</span>, that value is a new unique, so we advance the write frontier and copy it in.</p>
+    <p>This is an <em>overwrite</em> pattern, not a swap pattern. We never need to read what we overwrite, because the read pointer is always ahead of the write pointer (or equal). The uniques are preserved in sorted order because we copy them in the order we encounter them.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">5. Real-World Analogy</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p>Imagine a librarian shelving returned books that arrive pre-sorted by ID. Whenever the same book ID arrives twice in a row, the librarian skips the duplicate and only shelves the first copy. The shelf stays sorted and has no duplicates.</p>
+    <p>The librarian uses one hand to point at the next empty shelf slot (the write pointer) and the other to flip through the incoming stack (the read pointer). When a new ID shows up, it goes to the next empty slot.</p>
+    <p><strong class="text-ed-teal">Mappings:</strong> incoming stack = <span class="mono text-ed-teal">nums</span>, next-empty-slot hand = <span class="mono text-ed-teal">last_distinct_index</span>, flip-through hand = <span class="mono text-ed-teal">scan_index</span>, shelving a new ID = <span class="mono text-ed-teal">nums[++last_distinct_index] = nums[scan_index]</span>.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">6. Build Your Intuition</h2><span class="chevron text-ed-amber text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-amber/5 border border-ed-amber/15 rounded-xl p-4 md:p-5 text-gray-700 text-sm space-y-2">
+    <p>Trace by hand. Input: <span class="mono">[0,0,1,1,1,2,2,3,3,4]</span></p>
+    <p><strong>Start:</strong> <span class="mono">last_distinct_index = 0</span> (nums[0]=0 is unique).</p>
+    <p><strong>scan=1:</strong> <span class="mono">nums[1]=0 == nums[0]</span> &rarr; skip (duplicate).</p>
+    <p><strong>scan=2:</strong> <span class="mono">nums[2]=1 != nums[0]</span> &rarr; write: <span class="mono">last_distinct_index=1</span>, <span class="mono">nums[1]=1</span>.</p>
+    <p><strong>scan=3,4:</strong> <span class="mono">nums[3,4]=1 == nums[1]</span> &rarr; skip.</p>
+    <p><strong>scan=5:</strong> <span class="mono">nums[5]=2 != nums[1]</span> &rarr; write: <span class="mono">last_distinct_index=2</span>, <span class="mono">nums[2]=2</span>.</p>
+    <p class="text-gray-600 text-xs mt-2">Notice the write pointer only moves when a new unique appears. It lags behind the read pointer.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details open>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">7. Interactive Visualization</h2><span class="chevron text-ed-pink text-xl">&#9654;</span></summary>
+  <div class="mt-5 space-y-4">
+    <p class="text-gray-700 text-sm">Watch the read pointer scan and the write pointer place uniques. Blue = read, emerald = written unique, gray = unprocessed, strike-through = duplicate skipped.</p>
+    <div class="bg-gray-900 rounded-xl p-4">
+      <div id="rdsa-canvas" class="min-h-[140px] flex items-end gap-1"></div>
+      <div class="flex gap-4 mt-3 text-xs text-gray-300 items-center flex-wrap">
+        <span>step: <span id="rdsa-step-num" class="mono text-gray-200 font-bold">0</span></span>
+        <span>status: <span id="rdsa-status" class="text-white font-semibold">ready</span></span>
+        <span>read: <span id="rdsa-read" class="mono text-blue-400 font-bold">1</span></span>
+        <span>write: <span id="rdsa-write" class="mono text-emerald-400 font-bold">0</span></span>
+        <span>k: <span id="rdsa-k" class="mono text-pink-400 font-bold">1</span></span>
+      </div>
+    </div>
+    <div class="flex gap-2 flex-wrap">
+      <button id="rdsa-play" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold min-h-[44px]">Play</button>
+      <button id="rdsa-pause" class="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm font-semibold min-h-[44px]">Pause</button>
+      <button id="rdsa-step-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold min-h-[44px]">Step</button>
+      <button id="rdsa-reset" class="px-4 py-2 bg-gray-400 text-gray-900 rounded-lg text-sm font-semibold min-h-[44px]">Reset</button>
+    </div>
+    <div class="flex gap-2 items-center flex-wrap">
+      <label class="text-sm text-gray-700 font-semibold">Input nums:</label>
+      <input id="rdsa-input" type="text" value="[0,0,1,1,1,2,2,3,3,4]" class="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded-lg text-sm mono" />
+    </div>
+    <div id="rdsa-log" class="bg-gray-900 text-gray-300 text-xs mono rounded-lg p-3 h-32 overflow-y-auto"></div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">8. How It Works (Step by Step)</h2><span class="chevron text-ed-sky text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-sky/5 border border-ed-sky/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-2">
+    <ul class="space-y-2">
+      <li class="flex gap-3"><span class="bg-ed-sky/15 text-ed-sky rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold flex-shrink-0">1</span><span>Initialize <span class="mono">last_distinct_index = 0</span>. The first element is always unique.</span></li>
+      <li class="flex gap-3"><span class="bg-ed-sky/15 text-ed-sky rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold flex-shrink-0">2</span><span>Loop <span class="mono">scan_index</span> from <span class="mono">1</span> to <span class="mono">len(nums) - 1</span></span></li>
+      <li class="flex gap-3"><span class="bg-ed-sky/15 text-ed-sky rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold flex-shrink-0">3</span><span>Compare <span class="mono">nums[scan_index]</span> with <span class="mono">nums[last_distinct_index]</span></span></li>
+      <li class="flex gap-3"><span class="bg-ed-sky/15 text-ed-sky rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold flex-shrink-0">4</span><span>If different: increment <span class="mono">last_distinct_index</span>, copy <span class="mono">nums[scan_index]</span> into <span class="mono">nums[last_distinct_index]</span></span></li>
+      <li class="flex gap-3"><span class="bg-ed-sky/15 text-ed-sky rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold flex-shrink-0">5</span><span>Return <span class="mono">last_distinct_index + 1</span> as <span class="mono">k</span></span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">9. Dry Run</h2><span class="chevron text-ed-amber text-xl">&#9654;</span></summary>
+  <div class="mt-5 overflow-x-auto">
+    <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+      <thead class="bg-amber-50 text-amber-700"><tr>
+        <th class="text-left px-3 py-2 font-semibold">scan</th>
+        <th class="text-left px-3 py-2 font-semibold">nums[scan]</th>
+        <th class="text-left px-3 py-2 font-semibold">nums[write]</th>
+        <th class="text-left px-3 py-2 font-semibold">action</th>
+        <th class="text-left px-3 py-2 font-semibold">write</th>
+        <th class="text-left px-3 py-2 font-semibold">k</th>
+      </tr></thead>
+      <tbody class="text-gray-700">
+        <tr class="border-t"><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">0</td><td class="px-3 py-2 mono">0</td><td class="px-3 py-2">skip (dup)</td><td class="px-3 py-2 mono">0</td><td class="px-3 py-2 mono">1</td></tr>
+        <tr class="border-t bg-gray-50"><td class="px-3 py-2 mono">2</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">0</td><td class="px-3 py-2">write nums[1]=1</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">2</td></tr>
+        <tr class="border-t"><td class="px-3 py-2 mono">3</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2">skip (dup)</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">2</td></tr>
+        <tr class="border-t bg-gray-50"><td class="px-3 py-2 mono">4</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2">skip (dup)</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">2</td></tr>
+        <tr class="border-t"><td class="px-3 py-2 mono">5</td><td class="px-3 py-2 mono">2</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2">write nums[2]=2</td><td class="px-3 py-2 mono">2</td><td class="px-3 py-2 mono">3</td></tr>
+        <tr class="border-t bg-gray-50"><td class="px-3 py-2 mono">6,7</td><td class="px-3 py-2 mono">2,2</td><td class="px-3 py-2 mono">2</td><td class="px-3 py-2">skip (dup)</td><td class="px-3 py-2 mono">2</td><td class="px-3 py-2 mono">3</td></tr>
+        <tr class="border-t"><td class="px-3 py-2 mono">8</td><td class="px-3 py-2 mono">3</td><td class="px-3 py-2 mono">2</td><td class="px-3 py-2">write nums[3]=3</td><td class="px-3 py-2 mono">3</td><td class="px-3 py-2 mono">4</td></tr>
+        <tr class="border-t bg-emerald-50"><td class="px-3 py-2">final</td><td class="px-3 py-2">—</td><td class="px-3 py-2">—</td><td class="px-3 py-2">return k</td><td class="px-3 py-2">—</td><td class="px-3 py-2 text-emerald-700 font-semibold">5</td></tr>
+      </tbody>
+    </table>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details open>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">10. From Brute Force to Optimal &mdash; Every Decision &amp; Why</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+  <div class="mt-5 space-y-5">
+    <div class="bg-red-500/5 border border-red-500/15 rounded-xl p-4 md:p-5">
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+        <h3 class="font-bold text-red-500 text-sm md:text-base">v0 &mdash; Brute Force: new array, then copy back</h3>
+        <div class="flex gap-2">
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700 border border-red-200">Time: O(n)</span>
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700 border border-red-200">Space: O(n)</span>
+        </div>
+      </div>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def removeDuplicates(self, nums: List[int]) -&gt; int:
+    unique_values = []
+    for value in nums:
+        if not unique_values or value != unique_values[-1]:
+            unique_values.append(value)
+    for i, value in enumerate(unique_values):
+        nums[i] = value
+    return len(unique_values)</pre>
+      <p class="text-gray-700 text-sm mt-2"><strong class="text-red-500">Fails on:</strong> The constraint "in-place, O(1) extra space". This allocates <span class="mono">O(n)</span> auxiliary memory. Time <span class="mono">O(n)</span>, Space <span class="mono">O(n)</span> &mdash; rejected by the judge's memory check.</p>
+    </div>
+    <div class="bg-amber-50 border border-amber-300 rounded-xl p-4 md:p-5">
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+        <h3 class="font-bold text-amber-700 text-sm md:text-base">v1 &mdash; Two pointers, nested while for duplicate runs</h3>
+        <div class="flex gap-2">
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">Time: O(n)</span>
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">Space: O(1)</span>
+        </div>
+      </div>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def removeDuplicates(self, nums: List[int]) -&gt; int:
+    n = len(nums)
+    left_index, right_index, last_distinct = 0, 1, 0
+    while right_index &lt; n:
+        while right_index &lt; n and nums[left_index] == nums[right_index]:
+            right_index += 1
+        if right_index &lt; n:
+            nums[last_distinct + 1] = nums[right_index]
+            last_distinct += 1
+        left_index, right_index = right_index, right_index + 1
+    return last_distinct + 1</pre>
+      <p class="text-gray-700 text-sm mt-2"><strong class="text-amber-700">Enhancement:</strong> In-place, O(1) space. The inner <span class="mono">while</span> <em>looks</em> nested but is O(n) amortized &mdash; <span class="mono">right_index</span> only moves forward (never resets), so total pointer movements across both loops is <span class="mono">n-1</span>. Time is <span class="mono">O(n)</span>, same as v_final. The cost is code clarity: three variables and a nested loop = more state to track than needed.</p>
+      <p class="text-gray-700 text-sm mt-1"><strong class="text-amber-700">Edge case handled:</strong> All-duplicates <span class="mono">[1,1,1]</span> &rarr; inner while advances <span class="mono">right_index</span> to <span class="mono">n</span>, outer loop exits, returns <span class="mono">1</span>. Correct.</p>
+    </div>
+    <div class="bg-emerald-50 border border-emerald-300 rounded-xl p-4 md:p-5">
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+        <h3 class="font-bold text-emerald-700 text-sm md:text-base">v_final &mdash; Single pass, write pointer + read pointer</h3>
+        <div class="flex gap-2">
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">Time: O(n)</span>
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">Space: O(1)</span>
+        </div>
+      </div>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def removeDuplicates(self, nums: List[int]) -&gt; int:
+    last_distinct_index = 0
+    for scan_index in range(1, len(nums)):
+        if nums[scan_index] != nums[last_distinct_index]:
+            last_distinct_index += 1
+            nums[last_distinct_index] = nums[scan_index]
+    return last_distinct_index + 1</pre>
+      <p class="text-gray-700 text-sm mt-2"><strong class="text-emerald-700">Why final:</strong> <span class="mono">O(n)</span> time, <span class="mono">O(1)</span> space, single pass, two variables. The <span class="mono">for</span> loop naturally advances the read pointer; we only act on a difference. Same asymptotic cost as v1 but cleaner state. This is the version used in Section 20.</p>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-gray-100 text-gray-700"><tr>
+          <th class="text-left px-3 py-2 font-semibold">Version</th>
+          <th class="text-left px-3 py-2 font-semibold">Edge case that forced it</th>
+          <th class="text-left px-3 py-2 font-semibold">Enhancement added</th>
+        </tr></thead>
+        <tbody class="text-gray-700">
+          <tr class="border-t"><td class="px-3 py-2 mono">v0</td><td class="px-3 py-2">"O(1) space" constraint &rarr; new array is illegal</td><td class="px-3 py-2">Switch to in-place overwrite</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 mono">v1</td><td class="px-3 py-2">Nested while + 3 variables = needless state</td><td class="px-3 py-2">Collapse to single for-loop, 2 variables</td></tr>
+          <tr class="border-t bg-emerald-50"><td class="px-3 py-2 mono">v_final</td><td class="px-3 py-2">Readability + minimal state</td><td class="px-3 py-2">Self-explanatory names <span class="mono">last_distinct_index</span>, <span class="mono">scan_index</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-indigo-700 text-sm">
+      <strong>Principle:</strong> Every line of complexity was earned by a specific input the previous version failed on. If you can't name the edge case that forced a line, you don't understand why it's there.
+    </div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">11. Complexity Deep Dive</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+  <div class="mt-5 grid md:grid-cols-2 gap-4">
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-4">
+      <h3 class="font-bold text-ed-teal mb-2 text-sm">Time: O(n)</h3>
+      <p class="text-gray-700 text-sm">The read pointer <span class="mono">scan_index</span> visits each element exactly once from index 1 to <span class="mono">n-1</span>. Constant work per step (one compare, one conditional write). Total: <span class="mono">O(n)</span>.</p>
+    </div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4">
+      <h3 class="font-bold text-ed-purple mb-2 text-sm">Space: O(1)</h3>
+      <p class="text-gray-700 text-sm">Only two scalar variables: <span class="mono">last_distinct_index</span> and <span class="mono">scan_index</span>. All modification happens in the input array &mdash; no auxiliary data structures.</p>
+    </div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">12. Edge Cases &amp; Gotchas</h2><span class="chevron text-ed-orange text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-orange/5 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <div><strong class="text-ed-orange">Single element (n = 1):</strong> Loop doesn't run, returns <span class="mono">0 + 1 = 1</span>. Correct.</div>
+    <div><strong class="text-ed-orange">All duplicates:</strong> <span class="mono">[7,7,7,7]</span>. Read pointer scans, never differs from <span class="mono">nums[0]</span>, write pointer stays at 0. Returns <span class="mono">1</span>. Correct.</div>
+    <div><strong class="text-ed-orange">No duplicates:</strong> <span class="mono">[1,2,3,4]</span>. Every step writes, write pointer tracks read pointer. Returns <span class="mono">4</span>. Correct.</div>
+    <div><strong class="text-ed-orange">Negative values:</strong> <span class="mono">[-3,-3,-1,0,0,2]</span>. Sorted order holds, comparisons work. Returns <span class="mono">4</span> (<span class="mono">[-3,-1,0,2]</span>). Correct.</div>
+    <div><strong class="text-ed-orange">Off-by-one bug:</strong> Return <span class="mono">last_distinct_index + 1</span>, NOT <span class="mono">last_distinct_index</span>. The index is 0-based; the count is index + 1.</div>
+    <div><strong class="text-ed-orange">Compare against last written, not last read:</strong> Compare <span class="mono">nums[scan_index]</span> with <span class="mono">nums[last_distinct_index]</span> (the deduplicated prefix's tail), not with <span class="mono">nums[scan_index - 1]</span>. They're equivalent here only because the array is sorted; using the write pointer is the canonical pattern.</div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">13. Common Mistakes</h2><span class="chevron text-ed-orange text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-orange/5 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-2">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span>Allocating a new array (violates the O(1) space constraint)</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span>Returning <span class="mono">last_distinct_index</span> instead of <span class="mono">+ 1</span> (off-by-one on the count)</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span>Comparing <span class="mono">nums[scan_index]</span> with <span class="mono">nums[scan_index - 1]</span> instead of <span class="mono">nums[last_distinct_index]</span> (works only because sorted; wrong habit for the general pattern)</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span>Incrementing <span class="mono">last_distinct_index</span> before writing (overwrites the wrong slot)</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span>Starting <span class="mono">scan_index</span> at 0 (redundant compare with self, and the first element is always unique)</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">14. Flashcards</h2><span class="chevron text-ed-purple text-xl">&#9654;</span></summary>
+  <div class="mt-5 space-y-3">
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4"><p class="font-semibold text-ed-purple text-sm">Q: Why does the sorted property matter?</p><p class="text-gray-700 text-sm mt-2">A: Sorting makes duplicates adjacent, so a single left-to-right sweep with one read pointer catches every duplicate run. On an unsorted array, duplicates could be anywhere and this pattern wouldn't work.</p></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4"><p class="font-semibold text-ed-purple text-sm">Q: What does the write pointer represent?</p><p class="text-gray-700 text-sm mt-2">A: <span class="mono">last_distinct_index</span> is the index of the last placed unique element. Everything at index <span class="mono">&le; last_distinct_index</span> is the deduplicated prefix. The next unique goes at <span class="mono">last_distinct_index + 1</span>.</p></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4"><p class="font-semibold text-ed-purple text-sm">Q: Time and space complexity?</p><p class="text-gray-700 text-sm mt-2">A: <span class="mono">O(n)</span> time (one pass), <span class="mono">O(1)</span> space (two scalars, in-place).</p></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4"><p class="font-semibold text-ed-purple text-sm">Q: Why return <span class="mono">last_distinct_index + 1</span>?</p><p class="text-gray-700 text-sm mt-2">A: The index is 0-based. If the last unique is at index <span class="mono">k-1</span>, the count of uniques is <span class="mono">k</span>.</p></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4"><p class="font-semibold text-ed-purple text-sm">Q: Can the read pointer ever fall behind the write pointer?</p><p class="text-gray-700 text-sm mt-2">A: No. <span class="mono">scan_index</span> starts at 1 and only increases; <span class="mono">last_distinct_index</span> starts at 0 and only increases when a new unique is found, so <span class="mono">scan_index &ge; last_distinct_index</span> always. We never overwrite a value we still need.</p></div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">15. Where It Is Used (Real World)</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 grid md:grid-cols-2 gap-3 text-sm">
+    <div class="bg-gray-100 border border-gray-300 rounded-xl p-4"><strong class="text-gray-700">Log deduplication:</strong> Collapsing repeated consecutive log lines into one entry before storage.</div>
+    <div class="bg-amber-100 border border-amber-300 rounded-xl p-4 text-amber-700"><strong>Event stream compaction:</strong> Removing back-to-back duplicate sensor readings to save bandwidth.</div>
+    <div class="bg-rose-100 border border-rose-300 rounded-xl p-4 text-rose-700"><strong>Database sorted-index cleanup:</strong> Trimming duplicate keys in a sorted index page in-place.</div>
+    <div class="bg-indigo-100 border border-indigo-300 rounded-xl p-4 text-indigo-700"><strong>Unique visitor count:</strong> A sorted-by-timestamp session list deduplicated to unique users in O(n).</div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">16. Interview Tips</h2><span class="chevron text-ed-purple text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-2">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-purple mt-2.5"></span><span>Confirm the array is sorted before proposing this pattern. If unsorted, you'd need a set or a sort first.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-purple mt-2.5"></span><span>Say "write pointer" and "read pointer" aloud. Naming the roles makes the algorithm obvious to the interviewer.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-purple mt-2.5"></span><span>Walk through the all-duplicates edge case (<span class="mono">[1,1,1]</span>) to prove the write pointer never advances and you return 1.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-purple mt-2.5"></span><span>State the return as "index + 1 = count" to preempt the off-by-one.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-purple mt-2.5"></span><span>If asked to extend to "allow at most two duplicates" (LeetCode 80): the write pointer still works, but the compare checks <span class="mono">nums[scan_index] != nums[last_distinct_index - 1]</span> instead.</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">17. Similar Problems to Practice</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 grid md:grid-cols-2 gap-3 text-sm">
+    <div class="bg-gray-100 border border-gray-300 rounded-xl p-4"><strong>80. Remove Duplicates from Sorted Array II</strong> <span class="ml-2 px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-700">Medium</span><p class="text-gray-600 text-xs mt-1">Same pattern, allow at most 2 duplicates. Compare against <span class="mono">nums[write - 1]</span>.</p></div>
+    <div class="bg-gray-100 border border-gray-300 rounded-xl p-4"><strong>27. Remove Element</strong> <span class="ml-2 px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-700">Easy</span><p class="text-gray-600 text-xs mt-1">Same write-pointer overwrite, but filter by value instead of by duplicate.</p></div>
+    <div class="bg-emerald-100 border border-emerald-300 rounded-xl p-4"><strong>977. Squares of a Sorted Array</strong> <span class="ml-2 px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-700">Easy</span><p class="text-gray-600 text-xs mt-1">Two pointers from ends, place larger square first.</p></div>
+    <div class="bg-amber-100 border border-amber-300 rounded-xl p-4"><strong>283. Move Zeroes</strong> <span class="ml-2 px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-700">Easy</span><p class="text-gray-600 text-xs mt-1">Write pointer places non-zero values; same in-place overwrite discipline.</p></div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">18. Related Algorithms</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 grid md:grid-cols-3 gap-3 text-sm">
+    <div class="bg-gray-100 border border-gray-300 rounded-xl p-4"><strong>Two Pointers (same direction)</strong><p class="text-gray-600 text-xs mt-1">Read and write pointers both move left-to-right. The pattern used here.</p></div>
+    <div class="bg-gray-100 border border-gray-300 rounded-xl p-4"><strong>In-place Overwrite</strong><p class="text-gray-600 text-xs mt-1">Modify the input array using its own slots; no auxiliary memory.</p></div>
+    <div class="bg-gray-100 border border-gray-300 rounded-xl p-4"><strong>Sliding Window (variant)</strong><p class="text-gray-600 text-xs mt-1">Cousin: both pointers in the same direction with a dynamic gap.</p></div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">19. Where This Pattern Meets System Design</h2><span class="chevron text-indigo-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-indigo-50 border border-indigo-200 rounded-xl p-4 md:p-6 text-indigo-700 text-sm space-y-3">
+    <p><strong>Time-series compaction:</strong> A sorted-by-timestamp event log often has back-to-back duplicate readings (e.g., a sensor reporting the same value every tick). An in-place write-pointer pass collapses runs before storage, cutting disk usage without allocating a new buffer.</p>
+    <p><strong>Sorted index pages in databases:</strong> B-tree leaf pages store sorted keys. When maintaining a unique index, the storage engine uses an in-place compaction pass to remove duplicate keys during page rewrites, avoiding a full page copy.</p>
+    <p><strong>Stream deduplication at the edge:</strong> Edge devices with limited memory can't afford to buffer a full set. If the stream is pre-sorted (e.g., by event ID), a write-pointer pass deduplicates in O(1) extra memory before forwarding upstream.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">20. Code Solutions</h2><span class="chevron text-ed-sky text-xl">&#9654;</span></summary>
+  <div class="mt-5 space-y-4">
+    <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 flex flex-wrap gap-3">
+      <span class="legend-chip"><span class="legend-dot" style="background:#c084fc"></span>keyword</span>
+      <span class="legend-chip"><span class="legend-dot" style="background:#fbbf24"></span>type</span>
+      <span class="legend-chip"><span class="legend-dot" style="background:#60a5fa"></span>function</span>
+      <span class="legend-chip"><span class="legend-dot" style="background:#fb923c"></span>number</span>
+      <span class="legend-chip"><span class="legend-dot" style="background:#f472b6"></span>string</span>
+      <span class="legend-chip"><span class="legend-dot" style="background:#94a3b8"></span>comment</span>
+    </div>
+    <div>
+      <h3 class="font-bold text-ed-sky mb-2 text-sm">Python (v_final)</h3>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def removeDuplicates(self, nums: List[int]) -&gt; int:
+    last_distinct_index = 0
+    for scan_index in range(1, len(nums)):
+        if nums[scan_index] != nums[last_distinct_index]:
+            last_distinct_index += 1
+            nums[last_distinct_index] = nums[scan_index]
+    return last_distinct_index + 1</pre>
+    </div>
+    <div>
+      <h3 class="font-bold text-ed-sky mb-2 text-sm">Java</h3>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">public int removeDuplicates(int[] nums) {
+    int lastDistinctIndex = 0;
+    for (int scanIndex = 1; scanIndex &lt; nums.length; scanIndex++) {
+        if (nums[scanIndex] != nums[lastDistinctIndex]) {
+            lastDistinctIndex++;
+            nums[lastDistinctIndex] = nums[scanIndex];
+        }
+    }
+    return lastDistinctIndex + 1;
+}</pre>
+    </div>
+    <div>
+      <h3 class="font-bold text-ed-sky mb-2 text-sm">C++</h3>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">int removeDuplicates(vector&lt;int&gt;&amp; nums) {
+    int lastDistinctIndex = 0;
+    for (int scanIndex = 1; scanIndex &lt; nums.size(); scanIndex++) {
+        if (nums[scanIndex] != nums[lastDistinctIndex]) {
+            lastDistinctIndex++;
+            nums[lastDistinctIndex] = nums[scanIndex];
+        }
+    }
+    return lastDistinctIndex + 1;
+}</pre>
+    </div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">21. Follow-Up Questions</h2><span class="chevron text-indigo-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-indigo-50/60 border border-indigo-200 rounded-xl p-4 md:p-6 text-indigo-700 text-sm space-y-3">
+    <div><strong>Q1:</strong> What if duplicates are allowed at most twice? <span class="text-gray-600">(LeetCode 80. Compare <span class="mono">nums[scan_index] != nums[last_distinct_index - 1]</span>; only write when true.)</span></div>
+    <div><strong>Q2:</strong> What if the array is not sorted? <span class="text-gray-600">(Sort first O(n log n), or use a hash set O(n) space. The in-place O(1) pattern no longer works.)</span></div>
+    <div><strong>Q3:</strong> Return the deduplicated prefix as a new list instead of modifying in-place? <span class="text-gray-600">(Slice <span class="mono">nums[:k]</span> after the pass, or build a new list during the scan.)</span></div>
+    <div><strong>Q4:</strong> What if you must also compact the tail to zeros? <span class="text-gray-600">(After the pass, set <span class="mono">nums[k:]</span> to 0 in a second loop.)</span></div>
+    <div><strong>Q5:</strong> Prove the read pointer never overwrites a value it still needs. <span class="text-gray-600">(<span class="mono">scan_index &ge; last_distinct_index</span> always holds; we only write to slots we've already passed with the read pointer.)</span></div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">22. Quick Reference</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-gray-100 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p>Sorted array, in-place. Write pointer <span class="mono">last_distinct_index</span> marks the last placed unique. Read pointer <span class="mono">scan_index</span> walks from index 1. On a difference, advance write pointer and copy. Return <span class="mono">last_distinct_index + 1</span>. <span class="mono">O(n)</span> time, <span class="mono">O(1)</span> space.</p>
+    <div class="bg-gray-900 text-gray-100 rounded-lg p-3 mono text-xs md:text-sm overflow-x-auto">
+      <span class="tok-kw">def</span> <span class="tok-fn">removeDuplicates</span>(self, nums: <span class="tok-ty">List</span>[<span class="tok-ty">int</span>]) -&gt; <span class="tok-ty">int</span>:
+    last_distinct_index = <span class="tok-nm">0</span>
+    <span class="tok-kw">for</span> scan_index <span class="tok-kw">in</span> <span class="tok-fn">range</span>(<span class="tok-nm">1</span>, <span class="tok-fn">len</span>(nums)):
+        <span class="tok-kw">if</span> nums[scan_index] != nums[last_distinct_index]:
+            last_distinct_index += <span class="tok-nm">1</span>
+            nums[last_distinct_index] = nums[scan_index]
+    <span class="tok-kw">return</span> last_distinct_index + <span class="tok-nm">1</span>
+    </div>
+  </div>
+</details></section>
+
+</main>
+
+<footer class="bg-gray-900 text-gray-400 text-center text-xs py-6 mt-8">
+  Generated by dsa-generator skill &middot; Remove Duplicates from Sorted Array &middot; LeetCode 26
+</footer>
+
+<script>
+(function(){
+  const canvas=document.getElementById('rdsa-canvas');
+  const stepEl=document.getElementById('rdsa-step-num');
+  const statusEl=document.getElementById('rdsa-status');
+  const readEl=document.getElementById('rdsa-read');
+  const writeEl=document.getElementById('rdsa-write');
+  const kEl=document.getElementById('rdsa-k');
+  const logEl=document.getElementById('rdsa-log');
+  const input=document.getElementById('rdsa-input');
+  const playBtn=document.getElementById('rdsa-play');
+  const pauseBtn=document.getElementById('rdsa-pause');
+  const stepBtn=document.getElementById('rdsa-step-btn');
+  const resetBtn=document.getElementById('rdsa-reset');
+  let nums=[],writeIndex=0,scanIndex=1,stepNum=0,playing=false,timer=null,done=false;
+  function parseInput(t){try{const a=JSON.parse(t);if(Array.isArray(a)&&a.every(v=>typeof v==='number'))return a;}catch(e){}return [0,0,1,1,1,2,2,3,3,4];}
+  function render(){
+    canvas.innerHTML='';
+    const maxVal=Math.max(...nums.map(v=>Math.abs(v)),1);
+    const containerH=120;
+    nums.forEach((v,i)=>{
+      const cell=document.createElement('div');
+      cell.style.flex='1';
+      cell.style.minWidth='28px';
+      cell.style.display='flex';
+      cell.style.flexDirection='column';
+      cell.style.alignItems='center';
+      const bar=document.createElement('div');
+      const h=Math.max(8,(Math.abs(v)/maxVal)*containerH);
+      bar.style.height=h+'px';
+      bar.style.width='24px';
+      bar.style.borderRadius='4px 4px 0 0';
+      let bg='bg-gray-600';
+      let ring='';
+      let strike=false;
+      if(i<=writeIndex){bg='bg-emerald-500';ring='ring-2 ring-emerald-300';}
+      if(i===scanIndex&&!done){bg='bg-blue-500';ring='ring-2 ring-blue-300';}
+      if(i<scanIndex&&i>writeIndex){strike=true;}
+      bar.className=bg+' '+ring;
+      const lbl=document.createElement('div');
+      lbl.className='text-[11px] text-center mt-1 '+(strike?'text-gray-600 line-through':'text-gray-300');
+      lbl.textContent=v;
+      cell.appendChild(bar);
+      cell.appendChild(lbl);
+      canvas.appendChild(cell);
+    });
+    stepEl.textContent=stepNum;readEl.textContent=scanIndex;writeEl.textContent=writeIndex;kEl.textContent=writeIndex+1;
+  }
+  function log(m){const l=document.createElement('div');l.textContent='['+stepNum+'] '+m;logEl.appendChild(l);logEl.scrollTop=logEl.scrollHeight;}
+  function setStatus(t,c){statusEl.textContent=t;statusEl.className='font-semibold '+(c||'text-white');}
+  function reset(){
+    nums=parseInput(input.value);
+    writeIndex=0;scanIndex=1;stepNum=0;done=false;playing=false;
+    if(timer){clearInterval(timer);timer=null;}
+    logEl.innerHTML='';setStatus('ready','text-white');
+    log('init: write=0 (nums[0]='+nums[0]+' is unique), scan=1');
+    render();
+  }
+  function step(){
+    if(done||nums.length<2){if(nums.length<2){setStatus('DONE \u2713','text-emerald-400');log('n<2 \u2192 return k='+(writeIndex+1));done=true;}return;}
+    if(scanIndex>=nums.length){setStatus('DONE \u2713','text-emerald-400');log('scan reached end \u2192 return k='+(writeIndex+1));done=true;if(timer){clearInterval(timer);timer=null;playing=false;}return;}
+    stepNum++;
+    if(nums[scanIndex]!==nums[writeIndex]){
+      writeIndex++;
+      nums[writeIndex]=nums[scanIndex];
+      log('nums['+scanIndex+']='+nums[scanIndex]+' != nums[write-1] \u2192 write: nums['+writeIndex+']='+nums[scanIndex]+', k='+(writeIndex+1));
+    }else{
+      log('nums['+scanIndex+']='+nums[scanIndex]+' == nums['+writeIndex+'] \u2192 skip (duplicate)');
+    }
+    scanIndex++;
+    render();
+  }
+  function play(){if(done)reset();if(playing)return;playing=true;setStatus('running','text-emerald-400');timer=setInterval(()=>{if(done){clearInterval(timer);playing=false;return;}step();},700);}
+  function pause(){if(timer){clearInterval(timer);timer=null;}playing=false;setStatus('paused','text-amber-400');}
+  input.addEventListener('input',reset);
+  playBtn.addEventListener('click',play);
+  pauseBtn.addEventListener('click',pause);
+  stepBtn.addEventListener('click',function(){pause();step();});
+  resetBtn.addEventListener('click',reset);
+  reset();
+})();
+</script>
+
+<script>
+(function(){
+  const kw=/\b(def|class|return|if|else|while|for|in|not|and|or|is|None|True|False|lambda|import|from|as|public|private|int|void|vector|auto|const|let|var|function|new|this|self|static|struct|template|typename|namespace|using|break|continue|pass|elif|yield|with|try|except|finally|raise|assert|del|global|nonlocal|print|len|range|min|max|Math|enumerate)\b/g;
+  const ty=/\b(List|int|str|bool|float|double|char|long|short|unsigned|signed|void|auto|string|vector|map|set|pair|tuple|Solution|List\[\w+\]|Optional|Dict|Set|self)\b/g;
+  const fn=/([A-Za-z_][A-Za-z_0-9]*)\s*(?=\()/g;
+  const nm=/\b\d+\b/g;
+  const str=/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g;
+  const cm=/#[^\n]*|\/\/[^\n]*/g;
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function highlight(pre){
+    if(pre.dataset.highlighted)return;
+    let code=pre.innerHTML;
+    const tokens=[];
+    code=code.replace(cm,m=>{tokens.push('<span class="tok-cm">'+esc(m)+'</span>');return'\x00'+(tokens.length-1)+'\x00';});
+    code=code.replace(str,m=>{tokens.push('<span class="tok-str">'+esc(m)+'</span>');return'\x00'+(tokens.length-1)+'\x00';});
+    code=esc(code);
+    code=code.replace(kw,m=>'<span class="tok-kw">'+m+'</span>');
+    code=code.replace(ty,m=>'<span class="tok-ty">'+m+'</span>');
+    code=code.replace(nm,m=>'<span class="tok-nm">'+m+'</span>');
+    code=code.replace(fn,m=>'<span class="tok-fn">'+m+'</span>');
+    code=code.replace(/\x00(\d+)\x00/g,(_,i)=>tokens[+i]);
+    pre.innerHTML=code;
+    pre.dataset.highlighted='1';
+  }
+  document.querySelectorAll('pre.mono').forEach(highlight);
+})();
+</script>
+
+</body>
+</html>

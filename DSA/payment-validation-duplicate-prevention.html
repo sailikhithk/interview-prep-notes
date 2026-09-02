@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment Validation & Duplicate Prevention &mdash; Capital One GPN</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = { theme: { extend: { colors: {
+  'ed-pink': '#db2777', 'ed-blue': '#2563eb', 'ed-teal': '#0d9488',
+  'ed-amber': '#d97706', 'ed-sky': '#0284c7', 'ed-purple': '#7c3aed', 'ed-orange': '#ea580c',
+}, fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } } } };
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  details > summary { cursor: pointer; list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  .chevron { transition: transform 0.2s; }
+  details[open] .chevron { transform: rotate(90deg); }
+  pre.mono { white-space: pre; }
+  .tok-kw { color: #c084fc; } .tok-ty { color: #fbbf24; } .tok-fn { color: #60a5fa; }
+  .tok-nm { color: #fb923c; } .tok-str { color: #f472b6; } .tok-cm { color: #94a3b8; font-style: italic; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+<main class="max-w-5xl mx-auto px-4 py-6 md:py-10 space-y-4">
+
+<!-- Hero Header -->
+<header class="bg-gradient-to-r from-ed-blue to-gray-900 text-white rounded-2xl p-6 md:p-8 shadow-lg">
+  <div class="flex items-center gap-2 text-sm text-gray-300 mb-2">
+    <span class="bg-ed-amber text-white px-2 py-0.5 rounded-full text-xs font-bold">MEDIUM</span>
+    <span class="text-gray-400">&middot;</span>
+    <span>Capital One GPN &middot; Senior Lead SWE</span>
+  </div>
+  <h1 class="text-3xl md:text-4xl font-extrabold">Payment Validation & Duplicate Prevention</h1>
+  <p class="text-gray-300 mt-2 text-sm md:text-base">Transaction validation service for Global Payment Network: detect invalid transactions, prevent duplicates, produce auditable results.</p>
+  <div class="mt-4 flex flex-wrap gap-2 text-xs">
+    <span class="bg-white/10 px-3 py-1 rounded-full">Pattern: HashSet + Rule Chain</span>
+    <span class="bg-white/10 px-3 py-1 rounded-full">Time: O(n)</span>
+    <span class="bg-white/10 px-3 py-1 rounded-full">Space: O(n)</span>
+    <span class="bg-white/10 px-3 py-1 rounded-full">Language: Java / Python</span>
+  </div>
+</header>
+
+<!-- 1. Problem Statement -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <h2 class="text-xl md:text-2xl font-bold text-gray-900 mb-3">1. Problem Statement</h2>
+  <p class="text-sm text-gray-700 mb-3">You are joining the Global Payment Network team as a Senior Lead Software Engineer. The platform processes payment transactions from multiple merchants, card networks, and internal services. Build a transaction validation component that detects invalid transactions, prevents duplicate processing, and produces auditable validation results.</p>
+  <div class="bg-gray-100/60 rounded-lg p-4 text-sm">
+    <p class="font-semibold mb-2">Approve a transaction only if ALL of:</p>
+    <ol class="space-y-1 ml-4">
+      <li>1. Transaction ID is not duplicated</li>
+      <li>2. Amount is greater than zero</li>
+      <li>3. Currency is supported</li>
+      <li>4. Merchant is active</li>
+      <li>5. Account/card is active</li>
+      <li>6. Timestamp is present</li>
+      <li>7. Required fields are not missing</li>
+    </ol>
+    <p class="font-semibold mt-3 mb-1">Sample Input:</p>
+    <pre class="mono text-xs bg-gray-200 rounded p-2 mt-1">Supported currencies: USD, CAD
+Active merchants: M100, M200
+Active accounts: A100, A200, A300
+
+1. T001, A100, M100, 120.50, USD
+2. T002, A200, M100, 0.00, USD
+3. T003, A300, M999, 75.00, USD
+4. T001, A100, M100, 120.50, USD  (duplicate)
+5. T004, A999, M200, 20.00, CAD
+6. T005, A100, M200, 10.00, EUR</pre>
+    <p class="font-semibold mt-3 mb-1">Expected Output:</p>
+    <pre class="mono text-xs bg-gray-200 rounded p-2 mt-1">T001 -> APPROVED, VALID
+T002 -> DECLINED, INVALID_AMOUNT
+T003 -> DECLINED, INACTIVE_MERCHANT
+T001 -> DECLINED, DUPLICATE_TRANSACTION
+T004 -> DECLINED, INACTIVE_ACCOUNT
+T005 -> DECLINED, UNSUPPORTED_CURRENCY</pre>
+  </div>
+</section>
+
+<!-- 2. Pattern Recognition -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details open>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">2. Pattern Recognition</h2>
+      <span class="chevron text-ed-pink">&#9654;</span>
+    </summary>
+    <div class="mt-3 bg-ed-pink/5 border border-ed-pink/15 rounded-lg p-4">
+      <p class="text-sm text-gray-800 mb-2"><strong class="text-ed-pink">Why signals:</strong></p>
+      <ul class="text-sm space-y-1">
+        <li>&bull; Need to detect duplicates across a stream of items</li>
+        <li>&bull; Multiple independent validation rules applied in sequence</li>
+        <li>&bull; Each item gets a pass/fail with a reason code</li>
+        <li>&bull; Single pass through the list is sufficient</li>
+      </ul>
+      <p class="text-sm text-gray-800 mt-3"><strong class="text-ed-pink">Core pattern:</strong> HashSet for duplicate detection + sequential rule chain for validation. O(n) single pass, O(n) space for the dedup set.</p>
+    </div>
+  </details>
+</section>
+
+<!-- 3. Pattern Blueprint -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">3. Pattern Blueprint</h2>
+      <span class="chevron text-ed-blue">&#9654;</span>
+    </summary>
+    <div class="mt-3 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg p-4">
+      <p class="text-sm font-semibold mb-2">5-step template for HashSet + Rule Chain:</p>
+      <ol class="space-y-2 text-sm">
+        <li><span class="bg-blue-100 text-blue-700 rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">1</span> Initialize a HashSet to track seen transaction IDs</li>
+        <li><span class="bg-blue-100 text-blue-700 rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">2</span> For each transaction, check null/missing fields first (fail fast)</li>
+        <li><span class="bg-blue-100 text-blue-700 rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">3</span> Attempt to add transaction ID to set; if add returns false, it is a duplicate</li>
+        <li><span class="bg-blue-100 text-blue-700 rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">4</span> Apply remaining validation rules in order (amount, currency, merchant, account, timestamp)</li>
+        <li><span class="bg-blue-100 text-blue-700 rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">5</span> Return APPROVED only if all rules pass; otherwise return DECLINED with the first failing reason code</li>
+      </ol>
+    </div>
+  </details>
+</section>
+
+<!-- 4. How to Think About It -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">4. How to Think About It</h2>
+      <span class="chevron text-ed-blue">&#9654;</span>
+    </summary>
+    <div class="mt-3 bg-ed-blue/5 border border-gray-300 rounded-lg p-4 space-y-3">
+      <div class="text-sm">
+        <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">1</span> What data do I need to track across transactions?</p>
+        <p class="text-gray-700 ml-8">Only the transaction IDs I have already seen. That is a Set. HashSet gives O(1) add and contains.</p>
+      </div>
+      <div class="text-sm">
+        <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">2</span> What is the validation order?</p>
+        <p class="text-gray-700 ml-8">Fail fast. Check missing fields first (cheapest), then duplicate, then business rules. The order matters for reason code clarity.</p>
+      </div>
+      <div class="text-sm">
+        <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">3</span> Should I return all failure reasons or just the first?</p>
+        <p class="text-gray-700 ml-8">Clarify with the interviewer. Default: first failure. Production: may want all reasons for audit. State both options.</p>
+      </div>
+      <div class="text-sm">
+        <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">4</span> <span class="text-ed-teal">&rarr;</span> How does this scale to production?</p>
+        <p class="text-gray-700 ml-8">In-memory HashSet only works for a single instance. Production needs a shared idempotency store (Redis SETNX or DB unique constraint) so multiple pods do not double-process.</p>
+      </div>
+    </div>
+  </details>
+</section>
+
+<!-- 5. Real-World Analogy -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">5. Real-World Analogy</h2>
+      <span class="chevron text-ed-teal">&#9654;</span>
+    </summary>
+    <div class="mt-3 bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-4 text-sm text-gray-800">
+      <p class="mb-2">Think of a <strong>bouncer at a club with a guest list</strong>. Each person (transaction) walks up. The bouncer checks:</p>
+      <p class="mb-2">1. <strong>Is the person on the guest list?</strong> (missing fields check, do they have ID?)<br>
+      2. <strong>Have I already let this person in?</strong> (duplicate check, HashSet is the stamp on the hand)<br>
+      3. <strong>Are they old enough?</strong> (amount &gt; 0)<br>
+      4. <strong>Is this club open tonight?</strong> (currency supported)<br>
+      5. <strong>Is this person banned?</strong> (merchant/account active)</p>
+      <p>The bouncer stamps your hand the first time. If you come back with the same name, the stamp is already there, you get turned away as a duplicate. The stamp book is the HashSet. In production, there are multiple bouncers at multiple doors, so the stamp book needs to be shared (Redis).</p>
+    </div>
+  </details>
+</section>
+
+<!-- 6. Build Your Intuition -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">6. Build Your Intuition</h2>
+      <span class="chevron text-ed-amber">&#9654;</span>
+    </summary>
+    <div class="mt-3 space-y-3">
+      <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-3 text-sm">
+        <p class="font-semibold mb-1">Q: Why HashSet and not a List?</p>
+        <p class="text-gray-700">List.contains() is O(n). HashSet.contains() and add() are O(1) average. For 1M transactions, that is the difference between 1M and 1 trillion operations.</p>
+      </div>
+      <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-3 text-sm text-ed-teal">
+        <p class="font-semibold mb-1">Q: Why check duplicate before other business rules?</p>
+        <p class="text-gray-800">If the same transaction ID arrives twice, the second one is a duplicate regardless of whether the first was approved or declined. The duplicate check is about idempotency, not business validity.</p>
+      </div>
+      <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-3 text-sm">
+        <p class="font-semibold mb-1">Q: Why use BigDecimal instead of double for amount?</p>
+        <p class="text-gray-700">double has floating-point precision errors. 0.1 + 0.2 != 0.3 in double. BigDecimal gives exact decimal representation, critical for payment/ledger/settlement systems.</p>
+      </div>
+    </div>
+  </details>
+</section>
+
+<!-- 7. How It Works (Step by Step) -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">7. How It Works (Step by Step)</h2>
+      <span class="chevron text-ed-sky">&#9654;</span>
+    </summary>
+    <div class="mt-3 space-y-2 text-sm">
+      <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 1:</strong> Create empty HashSet <code class="mono">processedTransactionIds</code>. Create empty results list.</div>
+      <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 2:</strong> For each transaction in input list, call <code class="mono">validateTransaction</code>.</div>
+      <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 3:</strong> Check null or blank fields (transactionId, accountId, merchantId, currency). If any blank, return MISSING_REQUIRED_FIELD.</div>
+      <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 4:</strong> Try <code class="mono">processedTransactionIds.add(transactionId)</code>. If returns false, return DUPLICATE_TRANSACTION.</div>
+      <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 5:</strong> Check amount null or &le; 0. If so, return INVALID_AMOUNT.</div>
+      <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 6:</strong> Check currency not in supportedCurrencies set. If not, return UNSUPPORTED_CURRENCY.</div>
+      <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 7:</strong> Check merchant not in activeMerchants. If not, return INACTIVE_MERCHANT.</div>
+      <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 8:</strong> Check account not in activeAccounts. If not, return INACTIVE_ACCOUNT.</div>
+      <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 9:</strong> Check timestamp null. If so, return MISSING_TIMESTAMP.</div>
+      <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 10:</strong> All checks passed. Return APPROVED, VALID. Add result to results list.</div>
+    </div>
+  </details>
+</section>
+
+<!-- 8. Dry Run Table -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">8. Dry Run Table</h2>
+      <span class="chevron text-ed-amber">&#9654;</span>
+    </summary>
+    <div class="mt-3 overflow-x-auto">
+      <table class="w-full text-xs border border-amber-200 rounded-lg">
+        <thead class="bg-amber-50 text-amber-700">
+          <tr>
+            <th class="p-2 text-left">Txn</th>
+            <th class="p-2 text-left">ID</th>
+            <th class="p-2 text-left">Acct</th>
+            <th class="p-2 text-left">Merch</th>
+            <th class="p-2 text-left">Amt</th>
+            <th class="p-2 text-left">Curr</th>
+            <th class="p-2 text-left">Set state</th>
+            <th class="p-2 text-left">Result</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 bg-amber-50/30">
+          <tr><td class="p-2">1</td><td class="p-2 mono">T001</td><td class="p-2">A100</td><td class="p-2">M100</td><td class="p-2">120.50</td><td class="p-2">USD</td><td class="p-2">{T001}</td><td class="p-2 text-emerald-700 font-semibold">APPROVED</td></tr>
+          <tr><td class="p-2">2</td><td class="p-2 mono">T002</td><td class="p-2">A200</td><td class="p-2">M100</td><td class="p-2">0.00</td><td class="p-2">USD</td><td class="p-2">{T001,T002}</td><td class="p-2 text-red-600 font-semibold">INVALID_AMOUNT</td></tr>
+          <tr><td class="p-2">3</td><td class="p-2 mono">T003</td><td class="p-2">A300</td><td class="p-2">M999</td><td class="p-2">75.00</td><td class="p-2">USD</td><td class="p-2">{T001,T002,T003}</td><td class="p-2 text-red-600 font-semibold">INACTIVE_MERCHANT</td></tr>
+          <tr><td class="p-2">4</td><td class="p-2 mono">T001</td><td class="p-2">A100</td><td class="p-2">M100</td><td class="p-2">120.50</td><td class="p-2">USD</td><td class="p-2">add returns false</td><td class="p-2 text-red-600 font-semibold">DUPLICATE</td></tr>
+          <tr><td class="p-2">5</td><td class="p-2 mono">T004</td><td class="p-2">A999</td><td class="p-2">M200</td><td class="p-2">20.00</td><td class="p-2">CAD</td><td class="p-2">{..T004}</td><td class="p-2 text-red-600 font-semibold">INACTIVE_ACCOUNT</td></tr>
+          <tr><td class="p-2">6</td><td class="p-2 mono">T005</td><td class="p-2">A100</td><td class="p-2">M200</td><td class="p-2">10.00</td><td class="p-2">EUR</td><td class="p-2">{..T005}</td><td class="p-2 text-red-600 font-semibold">UNSUPPORTED_CURRENCY</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+</section>
+
+<!-- 9. Live Interactive Visualization -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details open>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">9. Live Interactive Visualization</h2>
+      <span class="chevron text-ed-pink">&#9654;</span>
+    </summary>
+    <div class="mt-3 bg-ed-pink/5 border border-ed-pink/15 rounded-lg p-4">
+      <p class="text-sm text-gray-800 mb-3"><span class="bg-ed-pink/10 text-ed-pink px-2 py-0.5 rounded text-xs font-bold mr-2">INTERACTIVE</span>Step through the 6 sample transactions and watch the HashSet grow and the rule chain fire.</p>
+      <div id="viz-bars" class="flex items-end gap-2 h-40 mb-2"></div>
+      <div id="viz-labels" class="flex gap-2 text-xs text-gray-600 mb-4"></div>
+      <div class="flex items-center gap-2 mb-3">
+        <button id="btn-prev" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm font-semibold">&larr; Prev</button>
+        <button id="btn-play" class="bg-ed-pink hover:bg-ed-pink/80 text-white px-3 py-1 rounded text-sm font-semibold">Play</button>
+        <button id="btn-next" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm font-semibold">Next &rarr;</button>
+        <button id="btn-reset" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm font-semibold">Reset</button>
+        <span id="step-counter" class="ml-auto text-sm text-gray-600 font-mono">Step 0/6</span>
+      </div>
+      <div class="mb-3">
+        <label class="text-xs text-gray-600">Speed: <span id="speed-label">1200ms</span></label>
+        <input id="speed-slider" type="range" min="400" max="3000" step="200" value="1200" class="w-full">
+      </div>
+      <div class="flex flex-wrap gap-2 mb-3 text-xs">
+        <span class="bg-gray-100 px-2 py-1 rounded">Set: <span id="pill-set" class="mono font-semibold">{}</span></span>
+        <span id="pill-result" class="px-2 py-1 rounded font-semibold">--</span>
+        <span id="pill-phase" class="px-2 py-1 rounded font-semibold">init</span>
+      </div>
+      <pre id="code-panel" class="mono bg-gray-900 text-gray-100 rounded-lg p-3 text-xs overflow-x-auto"></pre>
+      <p id="step-msg" class="text-sm text-gray-700 mt-2">Click Next or Play to start the trace.</p>
+    </div>
+  </details>
+  <script>
+    const txns = [
+      {id:'T001',acct:'A100',merch:'M100',amt:120.50,curr:'USD',result:'APPROVED',reason:'VALID',phase:'validate'},
+      {id:'T002',acct:'A200',merch:'M100',amt:0.00,curr:'USD',result:'DECLINED',reason:'INVALID_AMOUNT',phase:'amount'},
+      {id:'T003',acct:'A300',merch:'M999',amt:75.00,curr:'USD',result:'DECLINED',reason:'INACTIVE_MERCHANT',phase:'merchant'},
+      {id:'T001',acct:'A100',merch:'M100',amt:120.50,curr:'USD',result:'DECLINED',reason:'DUPLICATE',phase:'duplicate'},
+      {id:'T004',acct:'A999',merch:'M200',amt:20.00,curr:'CAD',result:'DECLINED',reason:'INACTIVE_ACCOUNT',phase:'account'},
+      {id:'T005',acct:'A100',merch:'M200',amt:10.00,curr:'EUR',result:'DECLINED',reason:'UNSUPPORTED_CURRENCY',phase:'currency'},
+    ];
+    const codeLines = [
+      'for (Transaction t : transactions) {',
+      '  if (isBlank(t.id) || isBlank(t.acct) || isBlank(t.merch))',
+      '    return DECLINED, MISSING_REQUIRED_FIELD;',
+      '  if (!seen.add(t.id))',
+      '    return DECLINED, DUPLICATE_TRANSACTION;',
+      '  if (t.amount <= 0)',
+      '    return DECLINED, INVALID_AMOUNT;',
+      '  if (!supportedCurrencies.contains(t.currency))',
+      '    return DECLINED, UNSUPPORTED_CURRENCY;',
+      '  if (!activeMerchants.contains(t.merchant))',
+      '    return DECLINED, INACTIVE_MERCHANT;',
+      '  if (!activeAccounts.contains(t.account))',
+      '    return DECLINED, INACTIVE_ACCOUNT;',
+      '  return APPROVED, VALID;',
+      '}',
+    ];
+    let step = 0, playing = false, timer = null, speed = 1200;
+    const phaseLineMap = {validate:0,duplicate:3,amount:5,currency:7,merchant:9,account:11};
+    function render() {
+      const bars = document.getElementById('viz-bars');
+      const labels = document.getElementById('viz-labels');
+      bars.innerHTML = ''; labels.innerHTML = '';
+      txns.forEach((t, i) => {
+        const active = i < step;
+        const isCurrent = i === step - 1;
+        const isDup = t.reason === 'DUPLICATE';
+        const isApproved = t.result === 'APPROVED';
+        const color = !active ? 'bg-gray-200' : isApproved ? 'bg-emerald-500' : isDup ? 'bg-purple-500' : 'bg-red-400';
+        const h = Math.min(140, Math.max(20, t.amt === 0 ? 20 : t.amt * 0.8));
+        bars.insertAdjacentHTML('beforeend', `<div class="flex-1 flex flex-col items-center justify-end"><div class="w-full ${color} ${isCurrent ? 'ring-2 ring-ed-pink' : ''} rounded-t" style="height:${h}px"></div></div>`);
+        labels.insertAdjacentHTML('beforeend', `<div class="flex-1 text-center ${isCurrent ? 'font-bold text-ed-pink' : 'text-gray-500'}">${t.id}</div>`);
+      });
+      document.getElementById('step-counter').textContent = `Step ${step}/${txns.length}`;
+      if (step === 0) {
+        document.getElementById('pill-set').textContent = '{}';
+        document.getElementById('pill-result').textContent = '--';
+        document.getElementById('pill-result').className = 'px-2 py-1 rounded font-semibold bg-gray-100';
+        document.getElementById('pill-phase').textContent = 'init';
+        document.getElementById('pill-phase').className = 'px-2 py-1 rounded font-semibold bg-gray-100';
+        document.getElementById('step-msg').textContent = 'Click Next or Play to start the trace.';
+        renderCode(-1);
+        return;
+      }
+      const t = txns[step - 1];
+      const seenSet = txns.slice(0, step).map(x => x.id).filter((id, idx, arr) => arr.indexOf(id) === idx);
+      document.getElementById('pill-set').textContent = '{' + seenSet.join(',') + '}';
+      const resPill = document.getElementById('pill-result');
+      resPill.textContent = `${t.result}, ${t.reason}`;
+      resPill.className = 'px-2 py-1 rounded font-semibold ' + (t.result === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700');
+      const phasePill = document.getElementById('pill-phase');
+      phasePill.textContent = t.phase;
+      const phaseColors = {validate:'bg-sky-100 text-sky-700',duplicate:'bg-purple-100 text-purple-700',amount:'bg-amber-100 text-amber-700',currency:'bg-teal-100 text-teal-700',merchant:'bg-orange-100 text-orange-700',account:'bg-blue-100 text-blue-700'};
+      phasePill.className = 'px-2 py-1 rounded font-semibold ' + (phaseColors[t.phase] || 'bg-gray-100');
+      const msgMap = {
+        validate: `Transaction ${t.id}: all fields present, proceeding to checks.`,
+        duplicate: `Transaction ${t.id}: seen.add() returned false, already in set. DUPLICATE_TRANSACTION.`,
+        amount: `Transaction ${t.id}: amount ${t.amt} <= 0. INVALID_AMOUNT.`,
+        currency: `Transaction ${t.id}: currency ${t.curr} not in {USD,CAD}. UNSUPPORTED_CURRENCY.`,
+        merchant: `Transaction ${t.id}: merchant ${t.merch} not active. INACTIVE_MERCHANT.`,
+        account: `Transaction ${t.id}: account ${t.acct} not active. INACTIVE_ACCOUNT.`,
+      };
+      document.getElementById('step-msg').textContent = msgMap[t.phase] || '';
+      renderCode(phaseLineMap[t.phase] !== undefined ? phaseLineMap[t.phase] : 0);
+    }
+    function renderCode(hl) {
+      const panel = document.getElementById('code-panel');
+      panel.innerHTML = codeLines.map((l, i) => {
+        const escaped = l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const colored = escaped
+          .replace(/\b(for|if|return)\b/g, '<span class="tok-kw">$1</span>')
+          .replace(/\b(DECLINED|APPROVED|DUPLICATE_TRANSACTION|INVALID_AMOUNT|UNSUPPORTED_CURRENCY|INACTIVE_MERCHANT|INACTIVE_ACCOUNT|MISSING_REQUIRED_FIELD|VALID)\b/g, '<span class="tok-ty">$1</span>')
+          .replace(/\b(seen|supportedCurrencies|activeMerchants|activeAccounts|isBlank|contains|add)\b/g, '<span class="tok-fn">$1</span>');
+        const bg = i === hl ? 'bg-ed-pink/20' : '';
+        return `<div class="${bg} px-1">${colored}</div>`;
+      }).join('');
+    }
+    function next() { if (step < txns.length) { step++; render(); } else { stop(); } }
+    function prev() { if (step > 0) { step--; render(); } }
+    function reset() { stop(); step = 0; render(); }
+    function play() { if (step >= txns.length) { step = 0; render(); } playing = true; document.getElementById('btn-play').textContent = 'Pause'; timer = setInterval(next, speed); }
+    function stop() { playing = false; document.getElementById('btn-play').textContent = 'Play'; if (timer) { clearInterval(timer); timer = null; } }
+    document.getElementById('btn-next').onclick = () => { stop(); next(); };
+    document.getElementById('btn-prev').onclick = () => { stop(); prev(); };
+    document.getElementById('btn-reset').onclick = reset;
+    document.getElementById('btn-play').onclick = () => { if (playing) stop(); else play(); };
+    document.getElementById('speed-slider').oninput = (e) => { speed = parseInt(e.target.value); document.getElementById('speed-label').textContent = speed + 'ms'; if (playing) { stop(); play(); } };
+    render();
+  </script>
+</section>
+
+<!-- 10. Complexity Deep Dive -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">10. Complexity Deep Dive</h2>
+      <span class="chevron text-ed-teal">&#9654;</span>
+    </summary>
+    <div class="mt-3 grid md:grid-cols-2 gap-3">
+      <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-4">
+        <h3 class="font-bold text-ed-teal mb-2">Time: O(n)</h3>
+        <p class="text-sm text-gray-800">Single pass through n transactions. Each transaction does O(1) work: HashSet.add() is O(1) average, Set.contains() for currency/merchant/account is O(1). Total: n * O(1) = O(n).</p>
+        <p class="text-sm text-gray-800 mt-2">Worst case: HashSet degenerates to O(log n) per operation if many hash collisions (Java 8+ uses balanced tree in buckets with &gt;8 collisions). Still O(n log n) worst case, but extremely rare with good hash distribution.</p>
+      </div>
+      <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-4">
+        <h3 class="font-bold text-ed-purple mb-2">Space: O(n)</h3>
+        <p class="text-sm text-gray-800">The HashSet stores up to n unique transaction IDs. The results list stores n ValidationResult objects. The reference data sets (supportedCurrencies, activeMerchants, activeAccounts) are O(k) where k is the size of each reference set, typically small and constant.</p>
+        <p class="text-sm text-gray-800 mt-2">Production: the idempotency store grows unbounded. Add TTL or time-windowed eviction (e.g., keep 24h of transaction IDs, archive older to cold storage for audit).</p>
+      </div>
+    </div>
+  </details>
+</section>
+
+<!-- 11. From Brute Force to Optimal -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">11. From Brute Force to Optimal</h2>
+      <span class="chevron text-ed-teal">&#9654;</span>
+    </summary>
+    <div class="mt-3 grid md:grid-cols-2 gap-3">
+      <div class="bg-red-500/5 border border-red-500/15 rounded-lg p-4 text-red-500">
+        <h3 class="font-bold mb-2">Naive: Nested Loop Dedup</h3>
+        <pre class="mono text-xs bg-gray-900 text-gray-100 rounded p-2 mb-2">for each txn t:
+  for each prior txn p:
+    if t.id == p.id:
+      DUPLICATE</pre>
+        <p class="text-sm text-gray-800">Time: O(n^2). Space: O(1) extra. For 1M transactions, that is 1 trillion comparisons. Unusable at payment scale.</p>
+      </div>
+      <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-4 text-ed-teal">
+        <h3 class="font-bold mb-2">Optimal: HashSet Dedup</h3>
+        <pre class="mono text-xs bg-gray-900 text-gray-100 rounded p-2 mb-2">Set seen = new HashSet()
+for each txn t:
+  if (!seen.add(t.id)):
+    DUPLICATE</pre>
+        <p class="text-sm text-gray-800">Time: O(n). Space: O(n). For 1M transactions, 1M O(1) operations. <strong>1 million times faster</strong> at scale.</p>
+      </div>
+    </div>
+  </details>
+</section>
+
+<!-- 12. Edge Cases & Gotchas -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">12. Edge Cases & Gotchas</h2>
+      <span class="chevron text-ed-orange">&#9654;</span>
+    </summary>
+    <div class="mt-3 space-y-3">
+      <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+        <p class="font-semibold text-ed-orange mb-1">Duplicate ID with different amount</p>
+        <p class="text-gray-800">Suspicious. Same ID but different amount or merchant could indicate a bug or fraud. Compare incoming with original. If mismatch, route to exception queue or fraud review, do not silently treat as normal duplicate.</p>
+      </div>
+      <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+        <p class="font-semibold text-ed-orange mb-1">Lowercase currency "usd" vs "USD"</p>
+        <p class="text-gray-800">Normalize to uppercase before set lookup. <code class="mono">currency.toUpperCase()</code>. Otherwise "usd" gets UNSUPPORTED_CURRENCY even though USD is supported.</p>
+      </div>
+      <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+        <p class="font-semibold text-ed-orange mb-1">Null timestamp vs future timestamp</p>
+        <p class="text-gray-800">Null is MISSING_TIMESTAMP. Future timestamp may be valid (pre-authorization) or invalid depending on business rule. Clarify with interviewer. Default: reject future timestamps beyond a small clock-skew tolerance (e.g., 5 minutes).</p>
+      </div>
+      <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+        <p class="font-semibold text-ed-orange mb-1">Concurrent processing across instances</p>
+        <p class="text-gray-800">In-memory HashSet is not shared across pods. Two pods can both add the same ID and both approve. Production: use Redis SETNX or DB unique constraint with atomic insert. The check-and-add must be a single atomic operation.</p>
+      </div>
+    </div>
+  </details>
+</section>
+
+<!-- 13. Flashcards -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">13. Flashcards</h2>
+      <span class="chevron text-ed-purple">&#9654;</span>
+    </summary>
+    <div class="mt-3 space-y-2">
+      <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+        <summary class="text-sm font-semibold text-ed-purple">Q1: What is the time and space complexity of the optimal solution?</summary>
+        <p class="text-sm text-gray-800 mt-2">Time O(n), Space O(n). Single pass with HashSet for dedup. The HashSet stores up to n unique IDs.</p>
+      </details>
+      <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+        <summary class="text-sm font-semibold text-ed-purple">Q2: Why does HashSet.add() return false for duplicates?</summary>
+        <p class="text-sm text-gray-800 mt-2">Set semantics reject duplicates. add() returns true if the element was added (not already present), false if it was already in the set. This is a single atomic O(1) check-and-add.</p>
+      </details>
+      <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+        <summary class="text-sm font-semibold text-ed-purple">Q3: Why use BigDecimal instead of double for amount?</summary>
+        <p class="text-sm text-gray-800 mt-2">double has floating-point precision errors (0.1 + 0.2 != 0.3). BigDecimal gives exact decimal representation, critical for payment/ledger/settlement. Never use double or float for money.</p>
+      </details>
+      <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+        <summary class="text-sm font-semibold text-ed-purple">Q4: How do you make this thread-safe for production?</summary>
+        <p class="text-sm text-gray-800 mt-2">In-memory HashSet is not shared across pods. Use Redis SETNX (atomic set-if-not-exists) or a DB unique constraint on transaction_id. The check-and-add must be a single atomic operation to prevent race conditions.</p>
+      </details>
+      <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+        <summary class="text-sm font-semibold text-ed-purple">Q5: What happens if audit write fails after approval?</summary>
+        <p class="text-sm text-gray-800 mt-2">For payment systems, audit failure is serious. Keep validation result and audit write in the same transaction boundary. If not possible, use the outbox pattern so the audit event is reliably persisted and published later.</p>
+      </details>
+    </div>
+  </details>
+</section>
+
+<!-- 14. Where It Is Used (Real World) -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">14. Where It Is Used (Real World)</h2>
+      <span class="chevron text-gray-700">&#9654;</span>
+    </summary>
+    <div class="mt-3 space-y-2">
+      <div class="bg-amber-100 border border-amber-300 text-amber-700 rounded-lg p-3 text-sm">
+        <p class="font-semibold mb-1">Payment Gateways (Stripe, Adyen, Square)</p>
+        <p class="text-gray-800">Every payment API accepts an idempotency key. The gateway stores it in a dedup store. Retried requests with the same key return the original result, never double-charge.</p>
+      </div>
+      <div class="bg-gray-100 border border-gray-300 text-gray-700 rounded-lg p-3 text-sm">
+        <p class="font-semibold mb-1">Bank Transaction Processing (Capital One GPN, JPMorgan)</p>
+        <p class="text-gray-800">Transaction validation pipelines check account status, merchant status, currency support, and duplicate detection before authorizing. Audit trail for every decision including declines.</p>
+      </div>
+      <div class="bg-rose-100 border border-rose-300 text-rose-700 rounded-lg p-3 text-sm">
+        <p class="font-semibold mb-1">Order Management Systems (Amazon, Shopify)</p>
+        <p class="text-gray-800">Order ID dedup prevents double-fulfillment when buyers retry checkout. Validation rules check inventory, payment status, shipping address before order confirmation.</p>
+      </div>
+      <div class="bg-indigo-100 border border-indigo-300 text-indigo-700 rounded-lg p-3 text-sm">
+        <p class="font-semibold mb-1">Kafka Consumer Idempotency</p>
+        <p class="text-gray-800">Kafka provides at-least-once delivery. Consumers must be idempotent. Pattern: dedup store keyed by topic+partition+offset or by business-level idempotency key from the message payload.</p>
+      </div>
+    </div>
+  </details>
+</section>
+
+<!-- 15. Common Mistakes -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">15. Common Mistakes</h2>
+      <span class="chevron text-ed-orange">&#9654;</span>
+    </summary>
+    <div class="mt-3 bg-ed-orange/5 border border-ed-orange/15 rounded-lg p-4">
+      <ul class="text-sm space-y-2">
+        <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Using double for amount.</strong> Floating-point precision errors. Use BigDecimal in Java, Decimal in Python, or integer cents.</li>
+        <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Checking duplicate after business rules.</strong> If the first transaction was declined for INVALID_AMOUNT, the duplicate check never fires. Always check duplicate first (after missing fields).</li>
+        <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Not normalizing currency.</strong> "usd" vs "USD" vs "Usd" all fail set lookup. Normalize to uppercase before validation.</li>
+        <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Using List.contains() for dedup.</strong> O(n) per check, O(n^2) total. Use HashSet for O(1).</li>
+        <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Not handling null transaction.</strong> Null check must be first, before any field access, to avoid NullPointerException.</li>
+        <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Returning all failure reasons instead of first.</strong> Clarify with interviewer. Default is first failure for clarity. Production may want all for audit.</li>
+        <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Not discussing production hardening.</strong> Senior interview expects idempotency, thread safety, audit, reconciliation discussion after the coding solution.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<!-- 16. Interview Tips -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">16. Interview Tips</h2>
+      <span class="chevron text-ed-purple">&#9654;</span>
+    </summary>
+    <div class="mt-3 bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-4">
+      <ul class="text-sm space-y-2">
+        <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Open with clarification.</strong> "Before I code, I want to clarify the validation rules and edge cases. Since this is a payment system, I will also consider idempotency, auditability, retry behavior, and reconciliation."</li>
+        <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>State the pattern before coding.</strong> "I will use a HashSet for O(1) duplicate detection and a sequential rule chain for validation. This gives O(n) time and O(n) space."</li>
+        <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Code brute force first if optimal is not immediately clear.</strong> Then optimize. Shows problem-solving process.</li>
+        <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Use helper functions.</strong> <code class="mono">isBlank()</code>, <code class="mono">decline()</code> keep the main loop clean and readable.</li>
+        <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Walk through the example.</strong> After coding, trace through the sample input/output to verify. Interviewers want to see you test.</li>
+        <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>State complexity explicitly.</strong> "Time O(n), space O(n). The HashSet stores up to n unique IDs."</li>
+        <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Pivot to production.</strong> After the coding solution, proactively discuss: idempotency store (Redis SETNX), audit table, Kafka topics, DLQ, reconciliation. This is the senior-level signal.</li>
+        <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Use BigDecimal, not double.</strong> If the interviewer asks why, explain floating-point precision. This is a payments domain signal.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<!-- 17. Similar Problems to Practice -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">17. Similar Problems to Practice</h2>
+      <span class="chevron text-gray-700">&#9654;</span>
+    </summary>
+    <div class="mt-3 space-y-2">
+      <div class="bg-gray-100 border border-gray-300 rounded-lg p-3 text-sm flex items-center justify-between">
+        <span><strong>Contains Duplicate</strong> (LeetCode 217)</span>
+        <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-bold">EASY</span>
+      </div>
+      <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm flex items-center justify-between">
+        <span><strong>Contains Duplicate II</strong> (LeetCode 219) &mdash; HashSet + sliding window</span>
+        <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-bold">EASY</span>
+      </div>
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm flex items-center justify-between">
+        <span><strong>Design a Bank System</strong> (LeetCode 2043) &mdash; OOP, state validation</span>
+        <span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-bold">MEDIUM</span>
+      </div>
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm flex items-center justify-between">
+        <span><strong>Validate Credit Card Number</strong> (Luhn algorithm)</span>
+        <span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-bold">MEDIUM</span>
+      </div>
+      <div class="bg-rose-50 border border-rose-200 rounded-lg p-3 text-sm flex items-center justify-between">
+        <span><strong>Design Transaction Limit System</strong> &mdash; rate limiting + dedup</span>
+        <span class="bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-xs font-bold">HARD</span>
+      </div>
+    </div>
+  </details>
+</section>
+
+<!-- 18. Related Algorithms -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">18. Related Algorithms</h2>
+      <span class="chevron text-gray-700">&#9654;</span>
+    </summary>
+    <div class="mt-3 grid md:grid-cols-2 gap-2 text-sm">
+      <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>HashSet / HashMap</strong> &mdash; O(1) lookup and insertion for dedup and counting</div>
+      <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Bloom Filter</strong> &mdash; probabilistic dedup for massive scale, false positives but no false negatives</div>
+      <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Rule Chain / Chain of Responsibility</strong> &mdash; sequential validation pattern</div>
+      <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Idempotency Key Pattern</strong> &mdash; distributed dedup using Redis SETNX or DB unique constraint</div>
+      <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Outbox Pattern</strong> &mdash; reliable event publishing with DB transaction</div>
+      <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Luhn Algorithm</strong> &mdash; credit card number validation checksum</div>
+    </div>
+  </details>
+</section>
+
+<!-- 19. Where This Pattern Meets System Design -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">19. Where This Pattern Meets System Design</h2>
+      <span class="chevron text-indigo-600">&#9654;</span>
+    </summary>
+    <div class="mt-3 bg-indigo-50 border border-indigo-200 rounded-lg p-4 text-indigo-700 text-sm space-y-3">
+      <div>
+        <p class="font-semibold mb-1">In-memory HashSet &rarr; Distributed Idempotency Store</p>
+        <p class="text-gray-800">The coding exercise uses an in-memory HashSet. Production uses Redis SETNX or a DB unique constraint. The check-and-add must be atomic across all instances.</p>
+      </div>
+      <div>
+        <p class="font-semibold mb-1">Rule Chain &rarr; Microservice Validation Pipeline</p>
+        <p class="text-gray-800">Each validation rule can be a separate service: fraud check, account service, merchant service, currency service. Orchestrate via synchronous calls or a streaming pipeline with Kafka.</p>
+      </div>
+      <div>
+        <p class="font-semibold mb-1">Results List &rarr; Audit Table + Kafka Topics</p>
+        <p class="text-gray-800">Every validation result (approved and declined) writes to an immutable audit table. Approved and declined events publish to separate Kafka topics for downstream authorization, ledger, and reconciliation.</p>
+      </div>
+      <div>
+        <p class="font-semibold mb-1">Single Pass &rarr; Streaming Consumer</p>
+        <p class="text-gray-800">The for-loop becomes a Kafka consumer. Partition by account_id or transaction_id for ordering. Commit offset only after validation result and audit write succeed (at-least-once + idempotent consumer = effectively once).</p>
+      </div>
+      <div>
+        <p class="font-semibold mb-1">Reason Codes &rarr; Observability + Reconciliation</p>
+        <p class="text-gray-800">Reason codes feed dashboards (decline rate by reason), alerts (spike in INACTIVE_MERCHANT), and reconciliation (compare internal decisions to external network settlement files).</p>
+      </div>
+    </div>
+  </details>
+</section>
+
+<!-- 20. Code Solutions -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">20. Code Solutions</h2>
+      <span class="chevron text-ed-sky">&#9654;</span>
+    </summary>
+    <div class="mt-3 space-y-4">
+      <div>
+        <h3 class="font-bold text-ed-sky mb-2">Java</h3>
+        <pre class="mono bg-gray-900 text-gray-100 rounded-lg p-3 text-xs overflow-x-auto"><span class="tok-kw">import</span> java.math.BigDecimal;
+<span class="tok-kw">import</span> java.time.Instant;
+<span class="tok-kw">import</span> java.util.*;
+
+<span class="tok-kw">public record</span> <span class="tok-ty">Transaction</span>(
+    <span class="tok-ty">String</span> transactionId, <span class="tok-ty">String</span> accountId, <span class="tok-ty">String</span> merchantId,
+    <span class="tok-ty">BigDecimal</span> amount, <span class="tok-ty">String</span> currency, <span class="tok-ty">Instant</span> timestamp
+) {}
+
+<span class="tok-kw">public enum</span> <span class="tok-ty">TransactionStatus</span> { APPROVED, DECLINED }
+<span class="tok-kw">public enum</span> <span class="tok-ty">ReasonCode</span> {
+    VALID, MISSING_REQUIRED_FIELD, DUPLICATE_TRANSACTION, INVALID_AMOUNT,
+    UNSUPPORTED_CURRENCY, INACTIVE_MERCHANT, INACTIVE_ACCOUNT, MISSING_TIMESTAMP
+}
+<span class="tok-kw">public record</span> <span class="tok-ty">ValidationResult</span>(<span class="tok-ty">String</span> transactionId, <span class="tok-ty">TransactionStatus</span> status, <span class="tok-ty">ReasonCode</span> reasonCode) {}
+
+<span class="tok-kw">public class</span> <span class="tok-ty">PaymentValidationService</span> {
+    <span class="tok-kw">public</span> <span class="tok-ty">List</span>&lt;<span class="tok-ty">ValidationResult</span>&gt; <span class="tok-fn">validateTransactions</span>(
+        <span class="tok-ty">List</span>&lt;<span class="tok-ty">Transaction</span>&gt; transactions,
+        <span class="tok-ty">Set</span>&lt;<span class="tok-ty">String</span>&gt; activeAccounts,
+        <span class="tok-ty">Set</span>&lt;<span class="tok-ty">String</span>&gt; activeMerchants,
+        <span class="tok-ty">Set</span>&lt;<span class="tok-ty">String</span>&gt; supportedCurrencies
+    ) {
+        <span class="tok-ty">List</span>&lt;<span class="tok-ty">ValidationResult</span>&gt; results = <span class="tok-kw">new</span> <span class="tok-fn">ArrayList</span>&lt;&gt;();
+        <span class="tok-ty">Set</span>&lt;<span class="tok-ty">String</span>&gt; seen = <span class="tok-kw">new</span> <span class="tok-fn">HashSet</span>&lt;&gt;();
+        <span class="tok-kw">for</span> (<span class="tok-ty">Transaction</span> t : transactions) {
+            results.<span class="tok-fn">add</span>(<span class="tok-fn">validate</span>(t, seen, activeAccounts, activeMerchants, supportedCurrencies));
+        }
+        <span class="tok-kw">return</span> results;
+    }
+
+    <span class="tok-kw">private</span> <span class="tok-ty">ValidationResult</span> <span class="tok-fn">validate</span>(<span class="tok-ty">Transaction</span> t, <span class="tok-ty">Set</span>&lt;<span class="tok-ty">String</span>&gt; seen,
+            <span class="tok-ty">Set</span>&lt;<span class="tok-ty">String</span>&gt; accounts, <span class="tok-ty">Set</span>&lt;<span class="tok-ty">String</span>&gt; merchants, <span class="tok-ty">Set</span>&lt;<span class="tok-ty">String</span>&gt; currencies) {
+        <span class="tok-kw">if</span> (t == <span class="tok-kw">null</span>) <span class="tok-kw">return</span> <span class="tok-fn">decline</span>(<span class="tok-kw">null</span>, ReasonCode.MISSING_REQUIRED_FIELD);
+        <span class="tok-kw">if</span> (<span class="tok-fn">isBlank</span>(t.transactionId()) || <span class="tok-fn">isBlank</span>(t.accountId())
+            || <span class="tok-fn">isBlank</span>(t.merchantId()) || <span class="tok-fn">isBlank</span>(t.currency()))
+            <span class="tok-kw">return</span> <span class="tok-fn">decline</span>(t.transactionId(), ReasonCode.MISSING_REQUIRED_FIELD);
+        <span class="tok-kw">if</span> (!seen.<span class="tok-fn">add</span>(t.transactionId()))
+            <span class="tok-kw">return</span> <span class="tok-fn">decline</span>(t.transactionId(), ReasonCode.DUPLICATE_TRANSACTION);
+        <span class="tok-kw">if</span> (t.amount() == <span class="tok-kw">null</span> || t.amount().<span class="tok-fn">compareTo</span>(BigDecimal.ZERO) &lt;= <span class="tok-nm">0</span>)
+            <span class="tok-kw">return</span> <span class="tok-fn">decline</span>(t.transactionId(), ReasonCode.INVALID_AMOUNT);
+        <span class="tok-kw">if</span> (!currencies.<span class="tok-fn">contains</span>(t.currency().<span class="tok-fn">toUpperCase</span>()))
+            <span class="tok-kw">return</span> <span class="tok-fn">decline</span>(t.transactionId(), ReasonCode.UNSUPPORTED_CURRENCY);
+        <span class="tok-kw">if</span> (!merchants.<span class="tok-fn">contains</span>(t.merchantId()))
+            <span class="tok-kw">return</span> <span class="tok-fn">decline</span>(t.transactionId(), ReasonCode.INACTIVE_MERCHANT);
+        <span class="tok-kw">if</span> (!accounts.<span class="tok-fn">contains</span>(t.accountId()))
+            <span class="tok-kw">return</span> <span class="tok-fn">decline</span>(t.transactionId(), ReasonCode.INACTIVE_ACCOUNT);
+        <span class="tok-kw">if</span> (t.timestamp() == <span class="tok-kw">null</span>)
+            <span class="tok-kw">return</span> <span class="tok-fn">decline</span>(t.transactionId(), ReasonCode.MISSING_TIMESTAMP);
+        <span class="tok-kw">return new</span> <span class="tok-fn">ValidationResult</span>(t.transactionId(), TransactionStatus.APPROVED, ReasonCode.VALID);
+    }
+
+    <span class="tok-kw">private</span> <span class="tok-ty">ValidationResult</span> <span class="tok-fn">decline</span>(<span class="tok-ty">String</span> id, <span class="tok-ty">ReasonCode</span> rc) {
+        <span class="tok-kw">return new</span> <span class="tok-fn">ValidationResult</span>(id, TransactionStatus.DECLINED, rc);
+    }
+    <span class="tok-kw">private boolean</span> <span class="tok-fn">isBlank</span>(<span class="tok-ty">String</span> s) { <span class="tok-kw">return</span> s == <span class="tok-kw">null</span> || s.<span class="tok-fn">trim</span>().<span class="tok-fn">isEmpty</span>(); }
+}</pre>
+      </div>
+      <div>
+        <h3 class="font-bold text-ed-sky mb-2">Python</h3>
+        <pre class="mono bg-gray-900 text-gray-100 rounded-lg p-3 text-xs overflow-x-auto"><span class="tok-kw">from</span> dataclasses <span class="tok-kw">import</span> dataclass
+<span class="tok-kw">from</span> decimal <span class="tok-kw">import</span> Decimal
+<span class="tok-kw">from</span> datetime <span class="tok-kw">import</span> datetime
+<span class="tok-kw">from</span> enum <span class="tok-kw">import</span> Enum
+<span class="tok-kw">from</span> typing <span class="tok-kw">import</span> Optional
+
+<span class="tok-kw">class</span> <span class="tok-ty">TransactionStatus</span>(Enum):
+    APPROVED = <span class="tok-str">"APPROVED"</span>
+    DECLINED = <span class="tok-str">"DECLINED"</span>
+
+<span class="tok-kw">class</span> <span class="tok-ty">ReasonCode</span>(Enum):
+    VALID = <span class="tok-str">"VALID"</span>
+    MISSING_REQUIRED_FIELD = <span class="tok-str">"MISSING_REQUIRED_FIELD"</span>
+    DUPLICATE_TRANSACTION = <span class="tok-str">"DUPLICATE_TRANSACTION"</span>
+    INVALID_AMOUNT = <span class="tok-str">"INVALID_AMOUNT"</span>
+    UNSUPPORTED_CURRENCY = <span class="tok-str">"UNSUPPORTED_CURRENCY"</span>
+    INACTIVE_MERCHANT = <span class="tok-str">"INACTIVE_MERCHANT"</span>
+    INACTIVE_ACCOUNT = <span class="tok-str">"INACTIVE_ACCOUNT"</span>
+    MISSING_TIMESTAMP = <span class="tok-str">"MISSING_TIMESTAMP"</span>
+
+<span class="tok-kw">@dataclass</span>
+<span class="tok-kw">class</span> <span class="tok-ty">Transaction</span>:
+    transaction_id: <span class="tok-ty">str</span>
+    account_id: <span class="tok-ty">str</span>
+    merchant_id: <span class="tok-ty">str</span>
+    amount: Decimal
+    currency: <span class="tok-ty">str</span>
+    timestamp: Optional[datetime] = <span class="tok-kw">None</span>
+
+<span class="tok-kw">@dataclass</span>
+<span class="tok-kw">class</span> <span class="tok-ty">ValidationResult</span>:
+    transaction_id: <span class="tok-ty">str</span>
+    status: TransactionStatus
+    reason_code: ReasonCode
+
+<span class="tok-kw">def</span> <span class="tok-fn">validate_transactions</span>(transactions, active_accounts, active_merchants, supported_currencies):
+    results = []
+    seen = <span class="tok-fn">set</span>()
+    <span class="tok-kw">for</span> t <span class="tok-kw">in</span> transactions:
+        results.<span class="tok-fn">append</span>(<span class="tok-fn">_validate</span>(t, seen, active_accounts, active_merchants, supported_currencies))
+    <span class="tok-kw">return</span> results
+
+<span class="tok-kw">def</span> <span class="tok-fn">_validate</span>(t, seen, accounts, merchants, currencies):
+    <span class="tok-kw">if</span> t <span class="tok-kw">is None</span>:
+        <span class="tok-kw">return</span> ValidationResult(<span class="tok-kw">None</span>, TransactionStatus.DECLINED, ReasonCode.MISSING_REQUIRED_FIELD)
+    <span class="tok-kw">if not</span> <span class="tok-fn">all</span>([t.transaction_id, t.account_id, t.merchant_id, t.currency]):
+        <span class="tok-kw">return</span> ValidationResult(t.transaction_id, TransactionStatus.DECLINED, ReasonCode.MISSING_REQUIRED_FIELD)
+    <span class="tok-kw">if</span> t.transaction_id <span class="tok-kw">in</span> seen:
+        <span class="tok-kw">return</span> ValidationResult(t.transaction_id, TransactionStatus.DECLINED, ReasonCode.DUPLICATE_TRANSACTION)
+    seen.<span class="tok-fn">add</span>(t.transaction_id)
+    <span class="tok-kw">if</span> t.amount <span class="tok-kw">is None</span> <span class="tok-kw">or</span> t.amount &lt;= Decimal(<span class="tok-str">"0"</span>):
+        <span class="tok-kw">return</span> ValidationResult(t.transaction_id, TransactionStatus.DECLINED, ReasonCode.INVALID_AMOUNT)
+    <span class="tok-kw">if</span> t.currency.upper() <span class="tok-kw">not in</span> currencies:
+        <span class="tok-kw">return</span> ValidationResult(t.transaction_id, TransactionStatus.DECLINED, ReasonCode.UNSUPPORTED_CURRENCY)
+    <span class="tok-kw">if</span> t.merchant_id <span class="tok-kw">not in</span> merchants:
+        <span class="tok-kw">return</span> ValidationResult(t.transaction_id, TransactionStatus.DECLINED, ReasonCode.INACTIVE_MERCHANT)
+    <span class="tok-kw">if</span> t.account_id <span class="tok-kw">not in</span> accounts:
+        <span class="tok-kw">return</span> ValidationResult(t.transaction_id, TransactionStatus.DECLINED, ReasonCode.INACTIVE_ACCOUNT)
+    <span class="tok-kw">if</span> t.timestamp <span class="tok-kw">is None</span>:
+        <span class="tok-kw">return</span> ValidationResult(t.transaction_id, TransactionStatus.DECLINED, ReasonCode.MISSING_TIMESTAMP)
+    <span class="tok-kw">return</span> ValidationResult(t.transaction_id, TransactionStatus.APPROVED, ReasonCode.VALID)</pre>
+      </div>
+    </div>
+  </details>
+</section>
+
+<!-- 21. Follow-Up Questions -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">21. Follow-Up Questions</h2>
+      <span class="chevron text-indigo-600">&#9654;</span>
+    </summary>
+    <div class="mt-3 space-y-2">
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+        <summary class="text-sm font-semibold text-indigo-700">Q: How would you handle duplicate transaction IDs with different amounts?</summary>
+        <p class="text-sm text-gray-800 mt-2">Suspicious. Compare incoming with original. If ID same but amount or merchant differs, mark as integrity issue, send to exception queue or fraud/risk review. Do not silently treat as normal duplicate.</p>
+      </details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+        <summary class="text-sm font-semibold text-indigo-700">Q: What happens if the audit write fails after approval?</summary>
+        <p class="text-sm text-gray-800 mt-2">For payment systems, audit failure is serious. Keep validation result and audit write in the same transaction boundary. If not possible, use the outbox pattern so the audit event is reliably persisted and published later.</p>
+      </details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+        <summary class="text-sm font-semibold text-indigo-700">Q: How would you make this scalable to 10K TPS?</summary>
+        <p class="text-sm text-gray-800 mt-2">Stateless validation service, horizontally scalable. Shared state (idempotency, merchant/account status, audit) stored externally in Redis or DB. Kafka partitions keyed by transaction ID or account ID for ordering. Metrics and tracing for visibility.</p>
+      </details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+        <summary class="text-sm font-semibold text-indigo-700">Q: How do you reconcile internal records with external network settlement files?</summary>
+        <p class="text-sm text-gray-800 mt-2">Daily batch job compares internal ledger to external settlement file. Check: internal but not external, external but not internal, amount mismatch, currency mismatch, status mismatch, settlement date mismatch. Exceptions go to a reconciliation queue for ops review.</p>
+      </details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+        <summary class="text-sm font-semibold text-indigo-700">Q: How do you handle Kafka redelivery?</summary>
+        <p class="text-sm text-gray-800 mt-2">Kafka provides at-least-once delivery. The consumer must be idempotent. Commit the Kafka offset only after the validation result and audit record are successfully written. The idempotency store ensures redelivered messages do not double-process.</p>
+      </details>
+    </div>
+  </details>
+</section>
+
+<!-- 22. Quick Reference -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details open>
+    <summary class="flex items-center justify-between">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-900">22. Quick Reference</h2>
+      <span class="chevron text-gray-700">&#9654;</span>
+    </summary>
+    <div class="mt-3 grid md:grid-cols-2 gap-3">
+      <div class="bg-gray-100 border border-gray-300 rounded-lg p-3 text-sm">
+        <p class="font-semibold mb-1">Pattern</p>
+        <p class="text-gray-800">HashSet + Rule Chain</p>
+      </div>
+      <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-3 text-sm text-ed-teal">
+        <p class="font-semibold mb-1">Complexity</p>
+        <p>Time O(n), Space O(n)</p>
+      </div>
+      <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3 text-sm text-ed-purple">
+        <p class="font-semibold mb-1">Key Data Structures</p>
+        <p class="text-gray-800">HashSet (dedup), Set (reference data), BigDecimal (amount)</p>
+      </div>
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+        <p class="font-semibold mb-1">Validation Order</p>
+        <p class="text-gray-800">null &rarr; missing fields &rarr; duplicate &rarr; amount &rarr; currency &rarr; merchant &rarr; account &rarr; timestamp</p>
+      </div>
+      <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-3 text-sm text-ed-amber">
+        <p class="font-semibold mb-1">Production Hardening</p>
+        <p class="text-gray-800">Redis SETNX, audit table, Kafka topics, DLQ, reconciliation</p>
+      </div>
+      <div class="bg-ed-pink/5 border border-ed-pink/15 rounded-lg p-3 text-sm text-ed-pink">
+        <p class="font-semibold mb-1">Senior Signal</p>
+        <p class="text-gray-800">Pivot from coding to production: idempotency, thread safety, audit, reconciliation</p>
+      </div>
+    </div>
+    <div class="mt-3 bg-gray-900 text-gray-100 rounded-lg p-3">
+      <p class="text-xs font-semibold text-gray-400 mb-1">Core code shape:</p>
+      <pre class="mono text-xs">Set seen = new HashSet()
+for (Transaction t : transactions) {
+  if (isBlank(t.id) || isBlank(t.acct) || isBlank(t.merch))
+    -> DECLINED, MISSING_REQUIRED_FIELD
+  if (!seen.add(t.id))
+    -> DECLINED, DUPLICATE_TRANSACTION
+  if (t.amount <= 0)
+    -> DECLINED, INVALID_AMOUNT
+  if (!currencies.contains(t.currency.toUpperCase()))
+    -> DECLINED, UNSUPPORTED_CURRENCY
+  if (!merchants.contains(t.merchant))
+    -> DECLINED, INACTIVE_MERCHANT
+  if (!accounts.contains(t.account))
+    -> DECLINED, INACTIVE_ACCOUNT
+  if (t.timestamp == null)
+    -> DECLINED, MISSING_TIMESTAMP
+  -> APPROVED, VALID
+}</pre>
+    </div>
+  </details>
+</section>
+
+</main>
+</body>
+</html>

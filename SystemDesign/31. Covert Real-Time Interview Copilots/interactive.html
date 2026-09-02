@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Covert Interview Tools — Interactive System Design</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f4ed;
+    --paper-2: #efeee5;
+    --ink: #0b0d0b;
+    --muted: #52534e;
+    --soft: #65655c;
+    --rule: rgba(11,13,11,0.12);
+    --rule-solid: rgba(11,13,11,0.20);
+    --accent: #f7591f;
+    --accent-tint: rgba(247,89,31,0.10);
+    --link: #1a70c7;
+    --link-tint: rgba(26,112,199,0.10);
+    --green: #2d8659;
+    --green-tint: rgba(45,134,89,0.10);
+    --red: #c43838;
+    --red-tint: rgba(196,56,56,0.10);
+    --card-bg: #ffffff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Geist', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 4rem 1.5rem 6rem; }
+
+  .eyebrow {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+  }
+  h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 2.75rem;
+    font-weight: 400;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+    letter-spacing: -0.01em;
+  }
+  h1 em { font-style: italic; color: var(--accent); }
+  .subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    max-width: 680px;
+    margin-bottom: 0.5rem;
+  }
+  .meta {
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    color: var(--soft);
+    letter-spacing: 0.08em;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--rule);
+  }
+  .framing {
+    margin: 3rem 0;
+    padding: 1.5rem 1.75rem;
+    background: var(--accent-tint);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+  }
+  .framing p {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 17px;
+    line-height: 1.5;
+  }
+  .framing p + p { margin-top: 0.75rem; }
+
+  section { margin-top: 4rem; }
+  h2 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 1.75rem;
+    font-weight: 400;
+    margin-bottom: 0.5rem;
+  }
+  h2 .num {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    vertical-align: super;
+    margin-right: 0.5rem;
+    letter-spacing: 0.1em;
+  }
+  h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 1.5rem 0 0.5rem;
+  }
+  section > p {
+    color: var(--muted);
+    margin-bottom: 1rem;
+    max-width: 720px;
+  }
+  section > p strong { color: var(--ink); font-weight: 600; }
+  code {
+    font-family: 'Geist Mono', monospace;
+    font-size: 12.5px;
+    background: var(--paper-2);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--ink);
+  }
+
+  /* Interactive container */
+  .interactive {
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+  }
+  .interactive-label {
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--soft);
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .interactive-label .live {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--accent);
+  }
+  .interactive-label .live::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Buttons / toggles */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .btn {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    padding: 0.5rem 0.85rem;
+    background: var(--card-bg);
+    border: 1px solid var(--rule-solid);
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--ink);
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .btn:hover { border-color: var(--ink); }
+  .btn.active {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .btn.accent.active {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .btn.link.active {
+    background: var(--link);
+    border-color: var(--link);
+    color: white;
+  }
+  .btn.danger.active {
+    background: var(--red);
+    border-color: var(--red);
+    color: white;
+  }
+  .btn.green.active {
+    background: var(--green);
+    border-color: var(--green);
+    color: white;
+  }
+
+  /* Split view (screen-share demo) */
+  .split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .pane {
+    background: var(--card-bg);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .pane-header {
+    padding: 0.6rem 0.85rem;
+    background: var(--paper-2);
+    border-bottom: 1px solid var(--rule);
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .pane-header .tag {
+    padding: 2px 6px;
+    border-radius: 2px;
+    font-size: 9px;
+  }
+  .tag.user { background: var(--green-tint); color: var(--green); }
+  .tag.proctor { background: var(--link-tint); color: var(--link); }
+  .tag.alert { background: var(--red-tint); color: var(--red); }
+  .pane-body {
+    position: relative;
+    height: 280px;
+    background: #1a1a1a;
+    overflow: hidden;
+  }
+  .pane-body.light { background: #fafafa; }
+
+  /* Screen-share demo internals */
+  .ss-question {
+    position: absolute;
+    top: 1rem; left: 1rem; right: 1rem;
+    padding: 0.75rem;
+    background: white;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #333;
+    font-family: 'Geist Mono', monospace;
+  }
+  .ss-question .q-label {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    margin-bottom: 0.25rem;
+  }
+  .ss-overlay {
+    position: absolute;
+    bottom: 1rem; right: 1rem;
+    width: 220px;
+    padding: 0.75rem;
+    background: rgba(247,89,31,0.95);
+    color: white;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'Geist Mono', monospace;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .ss-overlay .ans-label {
+    font-size: 8px;
+    opacity: 0.8;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.25rem;
+  }
+  .ss-overlay .ans-text {
+    font-size: 10px;
+    line-height: 1.4;
+  }
+  .ss-status {
+    position: absolute;
+    bottom: 0.5rem; left: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(0,0,0,0.6);
+    color: #aaa;
+    font-size: 9px;
+    font-family: 'Geist Mono', monospace;
+    border-radius: 2px;
+    letter-spacing: 0.08em;
+  }
+  .ss-status.detected {
+    background: var(--red);
+    color: white;
+  }
+
+  /* Activity Monitor simulator */
+  .am-sim {
+    background: #1e1e1e;
+    border-radius: 6px;
+    padding: 0;
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    color: #d4d4d4;
+    overflow: hidden;
+  }
+  .am-header {
+    background: #2d2d2d;
+    padding: 0.5rem 0.75rem;
+    display: grid;
+    grid-template-columns: 40px 1fr 80px 80px 100px;
+    gap: 0.5rem;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: #888;
+    text-transform: uppercase;
+    border-bottom: 1px solid #404040;
+  }
+  .am-row {
+    padding: 0.4rem 0.75rem;
+    display: grid;
+    grid-template-columns: 40px 1fr 80px 80px 100px;
+    gap: 0.5rem;
+    border-bottom: 1px solid #2a2a2a;
+    align-items: center;
+    transition: background 0.2s;
+  }
+  .am-row:hover { background: #2a2a2a; }
+  .am-row.hidden-proc { opacity: 0.3; }
+  .am-row.hidden-proc .am-name { text-decoration: line-through; }
+  .am-row.spoofed .am-name { color: var(--accent); }
+  .am-row.detected {
+    background: rgba(196,56,56,0.15);
+    border-left: 3px solid var(--red);
+  }
+  .am-name { color: #d4d4d4; }
+  .am-pid { color: #888; }
+  .am-cpu { color: #6a9; text-align: right; }
+  .am-mem { color: #c9a; text-align: right; }
+  .am-flag {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 2px;
+    text-align: center;
+    letter-spacing: 0.06em;
+  }
+  .am-flag.ok { background: rgba(45,134,89,0.2); color: #5ba; }
+  .am-flag.warn { background: rgba(247,89,31,0.2); color: var(--accent); }
+  .am-flag.alert { background: rgba(196,56,56,0.25); color: #e77; }
+
+  /* Tier explorer */
+  .tier-explorer {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .tier-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .tier-item {
+    padding: 0.75rem 1rem;
+    background: var(--card-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 12px;
+  }
+  .tier-item:hover { border-color: var(--muted); }
+  .tier-item.active {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .tier-item .tier-num {
+    font-family: 'Geist Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    margin-bottom: 0.2rem;
+  }
+  .tier-item.active .tier-num { color: var(--accent); }
+  .tier-item .tier-name { font-weight: 600; font-size: 12px; }
+  .tier-detail {
+    background: var(--card-bg);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 1.25rem 1.5rem;
+  }
+  .tier-detail h3 {
+    margin-top: 0;
+    font-size: 15px;
+  }
+  .tier-detail .difficulty {
+    display: inline-block;
+    font-family: 'Geist Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    padding: 2px 8px;
+    border-radius: 2px;
+    margin-bottom: 0.75rem;
+  }
+  .tier-detail .diff-trivial { background: var(--green-tint); color: var(--green); }
+  .tier-detail .diff-easy { background: var(--green-tint); color: var(--green); }
+  .tier-detail .diff-hard { background: var(--accent-tint); color: var(--accent); }
+  .tier-detail .diff-veryhard { background: var(--red-tint); color: var(--red); }
+  .tier-detail .diff-dead { background: var(--red-tint); color: var(--red); }
+  .tier-detail .block {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+    font-size: 12.5px;
+  }
+  .tier-detail .technique {
+    background: var(--paper-2);
+    border-left: 3px solid var(--ink);
+  }
+  .tier-detail .detection {
+    background: var(--link-tint);
+    border-left: 3px solid var(--link);
+  }
+  .tier-detail .block-label {
+    font-family: 'Geist Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+  .tier-detail .technique .block-label { color: var(--ink); }
+  .tier-detail .detection .block-label { color: var(--link); }
+  .tier-detail .block code { background: var(--card-bg); }
+
+  /* Network animation */
+  .net-canvas {
+    width: 100%;
+    height: 220px;
+    background: #1a1a1a;
+    border-radius: 6px;
+    display: block;
+  }
+  .net-legend {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 0.75rem;
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+  .net-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .net-legend .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+
+  /* Keystroke chart */
+  .keystroke-chart {
+    width: 100%;
+    height: 240px;
+    background: var(--card-bg);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    display: block;
+  }
+  .keystroke-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .ks-stat {
+    padding: 0.75rem 1rem;
+    background: var(--paper-2);
+    border-radius: 4px;
+    font-size: 12px;
+  }
+  .ks-stat .label {
+    font-family: 'Geist Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 0.25rem;
+  }
+  .ks-stat .value {
+    font-family: 'Geist Mono', monospace;
+    font-size: 18px;
+    font-weight: 600;
+  }
+  .ks-stat.real .value { color: var(--green); }
+  .ks-stat.synthetic .value { color: var(--accent); }
+
+  /* Quadrant interactive */
+  .quad-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 0.75rem;
+    aspect-ratio: 2 / 1.2;
+    margin-top: 1rem;
+  }
+  .quad {
+    padding: 1rem 1.25rem;
+    background: var(--card-bg);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .quad:hover { border-color: var(--muted); }
+  .quad.active {
+    border-color: var(--accent);
+    background: var(--accent-tint);
+  }
+  .quad-label {
+    font-family: 'Geist Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .quad-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0.5rem 0;
+  }
+  .quad-desc {
+    font-size: 11.5px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .quad-detail {
+    margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--card-bg);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--muted);
+    min-height: 80px;
+  }
+  .quad-detail strong { color: var(--ink); }
+
+  .reading {
+    list-style: none;
+    margin: 1.5rem 0;
+  }
+  .reading li {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--rule);
+    font-size: 13.5px;
+    color: var(--muted);
+  }
+  .reading li strong { color: var(--ink); font-weight: 600; }
+  .reading li em { font-family: 'Instrument Serif', serif; font-style: italic; color: var(--ink); }
+
+  footer {
+    margin-top: 5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    color: var(--soft);
+    letter-spacing: 0.08em;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 720px) {
+    .split { grid-template-columns: 1fr; }
+    .tier-explorer { grid-template-columns: 1fr; }
+    .quad-grid { grid-template-columns: 1fr; grid-template-rows: auto; }
+    .keystroke-stats { grid-template-columns: 1fr; }
+    h1 { font-size: 2rem; }
+    .wrap { padding: 2.5rem 1rem 4rem; }
+    .am-header, .am-row { grid-template-columns: 30px 1fr 60px 60px 80px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">SYSTEM DESIGN · CYBERSECURITY · INTERACTIVE</p>
+  <h1>How <em>covert</em> interview tools hide</h1>
+  <p class="subtitle">An interactive explainer of the architecture, evasion techniques, and defender-side detection. Toggle the controls, click the tiers, watch the proctor view update live.</p>
+  <p class="meta">DEFENSIVE FRAMING · FOR LEARNING OS INTERNALS &amp; EDR DESIGN · NOT A HOW-TO</p>
+
+  <div class="framing">
+    <p>Every technique has a corresponding detection. Toggle the controls in each section to see how the evasion works — and how defenders catch it. The "undetectable" marketing oversells reality on modern macOS.</p>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 1: ANIMATED PIPELINE -->
+  <!-- ============================================================ -->
+  <section>
+    <h2><span class="num">01</span>The 4-layer pipeline</h2>
+    <p>Most covert interview tools share this architecture. Click <strong>Run</strong> to see a query flow through the layers in real time.</p>
+
+    <div class="interactive">
+      <div class="interactive-label">
+        <span>LIVE FLOW · 4-LAYER PIPELINE</span>
+        <span class="live">ANIMATED</span>
+      </div>
+      <div class="controls">
+        <button class="btn accent active" id="pipe-run">▶ Run flow</button>
+        <button class="btn" id="pipe-pause">❚❚ Pause</button>
+        <button class="btn" id="pipe-reset">Reset</button>
+      </div>
+      <canvas id="pipe-canvas" class="net-canvas" style="height:260px"></canvas>
+      <div class="net-legend">
+        <span><span class="dot" style="background:#52534e"></span>Capture</span>
+        <span><span class="dot" style="background:#f7591f"></span>Covert channel</span>
+        <span><span class="dot" style="background:#1a70c7"></span>AI backend</span>
+        <span><span class="dot" style="background:#2d8659"></span>Injection</span>
+      </div>
+    </div>
+
+    <p>The <strong>capture layer</strong> uses standard macOS APIs (<code>CGDisplayStream</code>, <code>ScreenCaptureKit</code>). The difficulty starts at layer 2: routing data to an AI backend <em>without</em> the network monitor seeing it. Layers 3 and 4 are where the real evasion engineering lives.</p>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 2: TIER EXPLORER + ACTIVITY MONITOR SIM -->
+  <!-- ============================================================ -->
+  <section>
+    <h2><span class="num">02</span>Process hiding — the 5 tiers</h2>
+    <p>Click each tier to see the technique and its detection. Then try the Activity Monitor simulator below — toggle the hiding techniques and watch what Activity Monitor shows vs. what EDR detects.</p>
+
+    <div class="interactive">
+      <div class="interactive-label">
+        <span>TIER EXPLORER · CLICK A TIER</span>
+      </div>
+      <div class="tier-explorer">
+        <div class="tier-list" id="tier-list">
+          <div class="tier-item active" data-tier="1">
+            <div class="tier-num">TIER 1</div>
+            <div class="tier-name">Cosmetic</div>
+          </div>
+          <div class="tier-item" data-tier="2">
+            <div class="tier-num">TIER 2</div>
+            <div class="tier-name">Persistence blend</div>
+          </div>
+          <div class="tier-item" data-tier="3">
+            <div class="tier-num">TIER 3</div>
+            <div class="tier-name">Process injection</div>
+          </div>
+          <div class="tier-item" data-tier="4">
+            <div class="tier-num">TIER 4</div>
+            <div class="tier-name">Kernel (dead)</div>
+          </div>
+          <div class="tier-item" data-tier="5">
+            <div class="tier-num">TIER 5</div>
+            <div class="tier-name">Hardware</div>
+          </div>
+        </div>
+        <div class="tier-detail" id="tier-detail">
+          <h3>Cosmetic — name + plist camouflage</h3>
+          <span class="difficulty diff-trivial">DIFFICULTY: TRIVIAL</span>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Rename the binary to <code>com.apple.audiohelperd</code> or <code>GoogleUpdaterHelper</code>. Activity Monitor shows the name, not the code-signing identity. Set <code>CFBundleIdentifier</code> to <code>com.apple.something.*</code>.</p>
+          <div class="block technique">
+            <div class="block-label">Technique</div>
+            Rename binary · copy Info.plist fields · bundle ID mimicry. Most "undetectable" tools only do this.
+          </div>
+          <div class="block detection">
+            <div class="block-label">Detection</div>
+            <code>codesign -dv</code> · entitlement audit · path verification. Trivially caught by any EDR.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Activity Monitor simulator</h3>
+    <p>Toggle each evasion technique. Watch what Activity Monitor shows (left) vs. what an EDR-grade audit catches (flag column). This is the real cat-and-mouse.</p>
+
+    <div class="interactive">
+      <div class="interactive-label">
+        <span>ACTIVITY MONITOR · LIVE SIMULATION</span>
+        <span class="live">SIMULATED</span>
+      </div>
+      <div class="controls">
+        <button class="btn" id="am-spoof">Toggle name spoof</button>
+        <button class="btn" id="am-launchagent">Toggle LaunchAgent blend</button>
+        <button class="btn" id="am-inject">Toggle DYLD injection</button>
+        <button class="btn link" id="am-edr">Toggle EDR audit</button>
+      </div>
+      <div class="am-sim">
+        <div class="am-header">
+          <span>PID</span>
+          <span>PROCESS NAME</span>
+          <span>% CPU</span>
+          <span>MEM</span>
+          <span>FLAG</span>
+        </div>
+        <div id="am-rows"></div>
+      </div>
+      <p style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted);margin-top:0.75rem;letter-spacing:0.06em">
+        <span id="am-status">Activity Monitor view. Toggle techniques above to see evasion in action.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 3: SCREEN-SHARE EVASION (THE HERO INTERACTIVE) -->
+  <!-- ============================================================ -->
+  <section>
+    <h2><span class="num">03</span>Screen-share evasion — the core trick</h2>
+    <p>This is the #1 technique. Toggle the overlay and the <code>sharingType</code> flag to see exactly what the candidate sees vs. what the proctor receives. This is the heart of the whole system.</p>
+
+    <div class="interactive">
+      <div class="interactive-label">
+        <span>SCREEN-SHARE SPLIT VIEW · LIVE</span>
+        <span class="live">INTERACTIVE</span>
+      </div>
+      <div class="controls">
+        <button class="btn accent active" id="ss-overlay">Overlay: ON</button>
+        <button class="btn accent active" id="ss-sharing">sharingType=.none: ON</button>
+        <button class="btn" id="ss-sct">Proctor uses ScreenCaptureKit force-include: OFF</button>
+      </div>
+      <div class="split">
+        <div class="pane">
+          <div class="pane-header">
+            <span>Candidate's screen</span>
+            <span class="tag user">USER VIEW</span>
+          </div>
+          <div class="pane-body light" id="ss-user">
+            <div class="ss-question">
+              <div class="q-label">INTERVIEW QUESTION · Q4</div>
+              Design a rate limiter for a distributed API. Walk through the trade-offs between token bucket and sliding window.
+            </div>
+            <div class="ss-overlay" id="ss-user-overlay">
+              <div class="ans-label">AI ANSWER (HIDDEN)</div>
+              <div class="ans-text">Token bucket: O(1) memory per client, allows bursts. Sliding window log: precise but O(n) memory. Sliding window counter: good approximation, O(1). For distributed: use Redis with atomic Lua scripts...</div>
+            </div>
+            <div class="ss-status">VISIBLE TO CANDIDATE</div>
+          </div>
+        </div>
+        <div class="pane">
+          <div class="pane-header">
+            <span>Proctor's stream</span>
+            <span class="tag proctor" id="ss-proctor-tag">PROCTOR VIEW</span>
+          </div>
+          <div class="pane-body light" id="ss-proctor">
+            <div class="ss-question">
+              <div class="q-label">INTERVIEW QUESTION · Q4</div>
+              Design a rate limiter for a distributed API. Walk through the trade-offs between token bucket and sliding window.
+            </div>
+            <div class="ss-overlay" id="ss-proctor-overlay" style="display:none">
+              <div class="ans-label">AI ANSWER (HIDDEN)</div>
+              <div class="ans-text">Token bucket: O(1) memory per client, allows bursts. Sliding window log: precise but O(n) memory...</div>
+            </div>
+            <div class="ss-status" id="ss-proctor-status">STREAM CLEAN</div>
+          </div>
+        </div>
+      </div>
+      <p style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted);margin-top:0.75rem;letter-spacing:0.06em">
+        <span id="ss-explanation">Overlay is ON, sharingType=.none is ON. Proctor sees a clean screen — the overlay is excluded from CGWindowList.</span>
+      </p>
+    </div>
+
+    <h3>How it works</h3>
+    <p><strong>NSWindowSharingNone</strong>: set <code>window.sharingType = .none</code>. CoreGraphics excludes this window from <code>CGWindowListCreateImage</code>. Zoom/Meet use <code>ScreenCaptureKit</code> which respects this flag. It's a <em>legitimate</em> API — used by DRM apps, banking apps, screen-recording tools. That's why it's hard for Apple to just revoke it.</p>
+
+    <h3>Detection</h3>
+    <p>Toggle "Proctor uses ScreenCaptureKit force-include" above to see the defender's counter-move. Proctoring platforms can hook <code>SCStreamConfiguration</code> to force-include all windows, ignoring <code>sharingType</code>. The arms race is real.</p>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 4: CAT AND MOUSE QUADRANT -->
+  <!-- ============================================================ -->
+  <section>
+    <h2><span class="num">04</span>The cat-and-mouse game</h2>
+    <p>It's an asymmetric game. Apple controls the OS and can deprecate APIs anytime. Attackers only have public APIs to abuse. Click each quadrant to see who wins and why.</p>
+
+    <div class="interactive">
+      <div class="interactive-label">
+        <span>ATTACKER vs DEFENDER · CLICK QUADRANT</span>
+      </div>
+      <div class="quad-grid">
+        <div class="quad" data-quad="tl">
+          <div>
+            <div class="quad-label">ATTACKER-FRIENDLY</div>
+            <div class="quad-title">Apple APIs are public</div>
+          </div>
+          <div class="quad-desc">Documented, no obfuscation. Anyone can read the ScreenCaptureKit docs.</div>
+        </div>
+        <div class="quad" data-quad="tr">
+          <div>
+            <div class="quad-label">CONTESTED</div>
+            <div class="quad-title">NSWindowSharingNone</div>
+          </div>
+          <div class="quad-desc">Legitimate API, hard to revoke without breaking DRM and banking apps.</div>
+        </div>
+        <div class="quad" data-quad="bl">
+          <div>
+            <div class="quad-label">ARMS RACE</div>
+            <div class="quad-title">Accessibility permission</div>
+          </div>
+          <div class="quad-desc">User-granted, TCC logs every ask. Attacker needs user to click "Allow."</div>
+        </div>
+        <div class="quad active" data-quad="br">
+          <div>
+            <div class="quad-label">DEFENDER-LOCKED</div>
+            <div class="quad-title">Hardened Runtime + SIP</div>
+          </div>
+          <div class="quad-desc">Library Validation kills DYLD injection. SIP prevents kernel hiding.</div>
+        </div>
+      </div>
+      <div class="quad-detail" id="quad-detail">
+        <strong>Defender-locked — Hardened Runtime + SIP.</strong> Apple's Hardened Runtime + Library Validation (signed-binary-only loading) killed DYLD injection into signed apps in ~2019. SIP prevents kernel-level hiding. Notarization traces binaries to a Developer ID. TCC logs every Accessibility/Screen Recording grant. This is why Tier 3+ evasion is <em>very</em> hard on modern macOS — the defender controls the OS.
+      </div>
+    </div>
+
+    <h3>2026 reality: defender is winning on macOS</h3>
+    <p>Most "undetectable" interview tools are Tier 1–2 only (cosmetic + persistence blend). They target non-technical proctors at low-tier interviews. FAANG loop proctors run EDR-grade detection and catch them. The economics: cheap tools target cheap interviews.</p>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 5: COVERT CHANNELS — NETWORK + KEYSTROKE -->
+  <!-- ============================================================ -->
+  <section>
+    <h2><span class="num">05</span>Covert channels — network &amp; keystroke</h2>
+    <p>Two more layers. The network channel hides the AI API call. The keystroke layer types the answer. Both are detectable — watch the live demos.</p>
+
+    <h3>Network covert channel</h3>
+    <p>Toggle DNS tunneling detection. Watch the packets flow from the tool to the AI backend. With detection on, high-entropy DNS queries get flagged.</p>
+
+    <div class="interactive">
+      <div class="interactive-label">
+        <span>NETWORK FLOW · LIVE</span>
+        <span class="live">ANIMATED</span>
+      </div>
+      <div class="controls">
+        <button class="btn accent active" id="net-run">▶ Flowing</button>
+        <button class="btn" id="net-detect">DNS tunneling detection: OFF</button>
+      </div>
+      <canvas id="net-canvas" class="net-canvas"></canvas>
+      <div class="net-legend">
+        <span><span class="dot" style="background:#52534e"></span>Normal HTTPS</span>
+        <span><span class="dot" style="background:#f7591f"></span>DNS tunnel (covert)</span>
+        <span><span class="dot" style="background:#c43838"></span>Flagged</span>
+      </div>
+      <p style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted);margin-top:0.75rem;letter-spacing:0.06em">
+        <span id="net-status">Packets flowing. DNS queries look like normal traffic.</span>
+      </p>
+    </div>
+
+    <h3>Keystroke biometrics</h3>
+    <p>The tool types the answer via <code>CGEventTap</code> with humanized timing (50–200ms jitter). But real humans have long-tail pauses that jitter doesn't model. Watch the live timing distribution — the synthetic one is too uniform.</p>
+
+    <div class="interactive">
+      <div class="interactive-label">
+        <span>KEYSTROKE TIMING · LIVE HISTOGRAM</span>
+        <span class="live">RECORDING</span>
+      </div>
+      <div class="controls">
+        <button class="btn green active" id="ks-real">Type as human</button>
+        <button class="btn accent" id="ks-synth">Type as AI tool</button>
+        <button class="btn" id="ks-reset">Reset</button>
+      </div>
+      <canvas id="ks-canvas" class="keystroke-chart"></canvas>
+      <div class="keystroke-stats">
+        <div class="ks-stat real">
+          <div class="label">HUMAN · STD DEV OF INTER-KEY DELAY</div>
+          <div class="value" id="ks-real-std">— ms</div>
+        </div>
+        <div class="ks-stat synthetic">
+          <div class="label">AI TOOL · STD DEV OF INTER-KEY DELAY</div>
+          <div class="value" id="ks-synth-std">— ms</div>
+        </div>
+      </div>
+      <p style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted);margin-top:0.75rem;letter-spacing:0.06em">
+        <span id="ks-status">Click "Type as human" to record real typing. The histogram builds live.</span>
+      </p>
+    </div>
+
+    <div class="framing">
+      <p>The <strong>audio channel</strong> is the most physically detectable — proctoring services require a second camera behind the candidate showing their ears. The <strong>network channel</strong> is the most software-detectable — TLS interception catches everything. The <strong>input channel</strong> is the most statistically detectable — synthetic keystrokes have a timing distribution that's too uniform even with jitter.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 6: STUDY LIST -->
+  <!-- ============================================================ -->
+  <section>
+    <h2><span class="num">06</span>What to study next</h2>
+    <p>If you want to go deep on the system design — either to build detection or to understand OS internals — here's the curriculum.</p>
+
+    <ul class="reading">
+      <li><strong>*OS Internals* trilogy</strong> — Jonathan Levin. <em>Vol I: Userland, Vol II: Kernel, Vol III: Security.</em> The definitive macOS internals reference.</li>
+      <li><strong>Endpoint Security framework</strong> — Apple's <code>EndpointSecurity.framework</code>. How EDR works on modern macOS. Read <code>eslogger</code> man page, write a tiny ESF client.</li>
+      <li><strong>TCC / privacy permissions</strong> — <code>tccutil</code>, <code>TCC.db</code> schema. Run <code>log show --predicate 'subsystem == "com.apple.TCC"'</code> and watch every permission grant live.</li>
+      <li><strong>ScreenCaptureKit</strong> — Apple's modern capture API. Understand <code>SCContentFilter</code> — it's the core of the screen-share-evasion arms race. Build a tiny screen recorder.</li>
+      <li><strong>Code signing + notarization</strong> — <code>codesign</code>, <code>spctl</code>, <code>notarytool</code>. Sign a binary, notarize it, then try to DYLD-inject into it.</li>
+      <li><strong>MITRE ATT&amp;CK for macOS</strong> — T1564 (Hide Artifact), T1547 (Boot/Logon Autostart), T1055 (Process Injection). Find them on your own machine.</li>
+      <li><strong>Conference talks</strong> — DEF CON, Black Hat, OBTS (Objective by the Sea — macOS-specific). Start with OBTS on YouTube.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>EDUCATIONAL ARTIFACT · INTERACTIVE SYSTEM DESIGN STUDY · CYBERSECURITY DEFENDER FRAMING</p>
+    <p>BUILT FOR INTERVIEW-PREP-NOTES · SystemDesign/ · COVERT-INTERVIEW-TOOLS-INTERACTIVE.HTML</p>
+    <p>TECHNIQUES DESCRIBED ARE FOR DETECTION DESIGN AND OS INTERNALS LEARNING · NOT FOR USE</p>
+  </footer>
+
+</div>
+
+<script>
+// ============================================================
+// SECTION 1: PIPELINE FLOW ANIMATION
+// ============================================================
+(function() {
+  const canvas = document.getElementById('pipe-canvas');
+  const ctx = canvas.getContext('2d');
+  let running = true;
+  let packets = [];
+  let raf;
+
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+  }
+  resize();
+  window.addEventListener('resize', () => { resize(); });
+
+  const layers = [
+    { x: 0.08, label: 'CAPTURE', sub: 'Screen + Audio', color: '#52534e' },
+    { x: 0.32, label: 'STT', sub: 'Speech → Text', color: '#52534e' },
+    { x: 0.56, label: 'AI BACKEND', sub: 'LLM API', color: '#1a70c7' },
+    { x: 0.80, label: 'INJECT', sub: 'Overlay + Keys', color: '#2d8659' }
+  ];
+
+  function spawnPacket() {
+    packets.push({ progress: 0, speed: 0.004 + Math.random() * 0.002 });
+  }
+
+  function draw() {
+    const rect = canvas.getBoundingClientRect();
+    const w = rect.width, h = rect.height;
+    ctx.clearRect(0, 0, w, h);
+
+    // Background
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, w, h);
+
+    // Layer boxes
+    const boxW = 120, boxH = 60;
+    const cy = h / 2;
+    layers.forEach((l, i) => {
+      const x = l.x * w - boxW / 2;
+      // box
+      ctx.fillStyle = i === 0 ? 'rgba(82,83,78,0.15)' : i === 2 ? 'rgba(26,112,199,0.15)' : i === 3 ? 'rgba(45,134,89,0.15)' : 'rgba(247,89,31,0.15)';
+      ctx.fillRect(x, cy - boxH/2, boxW, boxH);
+      ctx.strokeStyle = l.color;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, cy - boxH/2, boxW, boxH);
+      // label
+      ctx.fillStyle = '#d4d4d4';
+      ctx.font = '600 11px Geist, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(l.label, l.x * w, cy - 4);
+      ctx.fillStyle = '#888';
+      ctx.font = '9px "Geist Mono", monospace';
+      ctx.fillText(l.sub, l.x * w, cy + 12);
+    });
+
+    // Connecting lines
+    for (let i = 0; i < layers.length - 1; i++) {
+      const x1 = layers[i].x * w + boxW/2;
+      const x2 = layers[i+1].x * w - boxW/2;
+      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x1, cy);
+      ctx.lineTo(x2, cy);
+      ctx.stroke();
+    }
+
+    // Packets
+    packets.forEach(p => {
+      const totalProgress = p.progress * (layers.length - 1);
+      const segIdx = Math.floor(totalProgress);
+      const segProg = totalProgress - segIdx;
+      if (segIdx >= layers.length - 1) return;
+      const x1 = layers[segIdx].x * w + boxW/2;
+      const x2 = layers[segIdx+1].x * w - boxW/2;
+      const px = x1 + (x2 - x1) * segProg;
+      // packet color based on segment
+      const colors = ['#52534e', '#f7591f', '#1a70c7', '#2d8659'];
+      ctx.fillStyle = colors[segIdx] || '#f7591f';
+      ctx.beginPath();
+      ctx.arc(px, cy, 4, 0, Math.PI * 2);
+      ctx.fill();
+      // glow
+      ctx.fillStyle = colors[segIdx] + '40';
+      ctx.beginPath();
+      ctx.arc(px, cy, 8, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Covert channel band (between STT and AI backend)
+    const covertX1 = layers[1].x * w + boxW/2;
+    const covertX2 = layers[2].x * w - boxW/2;
+    ctx.fillStyle = 'rgba(247,89,31,0.08)';
+    ctx.fillRect(covertX1, cy - 35, covertX2 - covertX1, 70);
+    ctx.strokeStyle = 'rgba(247,89,31,0.3)';
+    ctx.setLineDash([4,3]);
+    ctx.strokeRect(covertX1, cy - 35, covertX2 - covertX1, 70);
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#f7591f';
+    ctx.font = '8px "Geist Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('COVERT CHANNEL', (covertX1 + covertX2)/2, cy - 42);
+
+    if (running) {
+      packets.forEach(p => p.progress += p.speed);
+      packets = packets.filter(p => p.progress < 1);
+      if (packets.length < 3 && Math.random() < 0.03) spawnPacket();
+    }
+    raf = requestAnimationFrame(draw);
+  }
+  draw();
+
+  document.getElementById('pipe-run').addEventListener('click', () => {
+    running = true;
+    document.getElementById('pipe-run').classList.add('active');
+    document.getElementById('pipe-pause').classList.remove('active');
+  });
+  document.getElementById('pipe-pause').addEventListener('click', () => {
+    running = false;
+    document.getElementById('pipe-run').classList.remove('active');
+    document.getElementById('pipe-pause').classList.add('active');
+  });
+  document.getElementById('pipe-reset').addEventListener('click', () => {
+    packets = [];
+  });
+})();
+
+// ============================================================
+// SECTION 2: TIER EXPLORER
+// ============================================================
+(function() {
+  const tiers = {
+    1: {
+      title: 'Cosmetic — name + plist camouflage',
+      diff: 'diff-trivial',
+      diffText: 'DIFFICULTY: TRIVIAL',
+      desc: 'Rename the binary to <code>com.apple.audiohelperd</code> or <code>GoogleUpdaterHelper</code>. Activity Monitor shows the name, not the code-signing identity. Set <code>CFBundleIdentifier</code> to <code>com.apple.something.*</code>.',
+      technique: 'Rename binary · copy Info.plist fields · bundle ID mimicry. Most "undetectable" tools only do this.',
+      detection: '<code>codesign -dv</code> · entitlement audit · path verification. Trivially caught by any EDR.'
+    },
+    2: {
+      title: 'Persistence blending — hide among legitimate agents',
+      diff: 'diff-easy',
+      diffText: 'DIFFICULTY: EASY',
+      desc: 'Install a <code>LaunchAgent</code> in <code>~/Library/LaunchAgents</code> alongside 50+ legitimate agents (Slack, Zoom, Dropbox all run agents). Or register via <code>SMAppService</code> (macOS 13+).',
+      technique: '~/Library/LaunchAgents · SMAppService login items · blends with 50+ real agents.',
+      detection: '<code>launchctl list | grep -v com.apple</code> · <code>sfltool dumpbtm</code> (Background Task Manager dump).'
+    },
+    3: {
+      title: 'Process injection — run inside a legitimate PID',
+      diff: 'diff-hard',
+      diffText: 'DIFFICULTY: HARD',
+      desc: '<strong>DYLD_INSERT_LIBRARIES</strong>: inject a dylib into a legitimate process (Slack, Chrome). Your code runs inside Slack\'s PID — Activity Monitor shows "Slack," not your tool. Mitigated by Hardened Runtime + Library Validation.',
+      technique: 'DYLD_INSERT_LIBRARIES · Mach task_for_pid · Objective-C method swizzling to hide windows from CGWindowListCreateImage.',
+      detection: 'Hardened Runtime + Library Validation blocks signed-app injection. <code>task_for_pid</code> requires SIP disabled or debugger entitlement. Entitlement audit catches <code>disable-library-validation</code>.'
+    },
+    4: {
+      title: 'Kernel-level — filter proc_info syscalls (deprecated)',
+      diff: 'diff-veryhard',
+      diffText: 'DIFFICULTY: VERY HARD · DEAD',
+      desc: '<strong>KEXT</strong> (kernel extension): old way to filter <code>proc_info</code> syscalls and lie to <code>ps</code>. Requires reboot, kext consent. Deprecated for non-Apple developers since macOS 11. Killed in macOS 12+.',
+      technique: 'KEXT · NKE (network kernel extension) · filter syscalls at kernel level.',
+      detection: '<code>kextstat</code> · <code>kmutil showloaded</code>. Apple killed third-party kexts in macOS 12+. You\'d need a System Extension now, which is visible.'
+    },
+    5: {
+      title: 'Hardware / firmware — out of scope for software tools',
+      diff: 'diff-dead',
+      diffText: 'DIFFICULTY: DEAD · OUT OF SCOPE',
+      desc: 'DMA attacks via Thunderbolt, SPI flash implants. Not what interview-cheating tools do — too expensive, too risky, requires physical access. Included for completeness of the taxonomy.',
+      technique: 'DMA via Thunderbolt · SPI flash implant · requires physical access and hardware.',
+      detection: 'Physical inspection · Secure Boot · T2/M-series chip security. Out of scope for software-only tools.'
+    }
+  };
+
+  const items = document.querySelectorAll('.tier-item');
+  const detail = document.getElementById('tier-detail');
+
+  items.forEach(item => {
+    item.addEventListener('click', () => {
+      items.forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      const t = tiers[item.dataset.tier];
+      detail.innerHTML = `
+        <h3>${t.title}</h3>
+        <span class="difficulty ${t.diff}">${t.diffText}</span>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">${t.desc}</p>
+        <div class="block technique">
+          <div class="block-label">Technique</div>
+          ${t.technique}
+        </div>
+        <div class="block detection">
+          <div class="block-label">Detection</div>
+          ${t.detection}
+        </div>
+      `;
+    });
+  });
+})();
+
+// ============================================================
+// SECTION 2: ACTIVITY MONITOR SIMULATOR
+// ============================================================
+(function() {
+  const baseProcesses = [
+    { pid: 442, name: 'kernel_task', cpu: 2.4, mem: '1.2 GB', legit: true },
+    { pid: 1204, name: 'Slack Helper', cpu: 0.8, mem: '340 MB', legit: true },
+    { pid: 3321, name: 'Google Chrome', cpu: 3.1, mem: '890 MB', legit: true },
+    { pid: 4477, name: 'Zoom', cpu: 1.2, mem: '420 MB', legit: true },
+    { pid: 5589, name: 'interview_helper', cpu: 4.7, mem: '180 MB', legit: false, isTool: true },
+    { pid: 6612, name: 'mdworker_shared', cpu: 0.1, mem: '45 MB', legit: true },
+  ];
+
+  let spoof = false, launchAgent = false, inject = false, edr = false;
+  const rowsEl = document.getElementById('am-rows');
+  const statusEl = document.getElementById('am-status');
+
+  function render() {
+    rowsEl.innerHTML = '';
+    let detectedCount = 0;
+
+    baseProcesses.forEach(p => {
+      let displayName = p.name;
+      let hidden = false;
+      let spoofed = false;
+      let detected = false;
+      let flag = '<span class="am-flag ok">OK</span>';
+
+      if (p.isTool) {
+        // Apply evasion
+        if (inject) {
+          // Hide entirely — running inside Slack's PID
+          hidden = true;
+        } else if (spoof) {
+          displayName = 'com.apple.audiohelperd';
+          spoofed = true;
+        }
+        // EDR detection
+        if (edr) {
+          if (inject) {
+            detected = true;
+            flag = '<span class="am-flag alert">INJECT DETECTED</span>';
+            detectedCount++;
+          } else if (spoof) {
+            detected = true;
+            flag = '<span class="am-flag alert">SIGNATURE MISMATCH</span>';
+            detectedCount++;
+          } else if (launchAgent) {
+            detected = true;
+            flag = '<span class="am-flag warn">UNVERIFIED AGENT</span>';
+            detectedCount++;
+          } else {
+            detected = true;
+            flag = '<span class="am-flag alert">UNKNOWN PROCESS</span>';
+            detectedCount++;
+          }
+        } else {
+          if (spoof) flag = '<span class="am-flag warn">SUSPICIOUS</span>';
+        }
+      }
+
+      const row = document.createElement('div');
+      row.className = 'am-row' + (hidden ? ' hidden-proc' : '') + (spoofed ? ' spoofed' : '') + (detected ? ' detected' : '');
+      row.innerHTML = `
+        <span class="am-pid">${p.pid}</span>
+        <span class="am-name">${displayName}</span>
+        <span class="am-cpu">${p.cpu.toFixed(1)}</span>
+        <span class="am-mem">${p.mem}</span>
+        ${flag}
+      `;
+      rowsEl.appendChild(row);
+    });
+
+    // Update status
+    let status = '';
+    if (inject && edr) status = '⚠ EDR caught DYLD injection into Slack Helper. Memory scan found unsigned dylib loaded. Process hiding failed.';
+    else if (inject) status = 'Tool is hidden inside Slack Helper PID (4477). Activity Monitor shows nothing — but EDR would catch it.';
+    else if (spoof && edr) status = '⚠ EDR caught signature mismatch: name says com.apple.audiohelperd but code-signing team ID is not Apple.';
+    else if (spoof) status = 'Tool renamed to com.apple.audiohelperd. Activity Monitor shows the fake name. EDR would catch the signature mismatch.';
+    else if (launchAgent && edr) status = '⚠ EDR flagged unverified LaunchAgent in ~/Library/LaunchAgents with no notarization ticket.';
+    else if (launchAgent) status = 'Tool installed as LaunchAgent. Blends with 50+ legitimate agents. EDR would flag the missing notarization.';
+    else if (edr) status = '⚠ EDR flagged unknown process "interview_helper" with no code-signing identity.';
+    else status = 'Activity Monitor view. Toggle techniques above to see evasion in action.';
+    statusEl.textContent = status;
+  }
+
+  render();
+
+  function toggle(btn, setter) {
+    btn.addEventListener('click', () => {
+      btn.classList.toggle('active');
+      setter(btn.classList.contains('active'));
+      render();
+    });
+  }
+
+  toggle(document.getElementById('am-spoof'), v => spoof = v);
+  toggle(document.getElementById('am-launchagent'), v => launchAgent = v);
+  toggle(document.getElementById('am-inject'), v => inject = v);
+  toggle(document.getElementById('am-edr'), v => edr = v);
+})();
+
+// ============================================================
+// SECTION 3: SCREEN-SHARE SPLIT VIEW
+// ============================================================
+(function() {
+  let overlayOn = true, sharingOn = true, sctOn = false;
+  const userOverlay = document.getElementById('ss-user-overlay');
+  const proctorOverlay = document.getElementById('ss-proctor-overlay');
+  const proctorStatus = document.getElementById('ss-proctor-status');
+  const proctorTag = document.getElementById('ss-proctor-tag');
+  const explanation = document.getElementById('ss-explanation');
+
+  function update() {
+    // User view
+    userOverlay.style.display = overlayOn ? 'block' : 'none';
+
+    // Proctor view
+    let proctorSeesOverlay = false;
+    if (overlayOn) {
+      if (sctOn) {
+        // ScreenCaptureKit force-include overrides sharingType
+        proctorSeesOverlay = true;
+      } else if (!sharingOn) {
+        // sharingType is .none OFF, so normal capture includes it
+        proctorSeesOverlay = true;
+      }
+      // else sharingType=.none ON and no SCT → excluded
+    }
+
+    proctorOverlay.style.display = proctorSeesOverlay ? 'block' : 'none';
+
+    if (proctorSeesOverlay) {
+      proctorStatus.textContent = 'OVERLAY DETECTED';
+      proctorStatus.classList.add('detected');
+      proctorTag.textContent = 'PROCTOR VIEW · ALERT';
+      proctorTag.className = 'tag alert';
+    } else {
+      proctorStatus.textContent = 'STREAM CLEAN';
+      proctorStatus.classList.remove('detected');
+      proctorTag.textContent = 'PROCTOR VIEW';
+      proctorTag.className = 'tag proctor';
+    }
+
+    // Explanation
+    let exp = '';
+    if (!overlayOn) {
+      exp = 'Overlay is OFF. Candidate sees no AI answer. Proctor sees clean screen. (Tool is disabled.)';
+    } else if (sctOn) {
+      exp = 'Overlay ON, sharingType=.none ON, BUT proctor uses ScreenCaptureKit force-include. Proctor sees the overlay — the defender won this round by overriding the sharingType flag.';
+    } else if (sharingOn) {
+      exp = 'Overlay is ON, sharingType=.none is ON. Proctor sees a clean screen — the overlay is excluded from CGWindowList. This is the core trick.';
+    } else {
+      exp = 'Overlay is ON, sharingType=.none is OFF. Proctor sees the overlay — without the flag, CGWindowList includes it. The tool forgot to set the flag.';
+    }
+    explanation.textContent = exp;
+  }
+
+  update();
+
+  document.getElementById('ss-overlay').addEventListener('click', function() {
+    overlayOn = !overlayOn;
+    this.classList.toggle('active', overlayOn);
+    this.textContent = 'Overlay: ' + (overlayOn ? 'ON' : 'OFF');
+    update();
+  });
+
+  document.getElementById('ss-sharing').addEventListener('click', function() {
+    sharingOn = !sharingOn;
+    this.classList.toggle('active', sharingOn);
+    this.textContent = 'sharingType=.none: ' + (sharingOn ? 'ON' : 'OFF');
+    update();
+  });
+
+  document.getElementById('ss-sct').addEventListener('click', function() {
+    sctOn = !sctOn;
+    this.classList.toggle('active', sctOn);
+    this.textContent = 'Proctor uses ScreenCaptureKit force-include: ' + (sctOn ? 'ON' : 'OFF');
+    update();
+  });
+})();
+
+// ============================================================
+// SECTION 4: QUADRANT INTERACTIVE
+// ============================================================
+(function() {
+  const quads = {
+    tl: {
+      title: 'Attacker-friendly — Apple APIs are public',
+      body: '<strong>Attacker-friendly.</strong> ScreenCaptureKit, CGWindowList, NSWindow, CGEventTap — all documented in Apple\'s developer docs. Anyone can read them. No obfuscation, no reverse-engineering needed. This is the attacker\'s structural advantage: the OS APIs are a public contract.'
+    },
+    tr: {
+      title: 'Contested — NSWindowSharingNone',
+      body: '<strong>Contested.</strong> <code>sharingType = .none</code> is a legitimate API. DRM apps (Netflix, Apple Music), banking apps, and screen-recording tools all use it to hide sensitive windows from capture. Apple <em>can\'t</em> just revoke it without breaking real apps. This is why the screen-share-evasion trick persists — the defender\'s hands are tied by legitimate use cases.'
+    },
+    bl: {
+      title: 'Arms race — Accessibility permission',
+      body: '<strong>Arms race.</strong> <code>CGEventTap</code> (synthetic keystrokes) requires Accessibility permission. The user must click "Allow" in System Settings → Privacy → Accessibility. TCC logs every grant: <code>log show --predicate \'subsystem == "com.apple.TCC"\'</code>. The attacker needs social engineering (fake "enable accessibility for better captions" prompt). The defender has audit logs. Back and forth.'
+    },
+    br: {
+      title: 'Defender-locked — Hardened Runtime + SIP',
+      body: '<strong>Defender-locked.</strong> Apple\'s Hardened Runtime + Library Validation (signed-binary-only loading) killed DYLD injection into signed apps in ~2019. SIP prevents kernel-level hiding. Notarization traces binaries to a Developer ID. TCC logs every Accessibility/Screen Recording grant. This is why Tier 3+ evasion is <em>very</em> hard on modern macOS — the defender controls the OS.'
+    }
+  };
+
+  const quadsEl = document.querySelectorAll('.quad');
+  const detail = document.getElementById('quad-detail');
+
+  quadsEl.forEach(q => {
+    q.addEventListener('click', () => {
+      quadsEl.forEach(x => x.classList.remove('active'));
+      q.classList.add('active');
+      const d = quads[q.dataset.quad];
+      detail.innerHTML = `<strong>${d.title}.</strong> ${d.body}`;
+    });
+  });
+})();
+
+// ============================================================
+// SECTION 5: NETWORK ANIMATION
+// ============================================================
+(function() {
+  const canvas = document.getElementById('net-canvas');
+  const ctx = canvas.getContext('2d');
+  let running = true;
+  let detect = false;
+  let packets = [];
+
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+  }
+  resize();
+  window.addEventListener('resize', () => { resize(); });
+
+  function spawn() {
+    const isTunnel = Math.random() < 0.4;
+    packets.push({
+      x: 60,
+      y: 30 + Math.random() * 160,
+      vx: 1 + Math.random() * 1.5,
+      type: isTunnel ? 'dns' : 'https',
+      size: isTunnel ? 3 : 4,
+      flagged: false,
+      alpha: 1
+    });
+  }
+
+  function draw() {
+    const rect = canvas.getBoundingClientRect();
+    const w = rect.width, h = rect.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, w, h);
+
+    // Tool node (left)
+    ctx.fillStyle = 'rgba(247,89,31,0.15)';
+    ctx.fillRect(20, h/2 - 30, 80, 60);
+    ctx.strokeStyle = '#f7591f';
+    ctx.strokeRect(20, h/2 - 30, 80, 60);
+    ctx.fillStyle = '#d4d4d4';
+    ctx.font = '600 10px Geist, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('TOOL', 60, h/2 - 2);
+    ctx.fillStyle = '#888';
+    ctx.font = '8px "Geist Mono", monospace';
+    ctx.fillText('candidate mac', 60, h/2 + 12);
+
+    // AI backend (right)
+    ctx.fillStyle = 'rgba(26,112,199,0.15)';
+    ctx.fillRect(w - 100, h/2 - 30, 80, 60);
+    ctx.strokeStyle = '#1a70c7';
+    ctx.strokeRect(w - 100, h/2 - 30, 80, 60);
+    ctx.fillStyle = '#d4d4d4';
+    ctx.font = '600 10px Geist, sans-serif';
+    ctx.fillText('AI API', w - 60, h/2 - 2);
+    ctx.fillStyle = '#888';
+    ctx.font = '8px "Geist Mono", monospace';
+    ctx.fillText('cloud LLM', w - 60, h/2 + 12);
+
+    // DNS resolver (middle top, for tunnel)
+    ctx.fillStyle = 'rgba(82,83,78,0.1)';
+    ctx.fillRect(w/2 - 50, 10, 100, 30);
+    ctx.strokeStyle = '#52534e';
+    ctx.setLineDash([3,2]);
+    ctx.strokeRect(w/2 - 50, 10, 100, 30);
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#888';
+    ctx.font = '8px "Geist Mono", monospace';
+    ctx.fillText('DNS RESOLVER', w/2, 28);
+
+    // Detection zone
+    if (detect) {
+      ctx.fillStyle = 'rgba(196,56,56,0.05)';
+      ctx.fillRect(w/2 - 60, 0, 120, h);
+      ctx.strokeStyle = 'rgba(196,56,56,0.3)';
+      ctx.setLineDash([4,3]);
+      ctx.strokeRect(w/2 - 60, 0, 120, h);
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#c43838';
+      ctx.font = '8px "Geist Mono", monospace';
+      ctx.fillText('DETECTION ZONE', w/2, h - 8);
+    }
+
+    // Packets
+    packets.forEach(p => {
+      if (p.x > w/2 - 60 && p.x < w/2 + 60 && detect && p.type === 'dns' && !p.flagged) {
+        p.flagged = true;
+      }
+      const color = p.flagged ? '#c43838' : p.type === 'dns' ? '#f7591f' : '#52534e';
+      ctx.fillStyle = color;
+      ctx.globalAlpha = p.alpha;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+      // glow
+      ctx.fillStyle = color + '30';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+
+      // Trail for DNS tunnel (goes up to resolver then right)
+      if (p.type === 'dns' && p.x < w/2) {
+        ctx.strokeStyle = 'rgba(247,89,31,0.2)';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - 15, p.y);
+        ctx.stroke();
+      }
+    });
+
+    if (running) {
+      packets.forEach(p => {
+        p.x += p.vx;
+        if (p.flagged) p.alpha -= 0.02;
+      });
+      packets = packets.filter(p => p.x < w - 100 && p.alpha > 0);
+      if (packets.length < 8 && Math.random() < 0.08) spawn();
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+
+  document.getElementById('net-run').addEventListener('click', function() {
+    running = !running;
+    this.classList.toggle('active', running);
+    this.textContent = running ? '▶ Flowing' : '❚❚ Paused';
+  });
+
+  document.getElementById('net-detect').addEventListener('click', function() {
+    detect = !detect;
+    this.classList.toggle('active', detect);
+    this.classList.toggle('danger', detect);
+    this.textContent = 'DNS tunneling detection: ' + (detect ? 'ON' : 'OFF');
+    document.getElementById('net-status').textContent = detect
+      ? 'Detection ON. DNS tunnel packets (orange) get flagged red as they pass through the detection zone. High-entropy subdomains = tunneling signature.'
+      : 'Packets flowing. DNS queries look like normal traffic.';
+  });
+})();
+
+// ============================================================
+// SECTION 5: KEYSTROKE HISTOGRAM
+// ============================================================
+(function() {
+  const canvas = document.getElementById('ks-canvas');
+  const ctx = canvas.getContext('2d');
+  let mode = 'real';
+  let intervals = [];
+  let typingTimer = null;
+  let lastKeyTime = 0;
+
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+  }
+  resize();
+  window.addEventListener('resize', () => { resize(); draw(); });
+
+  const bins = new Array(20).fill(0); // 0-50, 50-100, ..., 950-1000ms
+  const binSize = 50;
+
+  function draw() {
+    const rect = canvas.getBoundingClientRect();
+    const w = rect.width, h = rect.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#fafafa';
+    ctx.fillRect(0, 0, w, h);
+
+    const padL = 40, padR = 20, padT = 20, padB = 30;
+    const chartW = w - padL - padR;
+    const chartH = h - padT - padB;
+    const maxBin = Math.max(...bins, 1);
+    const barW = chartW / bins.length;
+
+    // Axes
+    ctx.strokeStyle = 'rgba(11,13,11,0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padL, padT);
+    ctx.lineTo(padL, padT + chartH);
+    ctx.lineTo(padL + chartW, padT + chartH);
+    ctx.stroke();
+
+    // Y axis labels
+    ctx.fillStyle = '#888';
+    ctx.font = '9px "Geist Mono", monospace';
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= 4; i++) {
+      const y = padT + chartH - (i / 4) * chartH;
+      const val = Math.round((i / 4) * maxBin);
+      ctx.fillText(val, padL - 6, y + 3);
+    }
+
+    // X axis labels
+    ctx.textAlign = 'center';
+    for (let i = 0; i < bins.length; i += 4) {
+      const x = padL + i * barW + barW/2;
+      ctx.fillText((i * binSize) + 'ms', x, padT + chartH + 16);
+    }
+
+    // Bars
+    bins.forEach((count, i) => {
+      const barH = (count / maxBin) * chartH;
+      const x = padL + i * barW + 1;
+      const y = padT + chartH - barH;
+      const color = mode === 'real' ? '#2d8659' : '#f7591f';
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, barW - 2, barH);
+      // light top
+      ctx.fillStyle = color + '40';
+      ctx.fillRect(x, y, barW - 2, 3);
+    });
+
+    // Title
+    ctx.fillStyle = '#0b0d0b';
+    ctx.font = '600 11px Geist, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(mode === 'real' ? 'HUMAN TYPING · inter-key delay distribution' : 'AI TOOL TYPING · humanized jitter (50-200ms)', padL, 14);
+
+    // Mean line
+    if (intervals.length > 0) {
+      const mean = intervals.reduce((a,b) => a+b, 0) / intervals.length;
+      const meanBin = Math.min(Math.floor(mean / binSize), bins.length - 1);
+      const meanX = padL + meanBin * barW + barW/2;
+      ctx.strokeStyle = mode === 'real' ? 'rgba(45,134,89,0.6)' : 'rgba(247,89,31,0.6)';
+      ctx.setLineDash([3,3]);
+      ctx.beginPath();
+      ctx.moveTo(meanX, padT);
+      ctx.lineTo(meanX, padT + chartH);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  function typeNext() {
+    let delay;
+    if (mode === 'real') {
+      // Human: mostly 80-180ms, but with long-tail pauses (thinking, hesitations)
+      if (Math.random() < 0.15) {
+        delay = 300 + Math.random() * 500; // long pause
+      } else {
+        delay = 80 + Math.random() * 120; // normal
+      }
+    } else {
+      // AI: uniform 50-200ms jitter, no long tail
+      delay = 50 + Math.random() * 150;
+    }
+
+    intervals.push(delay);
+    const bin = Math.min(Math.floor(delay / binSize), bins.length - 1);
+    bins[bin]++;
+
+    // Update stats
+    const std = Math.sqrt(intervals.reduce((sum, v) => sum + Math.pow(v - intervals.reduce((a,b)=>a+b,0)/intervals.length, 2), 0) / intervals.length);
+    if (mode === 'real') {
+      document.getElementById('ks-real-std').textContent = Math.round(std) + ' ms';
+    } else {
+      document.getElementById('ks-synth-std').textContent = Math.round(std) + ' ms';
+    }
+
+    document.getElementById('ks-status').textContent =
+      `Recording ${mode} typing... ${intervals.length} keys. ${mode === 'real' ? 'Notice the long-tail pauses (300-800ms).' : 'Notice the uniform distribution — no long-tail pauses.'}`;
+
+    draw();
+    typingTimer = setTimeout(typeNext, delay * 0.3); // speed up so it's watchable
+  }
+
+  function startTyping() {
+    if (typingTimer) clearTimeout(typingTimer);
+    typeNext();
+  }
+
+  function stopTyping() {
+    if (typingTimer) clearTimeout(typingTimer);
+    typingTimer = null;
+  }
+
+  document.getElementById('ks-real').addEventListener('click', function() {
+    stopTyping();
+    mode = 'real';
+    this.classList.add('active');
+    document.getElementById('ks-synth').classList.remove('active');
+    intervals = [];
+    bins.fill(0);
+    document.getElementById('ks-real-std').textContent = '— ms';
+    document.getElementById('ks-status').textContent = 'Recording human typing... notice the long-tail pauses.';
+    startTyping();
+  });
+
+  document.getElementById('ks-synth').addEventListener('click', function() {
+    stopTyping();
+    mode = 'synth';
+    this.classList.add('active');
+    document.getElementById('ks-real').classList.remove('active');
+    intervals = [];
+    bins.fill(0);
+    document.getElementById('ks-synth-std').textContent = '— ms';
+    document.getElementById('ks-status').textContent = 'Recording AI typing... notice the uniform 50-200ms band.';
+    startTyping();
+  });
+
+  document.getElementById('ks-reset').addEventListener('click', function() {
+    stopTyping();
+    intervals = [];
+    bins.fill(0);
+    document.getElementById('ks-real-std').textContent = '— ms';
+    document.getElementById('ks-synth-std').textContent = '— ms';
+    document.getElementById('ks-status').textContent = 'Reset. Click "Type as human" or "Type as AI tool" to begin.';
+    draw();
+  });
+
+  draw();
+  // Auto-start with real typing
+  setTimeout(() => {
+    if (mode === 'real' && intervals.length === 0) startTyping();
+  }, 500);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skip or Subtract &mdash; Capital One GPN Interview Guide</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        'ed-pink': '#db2777', 'ed-blue': '#2563eb', 'ed-teal': '#0d9488',
+        'ed-amber': '#d97706', 'ed-sky': '#0284c7', 'ed-purple': '#7c3aed', 'ed-orange': '#ea580c',
+      },
+      fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+    },
+  },
+};
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .chevron { transition: transform 0.2s; }
+  details[open] .chevron { transform: rotate(90deg); }
+  pre.mono { white-space: pre; }
+  .tok-kw { color: #c084fc; }
+  .tok-ty { color: #fbbf24; }
+  .tok-fn { color: #60a5fa; }
+  .tok-nm { color: #fb923c; }
+  .tok-str { color: #f472b6; }
+  .tok-cm { color: #94a3b8; font-style: italic; }
+  .legend-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+<main class="max-w-5xl mx-auto px-4 py-6 md:py-10 space-y-4">
+
+<header class="bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl p-6 md:p-8 shadow-lg">
+  <div class="flex items-center gap-2 text-sm text-gray-300 mb-2">
+    <span class="bg-amber-500 text-white px-2 py-0.5 rounded-full text-xs font-bold">EASY-MEDIUM</span>
+    <span class="text-gray-400">&middot;</span>
+    <span>Capital One GPN &middot; Senior Lead Software Engineer</span>
+  </div>
+  <h1 class="text-3xl md:text-4xl font-extrabold">Skip or Subtract</h1>
+  <p class="text-gray-300 mt-2 text-sm md:text-base">One-pass simulation &middot; Greedy &middot; Time O(n) &middot; Space O(1)</p>
+</header>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <h2 class="text-xl md:text-2xl font-bold text-gray-900 mb-3">1. Problem Statement</h2>
+  <div class="text-gray-700 text-sm md:text-base space-y-3">
+    <p>You are given two positive integers <span class="mono bg-gray-100 px-1 rounded">x</span> and <span class="mono bg-gray-100 px-1 rounded">y</span>, and a sequence of positive integers <span class="mono bg-gray-100 px-1 rounded">numbers</span>. Iterate through <span class="mono bg-gray-100 px-1 rounded">numbers</span> from left to right. For each <span class="mono bg-gray-100 px-1 rounded">numbers[i]</span>:</p>
+    <ul class="space-y-1 ml-4">
+      <li class="flex gap-2"><span class="text-ed-pink font-bold">&bull;</span><span>If <span class="mono">numbers[i]</span> is greater than <strong>both</strong> <span class="mono">x</span> and <span class="mono">y</span>, <strong>skip</strong> it (do nothing).</span></li>
+      <li class="flex gap-2"><span class="text-ed-pink font-bold">&bull;</span><span>Otherwise, <strong>subtract</strong> <span class="mono">numbers[i]</span> from the <strong>larger</strong> of <span class="mono">x</span> and <span class="mono">y</span>.</span></li>
+      <li class="flex gap-2"><span class="text-ed-pink font-bold">&bull;</span><span>If <span class="mono">x == y</span> (tie), subtract from <span class="mono">x</span>.</span></li>
+    </ul>
+    <p>Return the count of integers in <span class="mono bg-gray-100 px-1 rounded">numbers</span> that were skipped.</p>
+    <div class="bg-gray-100 rounded-lg p-3 mt-3">
+      <p class="font-semibold text-gray-800 mb-1">Example:</p>
+      <p class="mono text-sm">x = 8, y = 12, numbers = [5, 6, 6, 3, 1, 1, 2] &rarr; returns <strong class="text-ed-teal">2</strong></p>
+      <p class="text-xs text-gray-600 mt-1">Skipped values: 3 (greater than both x=5 and y=6 at that point) and 2 (greater than both x=3 and y=6).</p>
+    </div>
+  </div>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details open>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">2. Pattern Recognition</h2><span class="chevron text-ed-pink text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-pink/5 border border-ed-pink/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong class="text-ed-pink">Signal words:</strong> "iterate left to right", "subtract from the larger", "skip if greater than both", "return the count". This is a <strong>simulation</strong> problem &mdash; the order is fixed, the operation at each step is fully determined by the current state, and there is no choice to optimize.</p>
+    <p><strong class="text-ed-pink">When to reach for this pattern:</strong> Whenever the problem statement describes a deterministic, left-to-right process with no branching decisions. The word "skip" combined with a fixed iteration order signals simulation, not DP or greedy-choice.</p>
+    <p><strong class="text-ed-pink">Key insight:</strong> There is no decision to make at each step. The problem tells you exactly what to do: skip if too large, otherwise subtract from the larger (tie &rarr; x). This is a <em>one-pass simulation</em>, not an optimization problem. The "trick" is recognizing that no trick is needed.</p>
+    <ul class="space-y-1 ml-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>Fixed left-to-right order &rarr; no sorting, no reordering</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>Deterministic operation at each step &rarr; simulation, not DP</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>Only tracking x, y, skip_count &rarr; O(1) space</span></li>
+    </ul>
+    <p class="pt-2"><strong class="text-ed-pink">Approaches considered before settling on simulation:</strong> Always brainstorm variants before committing. The fixed-order constraint rules out most optimization approaches, but naming them forces you to understand <em>why</em> simulation wins.</p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-ed-pink/10 text-ed-pink"><tr>
+          <th class="text-left px-3 py-2 font-semibold">Approach</th>
+          <th class="text-left px-3 py-2 font-semibold">Description</th>
+          <th class="text-left px-3 py-2 font-semibold">Time / Space</th>
+          <th class="text-left px-3 py-2 font-semibold">Notes (flaws or why proceed)</th>
+        </tr></thead>
+        <tbody class="text-gray-700">
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">DP / memoization</td><td class="px-3 py-2">Try all possible skip/subtract choices at each step, memoize states (x, y, index).</td><td class="px-3 py-2 mono">O(n &middot; x &middot; y) / O(n &middot; x &middot; y)</td><td class="px-3 py-2"><span class="text-red-600">Rejected:</span> There is no choice to make &mdash; the operation is fully determined at each step. DP solves a problem that doesn't exist here. Also x, y can be large, blowing up the state space.</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">Greedy with reordering</td><td class="px-3 py-2">Sort numbers descending, subtract largest first to minimize skips.</td><td class="px-3 py-2 mono">O(n log n) / O(n)</td><td class="px-3 py-2"><span class="text-red-600">Rejected:</span> The problem requires processing "left to right" &mdash; reordering violates the constraint. Even if allowed, it changes the answer.</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">Two-pointer from both ends</td><td class="px-3 py-2">Process numbers from both ends, subtracting from x or y strategically.</td><td class="px-3 py-2 mono">O(n) / O(1)</td><td class="px-3 py-2"><span class="text-red-600">Rejected:</span> The problem says "iterate left to right", not "from both ends". Over-engineers a simple simulation.</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 font-semibold">One-pass simulation</td><td class="px-3 py-2">Walk numbers left to right, skip if &gt; both, else subtract from larger (tie &rarr; x). (v_final in Section 10.)</td><td class="px-3 py-2 mono">O(n) / O(1)</td><td class="px-3 py-2"><span class="text-emerald-700 font-semibold">Chosen:</span> Directly matches the problem statement. No choice to make, so no optimization needed. Meets all constraints.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="text-gray-600 text-xs pt-1">The point of the table is to show you weighed alternatives. In an interview, saying "I considered DP but there's no choice to make at each step, so simulation is sufficient" proves you understand the <em>why</em>, not just the <em>how</em>.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">3. Pattern Blueprint</h2><span class="chevron text-ed-blue text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-blue-50 border border-blue-200 rounded-xl p-4 md:p-6">
+    <ul class="space-y-2 text-gray-700 text-sm">
+      <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span><span>Initialize <span class="mono">skip_count = 0</span></span></li>
+      <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span><span>For each <span class="mono">value</span> in <span class="mono">numbers</span>:</span></li>
+      <li class="flex gap-3 ml-6"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span><span>If <span class="mono">value &gt; x</span> AND <span class="mono">value &gt; y</span>: increment <span class="mono">skip_count</span>, continue</span></li>
+      <li class="flex gap-3 ml-6"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span><span>Else if <span class="mono">x &gt;= y</span>: <span class="mono">x -= value</span></span></li>
+      <li class="flex gap-3 ml-6"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">5</span><span>Else: <span class="mono">y -= value</span></span></li>
+      <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">6</span><span>Return <span class="mono">skip_count</span></span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">4. How to Think About It</h2><span class="chevron text-ed-blue text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-blue/5 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p>The first instinct when seeing "subtract from the larger" is to think there's a strategic choice: <em>which</em> side should I subtract from to minimize future skips? This is a trap. The problem <strong>removes the choice</strong> &mdash; it tells you exactly what to do at each step.</p>
+    <p>The only "decision" is the skip check: if the current value is greater than <em>both</em> x and y, you can't subtract it from either without going negative (the problem implies positive integers only, and subtracting a larger value would make x or y negative, which isn't allowed). So you skip.</p>
+    <p>The tie rule (<span class="mono">x == y &rarr; subtract from x</span>) is arbitrary but deterministic. It exists because "the larger" is ambiguous when they're equal, so the problem picks one. Your job is to implement the rule, not question it.</p>
+    <p>Because there's no choice, there's no DP, no greedy optimization, no backtracking. You just <strong>simulate</strong>. The optimal solution is the brute-force solution &mdash; they're the same thing. This is the key insight: recognizing when a problem is <em>not</em> an optimization problem.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">5. Real-World Analogy</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong class="text-ed-teal">Two buckets, one stream of water:</strong> You have two buckets, <strong>x</strong> and <strong>y</strong>, each holding some water. A conveyor belt brings cups of water one at a time, left to right.</p>
+    <p>For each cup: if the cup is bigger than <strong>both</strong> buckets combined can hold, set it aside (skip). Otherwise, pour it into the <strong>emptier</strong> bucket (the one with more current capacity &mdash; i.e., the "larger" remaining value). If both buckets have the same remaining capacity, pour into bucket x by convention.</p>
+    <p><strong class="text-ed-teal">Mapping:</strong></p>
+    <ul class="space-y-1 ml-4">
+      <li><strong>x, y</strong> = bucket capacities (remaining space)</li>
+      <li><strong>numbers</strong> = cups on the conveyor belt</li>
+      <li><strong>skip</strong> = cup too big for either bucket, set it aside</li>
+      <li><strong>subtract from larger</strong> = pour into the bucket with more room</li>
+      <li><strong>tie &rarr; x</strong> = when both have equal room, use bucket x by convention</li>
+    </ul>
+    <p>You don't get to reorder the cups or choose which bucket to fill &mdash; the rule is fixed. You just count how many cups were too big.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">6. Build Your Intuition</h2><span class="chevron text-ed-amber text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-amber/5 border border-ed-amber/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p>Trace <span class="mono">x=8, y=12, numbers=[5, 6, 6, 3, 1, 1, 2]</span> by hand:</p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-amber-100 text-amber-700"><tr>
+          <th class="text-left px-3 py-2">Step</th>
+          <th class="text-left px-3 py-2">value</th>
+          <th class="text-left px-3 py-2">x (before)</th>
+          <th class="text-left px-3 py-2">y (before)</th>
+          <th class="text-left px-3 py-2">Action</th>
+          <th class="text-left px-3 py-2">x (after)</th>
+          <th class="text-left px-3 py-2">y (after)</th>
+          <th class="text-left px-3 py-2">skip_count</th>
+        </tr></thead>
+        <tbody class="text-gray-700">
+          <tr class="border-t"><td class="px-3 py-2">1</td><td class="px-3 py-2 mono">5</td><td class="px-3 py-2 mono">8</td><td class="px-3 py-2 mono">12</td><td class="px-3 py-2">y &gt; x, subtract from y</td><td class="px-3 py-2 mono">8</td><td class="px-3 py-2 mono">7</td><td class="px-3 py-2 mono">0</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">2</td><td class="px-3 py-2 mono">6</td><td class="px-3 py-2 mono">8</td><td class="px-3 py-2 mono">7</td><td class="px-3 py-2">x &gt; y, subtract from x</td><td class="px-3 py-2 mono">2</td><td class="px-3 py-2 mono">7</td><td class="px-3 py-2 mono">0</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">3</td><td class="px-3 py-2 mono">6</td><td class="px-3 py-2 mono">2</td><td class="px-3 py-2 mono">7</td><td class="px-3 py-2">y &gt; x, subtract from y</td><td class="px-3 py-2 mono">2</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">0</td></tr>
+          <tr class="border-t bg-red-50"><td class="px-3 py-2">4</td><td class="px-3 py-2 mono">3</td><td class="px-3 py-2 mono">2</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 text-red-600 font-semibold">3 &gt; both, SKIP</td><td class="px-3 py-2 mono">2</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">1</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">5</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">2</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2">x &gt; y, subtract from x</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">1</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">6</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2">tie, subtract from x</td><td class="px-3 py-2 mono">0</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">1</td></tr>
+          <tr class="border-t bg-red-50"><td class="px-3 py-2">7</td><td class="px-3 py-2 mono">2</td><td class="px-3 py-2 mono">0</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 text-red-600 font-semibold">2 &gt; both, SKIP</td><td class="px-3 py-2 mono">0</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">2</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="text-emerald-700 font-semibold pt-2">Final answer: skip_count = 2 &mdash; matches the expected output.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details open>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">7. Interactive Visualization</h2><span class="chevron text-ed-pink text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-pink/5 border border-ed-pink/15 rounded-xl p-4 md:p-6">
+    <div class="flex flex-wrap gap-2 mb-4">
+      <button id="sos-play" class="bg-ed-pink text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-pink-700" style="min-height:44px">Play</button>
+      <button id="sos-pause" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-300" style="min-height:44px">Pause</button>
+      <button id="sos-step" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-300" style="min-height:44px">Step</button>
+      <button id="sos-reset" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-300" style="min-height:44px">Reset</button>
+    </div>
+    <div class="flex flex-wrap items-center gap-2 mb-4 text-sm">
+      <label class="font-semibold text-gray-700">x:</label>
+      <input id="sos-x" type="number" value="8" class="w-20 px-2 py-1 border border-gray-300 rounded text-sm mono" style="min-height:44px">
+      <label class="font-semibold text-gray-700">y:</label>
+      <input id="sos-y" type="number" value="12" class="w-20 px-2 py-1 border border-gray-300 rounded text-sm mono" style="min-height:44px">
+      <label class="font-semibold text-gray-700">numbers:</label>
+      <input id="sos-nums" type="text" value="5,6,6,3,1,1,2" class="w-48 px-2 py-1 border border-gray-300 rounded text-sm mono" style="min-height:44px">
+    </div>
+    <div class="flex items-center gap-4 mb-4 text-sm">
+      <span class="text-gray-600">Step: <span id="sos-step-num" class="mono font-bold text-gray-900">0</span></span>
+      <span class="text-gray-600">Status: <span id="sos-status" class="mono font-bold text-ed-pink">ready</span></span>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+      <div class="flex items-center gap-6 mb-3">
+        <div class="text-center">
+          <div class="text-xs text-gray-500 mb-1">x</div>
+          <div id="sos-x-val" class="mono text-2xl font-bold text-blue-600">8</div>
+        </div>
+        <div class="text-center">
+          <div class="text-xs text-gray-500 mb-1">y</div>
+          <div id="sos-y-val" class="mono text-2xl font-bold text-blue-600">12</div>
+        </div>
+        <div class="text-center">
+          <div class="text-xs text-gray-500 mb-1">skip_count</div>
+          <div id="sos-skip-val" class="mono text-2xl font-bold text-red-500">0</div>
+        </div>
+      </div>
+      <div class="text-xs text-gray-500 mb-1">numbers (current index highlighted):</div>
+      <div id="sos-arr" class="flex flex-wrap gap-1"></div>
+    </div>
+    <div class="bg-gray-900 text-gray-100 rounded-lg p-3 max-h-48 overflow-y-auto mono text-xs">
+      <div id="sos-log"></div>
+    </div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">8. How It Works (Step by Step)</h2><span class="chevron text-ed-sky text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-sky/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <div class="flex gap-3"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span><span><strong>Initialize</strong> <span class="mono">skip_count = 0</span>. Keep <span class="mono">x</span> and <span class="mono">y</span> as mutable variables.</span></div>
+    <div class="flex gap-3"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span><span><strong>For each</strong> <span class="mono">value</span> in <span class="mono">numbers</span> (left to right, no reordering):</span></div>
+    <div class="flex gap-3 ml-6"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span><span><strong>Skip check:</strong> If <span class="mono">value &gt; x</span> AND <span class="mono">value &gt; y</span>, the value is too large for either variable. Increment <span class="mono">skip_count</span> and move to the next value.</span></div>
+    <div class="flex gap-3 ml-6"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span><span><strong>Subtract:</strong> Otherwise, subtract from the larger. If <span class="mono">x &gt;= y</span> (includes the tie case), do <span class="mono">x -= value</span>. Else <span class="mono">y -= value</span>.</span></div>
+    <div class="flex gap-3"><span class="bg-ed-sky text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">5</span><span><strong>Return</strong> <span class="mono">skip_count</span> after the loop ends.</span></div>
+    <p class="pt-2 text-gray-600">The <span class="mono">&gt;=</span> in step 4 is what handles the tie: when <span class="mono">x == y</span>, <span class="mono">x &gt;= y</span> is true, so we subtract from x. No separate tie branch needed.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">9. Dry Run</h2><span class="chevron text-ed-amber text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-amber-50 border border-amber-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p>Input: <span class="mono">x=8, y=12, numbers=[5,6,6,3,1,1,2]</span></p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-amber-100 text-amber-700"><tr>
+          <th class="text-left px-3 py-2">Step</th>
+          <th class="text-left px-3 py-2">value</th>
+          <th class="text-left px-3 py-2">x &gt; y?</th>
+          <th class="text-left px-3 py-2">value &gt; both?</th>
+          <th class="text-left px-3 py-2">Action</th>
+          <th class="text-left px-3 py-2">x</th>
+          <th class="text-left px-3 py-2">y</th>
+          <th class="text-left px-3 py-2">skip_count</th>
+        </tr></thead>
+        <tbody class="text-gray-700 mono">
+          <tr class="border-t"><td class="px-3 py-2">1</td><td class="px-3 py-2">5</td><td class="px-3 py-2">No (8&lt;12)</td><td class="px-3 py-2">No</td><td class="px-3 py-2">y -= 5</td><td class="px-3 py-2">8</td><td class="px-3 py-2">7</td><td class="px-3 py-2">0</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">2</td><td class="px-3 py-2">6</td><td class="px-3 py-2">Yes (8&gt;7)</td><td class="px-3 py-2">No</td><td class="px-3 py-2">x -= 6</td><td class="px-3 py-2">2</td><td class="px-3 py-2">7</td><td class="px-3 py-2">0</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">3</td><td class="px-3 py-2">6</td><td class="px-3 py-2">No (2&lt;7)</td><td class="px-3 py-2">No</td><td class="px-3 py-2">y -= 6</td><td class="px-3 py-2">2</td><td class="px-3 py-2">1</td><td class="px-3 py-2">0</td></tr>
+          <tr class="border-t bg-red-50"><td class="px-3 py-2">4</td><td class="px-3 py-2">3</td><td class="px-3 py-2">Yes (2&gt;1)</td><td class="px-3 py-2">Yes (3&gt;2 and 3&gt;1)</td><td class="px-3 py-2 text-red-600">SKIP</td><td class="px-3 py-2">2</td><td class="px-3 py-2">1</td><td class="px-3 py-2">1</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">5</td><td class="px-3 py-2">1</td><td class="px-3 py-2">Yes (2&gt;1)</td><td class="px-3 py-2">No</td><td class="px-3 py-2">x -= 1</td><td class="px-3 py-2">1</td><td class="px-3 py-2">1</td><td class="px-3 py-2">1</td></tr>
+          <tr class="border-t"><td class="px-3 py-2">6</td><td class="px-3 py-2">1</td><td class="px-3 py-2">Tie (1==1)</td><td class="px-3 py-2">No</td><td class="px-3 py-2">x -= 1 (tie&rarr;x)</td><td class="px-3 py-2">0</td><td class="px-3 py-2">1</td><td class="px-3 py-2">1</td></tr>
+          <tr class="border-t bg-red-50"><td class="px-3 py-2">7</td><td class="px-3 py-2">2</td><td class="px-3 py-2">No (0&lt;1)</td><td class="px-3 py-2">Yes (2&gt;0 and 2&gt;1)</td><td class="px-3 py-2 text-red-600">SKIP</td><td class="px-3 py-2">0</td><td class="px-3 py-2">1</td><td class="px-3 py-2">2</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="text-emerald-700 font-semibold pt-2">Return: 2</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details open>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">10. From Brute Force to Optimal &mdash; Every Decision &amp; Why</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+  <div class="mt-5 space-y-5">
+    <div class="bg-red-500/5 border border-red-500/15 rounded-xl p-4 md:p-5">
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+        <h3 class="font-bold text-red-500 text-sm md:text-base">v0 &mdash; Brute Force: simulation with explicit branches</h3>
+        <div class="flex gap-2">
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">Time: O(n)</span>
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">Space: O(1)</span>
+        </div>
+      </div>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def solution_bruteforce(x, y, numbers):
+    skip_count = 0
+    for value in numbers:
+        if value > x and value > y:
+            skip_count += 1
+        elif x >= y:
+            x -= value
+        else:
+            y -= value
+    return skip_count</pre>
+      <p class="text-gray-700 text-sm mt-2"><strong class="text-red-500">Why this is "brute force":</strong> It's the most direct translation of the problem statement into code. Three branches: skip, subtract from x, subtract from y. It works on the happy path and is already O(n) / O(1). But the branch structure is slightly redundant &mdash; the <span class="mono">elif x &gt;= y</span> duplicates the tie logic.</p>
+    </div>
+    <div class="bg-emerald-50 border border-emerald-300 rounded-xl p-4 md:p-5">
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+        <h3 class="font-bold text-emerald-700 text-sm md:text-base">v_final &mdash; Clean simulation with continue</h3>
+        <div class="flex gap-2">
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">Time: O(n)</span>
+          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">Space: O(1)</span>
+        </div>
+      </div>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def solution(x, y, numbers):
+    skip_count = 0
+    for value in numbers:
+        if value > x and value > y:
+            skip_count += 1
+            continue
+        if x >= y:
+            x -= value
+        else:
+            y -= value
+    return skip_count</pre>
+      <p class="text-gray-700 text-sm mt-2"><strong class="text-emerald-700">Why final:</strong> Same O(n) / O(1) complexity, but the <span class="mono">continue</span> separates the skip logic from the subtract logic, making each branch's responsibility clearer. The <span class="mono">x &gt;= y</span> check naturally handles the tie case without a separate branch. This is the version used in Section 20.</p>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-gray-100 text-gray-700"><tr>
+          <th class="text-left px-3 py-2 font-semibold">Version</th>
+          <th class="text-left px-3 py-2 font-semibold">Edge case that forced it</th>
+          <th class="text-left px-3 py-2 font-semibold">Enhancement added</th>
+        </tr></thead>
+        <tbody class="text-gray-700">
+          <tr class="border-t"><td class="px-3 py-2 mono">v0</td><td class="px-3 py-2">None &mdash; direct translation of the problem statement</td><td class="px-3 py-2">Three explicit branches (skip / x / y)</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 mono">v_final</td><td class="px-3 py-2">Readability &mdash; the elif chain mixes skip and subtract logic</td><td class="px-3 py-2">Use <span class="mono">continue</span> to separate skip from subtract; let <span class="mono">&gt;=</span> handle the tie</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-indigo-700 text-sm">
+      <strong>Principle:</strong> Every line of complexity was earned by a specific input the previous version failed on. If you can't name the edge case that forced a line, you don't understand why it's there. In this problem, there's no complexity to earn &mdash; the optimal solution IS the simulation. Recognizing when a problem is <em>not</em> an optimization problem is itself a skill.
+    </div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">11. Complexity Deep Dive</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong class="text-ed-teal">Time: O(n)</strong> &mdash; Single pass through <span class="mono">numbers</span>. Each element is visited exactly once. No nested loops, no sorting, no backtracking.</p>
+    <p><strong class="text-ed-teal">Space: O(1)</strong> &mdash; Only three variables are tracked: <span class="mono">x</span>, <span class="mono">y</span>, and <span class="mono">skip_count</span>. The input array is not copied or modified.</p>
+    <p><strong class="text-ed-teal">Why this is optimal:</strong> You must examine every element at least once to decide whether to skip or subtract &mdash; that's a lower bound of &Omega;(n). The simulation achieves this bound exactly. No algorithm can do better.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">12. Edge Cases &amp; Gotchas</h2><span class="chevron text-ed-orange text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-orange/5 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Empty numbers:</strong> <span class="mono">numbers = []</span> &rarr; returns 0. The loop doesn't execute.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>All skipped:</strong> Every value &gt; both x and y &rarr; returns <span class="mono">len(numbers)</span>. x and y unchanged.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>None skipped:</strong> Every value &le; at least one of x, y &rarr; returns 0.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Tie case (x == y):</strong> Must subtract from x, not y. The <span class="mono">x &gt;= y</span> check handles this &mdash; do NOT use <span class="mono">x &gt; y</span> or the tie goes to y.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Skip condition is strict &gt;:</strong> Use <span class="mono">value &gt; x and value &gt; y</span>, NOT <span class="mono">&gt;=</span>. If <span class="mono">value == x</span> and <span class="mono">value &gt; y</span>, you can still subtract from x (x becomes 0), so it's not a skip.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>x or y reaches 0:</strong> After subtraction, x or y can become 0. Subsequent values &gt; 0 will be &gt; that variable, pushing more skips toward the other side. This is expected behavior.</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">13. Common Mistakes</h2><span class="chevron text-ed-orange text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-orange/5 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Using <span class="mono">&gt;=</span> in the skip check:</strong> <span class="mono">if value &gt;= x and value &gt;= y</span> is WRONG. It skips when <span class="mono">value == x</span>, but you can still subtract from x (resulting in 0). Skip only when <span class="mono">value &gt; x AND value &gt; y</span>.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Tie goes to the wrong variable:</strong> Using <span class="mono">if x &gt; y: x -= value else: y -= value</span> sends the tie to y. The problem says tie &rarr; x. Use <span class="mono">x &gt;= y</span>.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Reordering numbers:</strong> Sorting numbers to "optimize" changes the answer. The problem requires left-to-right processing.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span><strong>Over-engineering with DP:</strong> Building a memoization table on (x, y, index) when there's no choice to make. This wastes time and space for no benefit.</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">14. Flashcards</h2><span class="chevron text-ed-purple text-xl">&#9654;</span></summary>
+  <div class="mt-5 space-y-3">
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: What is the skip condition?</summary><p class="mt-2 text-gray-700">Skip when <span class="mono">value &gt; x AND value &gt; y</span> (strict &gt;, not &gt;=). The value must be too large for <em>both</em> variables.</p></details></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: What happens on a tie (x == y)?</summary><p class="mt-2 text-gray-700">Subtract from <span class="mono">x</span>. Implement this with <span class="mono">if x &gt;= y: x -= value</span> &mdash; the <span class="mono">&gt;=</span> naturally includes the tie case.</p></details></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: What is the time and space complexity?</summary><p class="mt-2 text-gray-700">Time O(n), Space O(1). Single pass, three variables. This is optimal &mdash; you must examine every element.</p></details></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: Why is there no DP or greedy optimization?</summary><p class="mt-2 text-gray-700">Because there's no choice to make at each step. The operation is fully determined by the current state (skip if too large, else subtract from larger). DP and greedy are for when you have choices to optimize.</p></details></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 text-sm"><details><summary class="cursor-pointer text-ed-purple font-semibold">Q: Can you reorder numbers to minimize skips?</summary><p class="mt-2 text-gray-700">No. The problem requires processing "left to right". Reordering changes the answer and violates the constraint.</p></details></div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">15. Where It Is Used (Real World)</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-gray-100 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong>Resource allocation under streaming constraints:</strong> Two servers (x, y) with fixed capacity. Incoming requests (numbers) must be routed to the server with more remaining capacity. Requests exceeding both capacities are dropped (skipped). This models load balancing with a simple "emptier server wins" policy.</p>
+    <p><strong>Budget depletion tracking:</strong> Two budgets (x, y) consumed by a stream of expenses. Each expense is charged to the larger remaining budget. Expenses exceeding both budgets are rejected. The skip count is the number of rejected expenses.</p>
+    <p><strong>Game state simulation:</strong> Two health pools (x, y) reduced by a sequence of attacks. Each attack hits the healthier pool. Attacks that would exceed both pools are dodged. The skip count is the number of dodged attacks.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">16. Interview Tips</h2><span class="chevron text-ed-purple text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong class="text-ed-purple">Say this first:</strong> "This is a simulation problem &mdash; the operation at each step is fully determined, so there's no optimization needed. I'll walk through the example to confirm, then code the one-pass solution."</p>
+    <p><strong class="text-ed-purple">Write on the whiteboard first:</strong> The skip condition and the tie rule. These are the two edge cases that cause bugs. Get them right before writing the loop.</p>
+    <p><strong class="text-ed-purple">If asked to optimize:</strong> "This is already O(n) time and O(1) space, which is optimal &mdash; we must examine every element. There's no algorithmic improvement possible. I could make the code cleaner with a <span class="mono">continue</span>, but the complexity doesn't change."</p>
+    <p><strong class="text-ed-purple">Watch for:</strong> The interviewer testing whether you over-engineer. If you start talking about DP or greedy, they'll let you dig a hole. Recognize early that this is a simulation.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">17. Similar Problems</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-gray-100 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-2">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>LeetCode 27. Remove Element</strong> <span class="bg-emerald-100 text-emerald-700 px-1.5 rounded text-xs">Easy</span> &mdash; one-pass in-place simulation with a write pointer.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>LeetCode 88. Merge Sorted Array</strong> <span class="bg-emerald-100 text-emerald-700 px-1.5 rounded text-xs">Easy</span> &mdash; two-pointer simulation, fill from the back.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>LeetCode 189. Rotate Array</strong> <span class="bg-amber-100 text-amber-700 px-1.5 rounded text-xs">Medium</span> &mdash; in-place simulation with modular indexing.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>LeetCode 680. Valid Palindrome II</strong> <span class="bg-amber-100 text-amber-700 px-1.5 rounded text-xs">Medium</span> &mdash; simulation with a greedy skip choice.</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">18. Related Algorithms</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-gray-100 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-2">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>Simulation patterns:</strong> Problems where you directly implement a described process. No optimization, just faithful translation.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>Greedy (contrast):</strong> Problems where you make a locally optimal choice at each step. This problem is NOT greedy &mdash; there's no choice.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mt-2.5"></span><span><strong>Two-variable state tracking:</strong> Maintaining two mutable values through a single pass. Common in streaming/stream-processing problems.</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">19. Where This Pattern Meets System Design</h2><span class="chevron text-indigo-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-indigo-50 border border-indigo-200 rounded-xl p-4 md:p-6 text-indigo-700 text-sm space-y-3">
+    <p>In a streaming system, this pattern maps to <strong>stateful stream processing</strong>: a worker maintains a small fixed state (x, y) and processes an unbounded stream of events (numbers), making a deterministic decision per event.</p>
+    <p><strong>Scale considerations:</strong></p>
+    <ul class="space-y-1 ml-4">
+      <li>If the stream is unbounded, you can't store it &mdash; the O(1) space property is essential.</li>
+      <li>If events arrive at high throughput, the per-event decision must be O(1) &mdash; no sorting, no lookup.</li>
+      <li>If the state (x, y) is large or distributed, you'd shard by key and aggregate the skip counts.</li>
+      <li>Fault tolerance: checkpoint (x, y, skip_count) periodically so the worker can resume after a crash.</li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">20. Code Solutions</h2><span class="chevron text-ed-sky text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-sky/5 border border-ed-sky/15 rounded-xl p-4 md:p-6">
+    <div class="flex flex-wrap gap-3 mb-4 text-xs">
+      <span class="legend-chip bg-purple-100 text-purple-700"><span class="tok-kw">keyword</span></span>
+      <span class="legend-chip bg-yellow-100 text-yellow-700"><span class="tok-ty">type</span></span>
+      <span class="legend-chip bg-blue-100 text-blue-700"><span class="tok-fn">function</span></span>
+      <span class="legend-chip bg-orange-100 text-orange-700"><span class="tok-nm">number</span></span>
+      <span class="legend-chip bg-pink-100 text-pink-700"><span class="tok-str">string</span></span>
+      <span class="legend-chip bg-gray-200 text-gray-700"><span class="tok-cm">comment</span></span>
+    </div>
+    <h3 class="font-bold text-ed-sky text-sm md:text-base mb-2">Python</h3>
+    <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def solution(x, y, numbers):
+    skip_count = 0
+    for value in numbers:
+        if value > x and value > y:
+            skip_count += 1
+            continue
+        if x >= y:
+            x -= value
+        else:
+            y -= value
+    return skip_count</pre>
+    <h3 class="font-bold text-ed-sky text-sm md:text-base mb-2 mt-4">Java</h3>
+    <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">public class Solution {
+    public int solution(int x, int y, int[] numbers) {
+        int skipCount = 0;
+        for (int value : numbers) {
+            if (value > x && value > y) {
+                skipCount++;
+                continue;
+            }
+            if (x >= y) {
+                x -= value;
+            } else {
+                y -= value;
+            }
+        }
+        return skipCount;
+    }
+}</pre>
+    <h3 class="font-bold text-ed-sky text-sm md:text-base mb-2 mt-4">C++</h3>
+    <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">class Solution {
+public:
+    int solution(int x, int y, vector&lt;int&gt;& numbers) {
+        int skip_count = 0;
+        for (int value : numbers) {
+            if (value > x && value > y) {
+                skip_count++;
+                continue;
+            }
+            if (x >= y) {
+                x -= value;
+            } else {
+                y -= value;
+            }
+        }
+        return skip_count;
+    }
+};</pre>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">21. Follow-Up Questions</h2><span class="chevron text-indigo-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-indigo-50 border border-indigo-200 rounded-xl p-4 md:p-6 text-indigo-700 text-sm space-y-3">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2.5"></span><span><strong>What if x and y can go negative?</strong> The problem says positive integers, but if they could go negative, the skip condition would need to change &mdash; you'd skip only if subtracting would make <em>both</em> negative, or you'd allow negative values and never skip.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2.5"></span><span><strong>What if you could choose which variable to subtract from?</strong> Then it becomes a DP/greedy problem: minimize skips by choosing the optimal target at each step. The state is (x, y, index), and you'd memoize.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2.5"></span><span><strong>What if numbers is a stream (unbounded)?</strong> The O(1) space solution handles this naturally &mdash; you never store the stream, just process element by element.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2.5"></span><span><strong>What if there are k variables instead of 2?</strong> Generalize: skip if value &gt; max(all variables), else subtract from the largest. Time stays O(n), space O(k).</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">22. Quick Reference</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-gray-100 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong>One-line summary:</strong> One-pass simulation &mdash; skip if value &gt; both x and y, else subtract from the larger (tie &rarr; x). O(n) time, O(1) space. No optimization needed because there's no choice to make.</p>
+    <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def solution(x, y, numbers):
+    skip_count = 0
+    for value in numbers:
+        if value > x and value > y:
+            skip_count += 1; continue
+        if x >= y: x -= value
+        else: y -= value
+    return skip_count</pre>
+  </div>
+</details></section>
+
+</main>
+
+<footer class="bg-gray-900 text-gray-400 text-center text-xs py-6 mt-8">
+  Generated by dsa-generator skill &middot; Skip or Subtract &middot; Capital One GPN Senior Lead Software Engineer
+</footer>
+
+<script>
+(function(){
+  const xInput=document.getElementById('sos-x');
+  const yInput=document.getElementById('sos-y');
+  const numsInput=document.getElementById('sos-nums');
+  const stepEl=document.getElementById('sos-step-num');
+  const statusEl=document.getElementById('sos-status');
+  const xValEl=document.getElementById('sos-x-val');
+  const yValEl=document.getElementById('sos-y-val');
+  const skipValEl=document.getElementById('sos-skip-val');
+  const arrEl=document.getElementById('sos-arr');
+  const logEl=document.getElementById('sos-log');
+  let numbers=[], x=0, y=0, skipCount=0, stepIdx=0, playing=false, timer=null;
+  function parseInputs(){
+    x=parseInt(xInput.value)||0;
+    y=parseInt(yInput.value)||0;
+    numbers=(numsInput.value.split(',').map(s=>parseInt(s.trim())).filter(n=>!isNaN(n)));
+  }
+  function render(){
+    xValEl.textContent=x;
+    yValEl.textContent=y;
+    skipValEl.textContent=skipCount;
+    stepEl.textContent=stepIdx;
+    arrEl.innerHTML=numbers.map((n,i)=>{
+      const cls=i===stepIdx-1?'bg-ed-pink text-white':(i<stepIdx-1?'bg-gray-200 text-gray-500':'bg-white border border-gray-300 text-gray-700');
+      return `<span class="mono px-2 py-1 rounded ${cls} text-sm">${n}</span>`;
+    }).join('');
+  }
+  function log(msg){
+    logEl.innerHTML+=`<div>${msg}</div>`;
+    logEl.parentElement.scrollTop=logEl.parentElement.scrollHeight;
+  }
+  function reset(){
+    if(timer){clearInterval(timer);timer=null;}
+    playing=false;statusEl.textContent='ready';statusEl.className='mono font-bold text-ed-pink';
+    parseInputs();skipCount=0;stepIdx=0;logEl.innerHTML='';render();
+  }
+  function step(){
+    if(stepIdx>=numbers.length){
+      if(timer){clearInterval(timer);timer=null;}
+      playing=false;statusEl.textContent='done';statusEl.className='mono font-bold text-emerald-600';
+      return;
+    }
+    const value=numbers[stepIdx];
+    stepIdx++;
+    if(value>x && value>y){
+      skipCount++;
+      log(`Step ${stepIdx}: value=${value} > x=${x} and y=${y} → SKIP (skip_count=${skipCount})`);
+    } else if(x>=y){
+      x-=value;
+      log(`Step ${stepIdx}: value=${value}, x>=y → x -= ${value} (x=${x}, y=${y})`);
+    } else {
+      y-=value;
+      log(`Step ${stepIdx}: value=${value}, y>x → y -= ${value} (x=${x}, y=${y})`);
+    }
+    render();
+  }
+  document.getElementById('sos-play').onclick=()=>{
+    if(playing)return;
+    if(stepIdx>=numbers.length)reset();
+    playing=true;statusEl.textContent='running';statusEl.className='mono font-bold text-ed-pink';
+    timer=setInterval(()=>{step();if(!playing){clearInterval(timer);timer=null;}},700);
+  };
+  document.getElementById('sos-pause').onclick=()=>{
+    if(timer){clearInterval(timer);timer=null;}
+    playing=false;statusEl.textContent='paused';statusEl.className='mono font-bold text-amber-600';
+  };
+  document.getElementById('sos-step').onclick=()=>{
+    if(timer){clearInterval(timer);timer=null;}
+    playing=false;statusEl.textContent='paused';statusEl.className='mono font-bold text-amber-600';
+    step();
+  };
+  document.getElementById('sos-reset').onclick=reset;
+  [xInput,yInput,numsInput].forEach(el=>el.onchange=reset);
+  reset();
+})();
+</script>
+
+<script>
+(function(){
+  const master=/(#[^\n]*|\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b\d+\b)|([A-Za-z_][A-Za-z_0-9]*)/g;
+  const kw=new Set(['def','class','while','if','else','elif','for','return','continue','break','pass','import','from','in','not','and','or','is','None','True','False','lambda','try','except','finally','with','as','yield','global','nonlocal','assert','del','raise','public','private','static','void','int','new','this','const','let','var','function','typeof','instanceof','extends','implements','package','import','class','interface','enum','struct','vector','std','cout','cin','endl','using','namespace','char','bool','long','double','float','short','unsigned','signed','size_t']);
+  const ty=new Set(['str','int','bool','List','Solution','list','dict','set','tuple','float','double','char','long','short','void','auto','string','vector','map','unordered_map','set','unordered_set','pair']);
+  function highlight(pre){
+    if(pre.dataset.highlighted)return;
+    const html=pre.innerHTML;
+    let result='';
+    let last=0;
+    let m;
+    master.lastIndex=0;
+    while((m=master.exec(html))!==null){
+      result+=html.slice(last,m.index);
+      if(m[1]){result+=`<span class="tok-cm">${m[1]}</span>`;}
+      else if(m[2]){result+=`<span class="tok-str">${m[2]}</span>`;}
+      else if(m[3]){result+=`<span class="tok-nm">${m[3]}</span>`;}
+      else if(m[4]){
+        const next=html[master.index]||'';
+        if(kw.has(m[4])){result+=`<span class="tok-kw">${m[4]}</span>`;}
+        else if(ty.has(m[4])){result+=`<span class="tok-ty">${m[4]}</span>`;}
+        else if(next==='('){result+=`<span class="tok-fn">${m[4]}</span>`;}
+        else{result+=m[4];}
+      }
+      last=master.lastIndex;
+    }
+    result+=html.slice(last);
+    pre.innerHTML=result;
+    pre.dataset.highlighted='true';
+  }
+  document.querySelectorAll('pre.mono').forEach(highlight);
+})();
+</script>
+</body>
+</html>

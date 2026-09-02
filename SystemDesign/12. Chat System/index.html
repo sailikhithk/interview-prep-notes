@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: Chat System — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] hero-glow pointer-events-none"></div>
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">SD</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">Chat System</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">System Design Workbook</span>
+      </div>
+    </div>
+    <a href="../README.md" class="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">&larr; Back to System Design Hub</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Architectural Study Guide</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">High Scale &bull; Distributed Systems</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+      <span class="gradient-text">Chat System</span>
+    </h1>
+    <p class="text-gray-600 text-base max-w-3xl leading-relaxed">
+      Comprehensive architectural deep-dive covering high-level data flow, data models, edge case failure modes, scaling strategies, and interview trade-off defenses.
+    </p>
+  </div>
+</div>
+
+<!-- CONTENT MAIN -->
+<main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+  <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm prose prose-blue max-w-none space-y-6">
+    <h1 class="text-2xl font-black text-gray-900 border-b border-gray-200 pb-3 mb-4 mt-6">Chapter 12: Design a Chat System</h1>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Introduction</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A <strong class="text-gray-900 font-bold">chat system</strong> supports real-time messaging between users. This chapter focuses on designing a chat app that includes:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">One-on-One Chat</strong></li>
+<li><strong class="text-gray-900 font-bold">Group Chat (max 100 users)</strong></li>
+<li><strong class="text-gray-900 font-bold">Online Presence Indicators</strong></li>
+<li><strong class="text-gray-900 font-bold">Multiple Device Support</strong></li>
+<li><strong class="text-gray-900 font-bold">Push Notifications</strong></li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The system targets <strong class="text-gray-900 font-bold">50 million daily active users (DAU)</strong> and stores chat history permanently.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 1: Understanding the Problem</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Requirements</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Features:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>One-on-one and group chat (max 100 members).</li>
+<li>Text-based messages (up to 100,000 characters).</li>
+<li>Online/offline indicators.</li>
+<li>Support for multiple devices.</li>
+<li>Push notifications.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Scale:</strong> Design for 50 million DAU.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Storage:</strong> Permanent chat history.</p>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 2: High-Level Design</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Communication Protocols</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Sender Side:</strong> HTTP for sending messages, leveraging persistent connections for efficiency.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:2rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/basic-design.png" alt="Basic Design" width="500"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Receiver Side:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Polling:</strong></li>
+<li>Client periodically asks the server if there are messages available.</li>
+<li>Inefficient due to frequent, redundant requests.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/polling.png" alt="Polling" width="400"></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Long Polling:</strong></li>
+<li>Keeps the connection open until messages arrive.</li>
+<li>Inefficient for inactive users.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/long-polling.png" alt="Long Polling" width="400"></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">WebSocket:</strong></li>
+<li>A bi-directional, persistent connection for real-time communication, chosen for both sending and receiving messages.</li>
+<li>Uses WebSockets (ws) protocol for sending and recieving messages.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/websocket.png" alt="Websocket"  width="400" ></p>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Components</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:5rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/high-level-stateless-arch.png" alt="High Level Architecture" height="350"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/high-level-statefull-arch.png" alt="High Level Architecture" height="350" width="550"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Stateless Services:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Handle signup, login, and user profile management.</li>
+<li>Integrated with service discovery to recommend the best chat server.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Stateful Services:</strong></p>
+<li>Chat servers maintain persistent WebSocket connections.</li>
+<li>Responsible for message delivery and synchronization.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Third-Party Integration:</strong></p>
+<li>Push notification services notify users about new messages.</li>
+<li>Refer Notification System chapter for notifications implementation.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Design</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The client maintains a persistent WebSocket connection to a chat server for real-time messaging.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/high-level-design.png" alt="High Level Design" width="450"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Chat servers facilitate message sending/receiving.</li>
+<li>Presence servers manage online/offline status.</li>
+<li>API servers handle everything including user login, signup, change profile, etc.</li>
+<li>Notification servers send push notifications.</li>
+<li>Finally, the key-value store is used to store chat history.Key-value stores for the database of the chat history data for following reasons:</li>
+<li>It allows easy horizontal scaling.</li>
+<li>KV stores provide very low latency to access data.</li>
+<li>Relational databases do not handle long tail of data well. When the indexes grow</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">large, random access is expensive.</p>
+<li>KV stores are adopted by other proven reliable chat applications. For example,</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">both Facebook messenger and Discord.</p>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Following are the data models for one-to-one chat and group chat.</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>The primary key is message id, which helps to decide message sequence.</li>
+<li>For the group chat the composite primary key is (channel_id, message_id).</li>
+<li>IDs can be generated using a global 64-bit sequence number generator like Snowflake.</li>
+<li>A better approach is to use local sequence number generator. Local means IDs are only unique within a group.</li>
+<li>The reason why local IDs work is that maintaining message sequence within one-on-one channel or a group channel is sufficient.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/one-to-one-chat.png" alt="One to one chat design" width="300"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/group-chat.png" alt="Group chat design" width="300"></p>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 3: Design Deep Dive</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Service Discovery</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/zookeeper.png" alt="Zookeeper" width="400"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>The primary role of service discovery is to recommend the best chat server for a client based</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">on the criteria like geographical location, server capacity.</p>
+<li>Uses <strong class="text-gray-900 font-bold">Apache Zookeeper</strong> to allocate chat servers based on criteria like geographic location and server capacity.</li>
+<li>Ensures efficient load distribution and minimizes latency.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Messaging Flows</h3>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">One-on-One Chat</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. User A sends a message to Chat Server 1.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. Chat Server 1 assigns a unique message ID and stores the message in a key-value store.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. If User B is online, the message is forwarded to Chat Server 2, maintaining a persistent WebSocket connection.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. If User B is offline, a push notification is sent.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Group Chat</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/group-chat-flow.png" alt="Group Chat Flow" width="400"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Messages are copied to individual inboxes for each recipient in the group.</li>
+<li>Simplifies synchronization but becomes expensive for larger groups.</li>
+<li>On the recipient side, a recipient can receive messages from multiple users. Each recipient</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">has an inbox (message sync queue) which contains messages from different senders.</p>
+</ul>
+<hr class="border-gray-200 my-6">
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Message Synchronization</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Many users have multiple devices. We need to synchronize the message across the devices.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Each device maintains a variable called cur_max_message_id, which keeps track of the latest</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">message ID on the device. Messages that satisfy the following two conditions are considered</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">as news messages:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/message-synchronization.png" alt="Message Synchronization"  width="400"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>The recipient ID is equal to the currently logged-in user ID.</li>
+<li>Message ID in the key-value store is larger than cur_max_message_id</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Online Presence</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Heartbeat Mechanism:</strong></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/heartbeat-mechanism.png" alt="Heartbeat Mechanism" width="400"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Clients send periodic heartbeats to presence servers to indicate they are online.</li>
+<li>If no heartbeat is received within a threshold (for eg x = 30), the user is marked offline.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Fanout Model:</strong></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/fanout-presence.png" alt="Fanout Presence" width="400"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Presence updates are pushed to friends using a publish-subscribe model in which each friend pair maintains a channel.</li>
+<li>When User A’s online status changes, it publishes the event to three channels, channel A-B, A-C, and A-D.</li>
+<li>Those three channels are subscribed by User B, C, and D, respectively which get the online status updates.</li>
+<li>The above design is effective for a small user groups.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Additional Considerations</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Scalability</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Horizontal Scaling:</strong> Add servers as user count increases.</li>
+<li><strong class="text-gray-900 font-bold">Load Balancing:</strong> Distribute traffic evenly across servers.</li>
+<li><strong class="text-gray-900 font-bold">Caching:</strong> Reduce database load and improve latency.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Error Handling</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Retry Mechanisms:</strong> Handle message delivery failures with retries and queuing.</li>
+<li><strong class="text-gray-900 font-bold">Server Failures:</strong> Use service discovery to allocate new servers in case of failures.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Future Extensions</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Media Support:</strong> Add handling for photos and videos, including compression and cloud storage.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">End-to-End Encryption:</strong> Ensure message privacy.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Client-Side Caching:</strong> Reduce data transfer for better performance.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Improved Load Times:</strong> Use geographically distributed caching networks.</p>
+  </div>
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>System Design Interactive Study Suite &bull; AntiGravity IDE</p>
+</footer>
+</body>
+</html>

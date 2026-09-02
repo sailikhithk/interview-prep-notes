@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: System Design Framework — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] hero-glow pointer-events-none"></div>
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">SD</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">System Design Framework</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">System Design Workbook</span>
+      </div>
+    </div>
+    <a href="../README.md" class="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">&larr; Back to System Design Hub</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Architectural Study Guide</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">High Scale &bull; Distributed Systems</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+      <span class="gradient-text">System Design Framework</span>
+    </h1>
+    <p class="text-gray-600 text-base max-w-3xl leading-relaxed">
+      Comprehensive architectural deep-dive covering high-level data flow, data models, edge case failure modes, scaling strategies, and interview trade-off defenses.
+    </p>
+  </div>
+</div>
+
+<!-- CONTENT MAIN -->
+<main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+  <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm prose prose-blue max-w-none space-y-6">
+    <h1 class="text-2xl font-black text-gray-900 border-b border-gray-200 pb-3 mb-4 mt-6">Chapter 3: A Framework for System Design Interviews</h1>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Introduction</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">System design interviews are a key part of the hiring process, simulating real-life problem-solving scenarios. These interviews evaluate not just technical skills but also collaboration, communication, and the ability to handle ambiguous requirements.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This chapter introduces a <strong class="text-gray-900 font-bold">4-step framework</strong> for navigating system design interviews effectively.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 1: Understand the Problem and Establish Design Scope</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Key Objectives</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Clarify requirements and assumptions.</li>
+<li>Avoid jumping into solutions prematurely.</li>
+<li>Showcase critical thinking by asking good questions.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Approach</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Ask Clarifying Questions:</strong></li>
+<li>What are the most important features?</li>
+<li>What scale does the system need to handle?</li>
+<li>Are we building for web, mobile, or both?</li>
+<li>Are there existing technologies or constraints?</li>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Document Assumptions:</strong> Write assumptions on a whiteboard or paper for reference.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Example</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><strong class="text-gray-900 font-bold">Problem:</strong> Design a news feed system.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><strong class="text-gray-900 font-bold">Questions:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Is it a mobile app, web app, or both?</li>
+<li>How many friends can a user have?</li>
+<li>Should the feed include images and videos?</li>
+<li>Is the feed sorted by reverse chronological order?</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 2: Propose High-Level Design and Get Buy-In</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Key Objectives</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Develop a high-level architecture.</li>
+<li>Collaborate with the interviewer to refine the design.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Approach</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Draft a Blueprint:</strong></li>
+<li>Use box diagrams for key components (e.g., clients, APIs, databases, caches, CDNs).</li>
+<li>Treat the interviewer as a teammate to refine the design.</li>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Perform Back-of-the-Envelope Calculations:</strong></li>
+<li>Ensure the design can handle the scale constraints.</li>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Walk Through Use Cases:</strong> Identify edge cases and validate design assumptions.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Example</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">For a news feed system, divide the design into:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Feed Publishing Flow:</strong> Writing posts into databases and populating friends' feeds.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Feed Retrieval Flow:</strong> Aggregating and displaying friends' posts in reverse chronological order.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 3: Design Deep Dive</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Key Objectives</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Dive into critical components.</li>
+<li>Showcase depth of understanding and adaptability.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Approach</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Prioritize Key Components:</strong> Focus on areas most relevant to the problem.</li>
+<li><strong class="text-gray-900 font-bold">Discuss Bottlenecks:</strong> Identify potential performance issues and propose solutions.</li>
+<li><strong class="text-gray-900 font-bold">Balance Detail:</strong> Avoid over-engineering or unnecessary deep dives.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Example Topics</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">URL Shortener:</strong> Focus on hash function design.</li>
+<li><strong class="text-gray-900 font-bold">Chat System:</strong> Explore latency reduction and online/offline status handling.</li>
+<li><strong class="text-gray-900 font-bold">News Feed System:</strong> Examine feed publishing and retrieval processes.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 4: Wrap-Up</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Key Objectives</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Highlight areas for improvement.</li>
+<li>Recap the design and discuss follow-ups.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Approach</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Identify Bottlenecks:</strong> Discuss potential limitations and scaling strategies.</li>
+<li><strong class="text-gray-900 font-bold">Summarize Design:</strong> Recap major design decisions and trade-offs.</li>
+<li><strong class="text-gray-900 font-bold">Propose Enhancements:</strong></li>
+<li>How to scale from 1 million to 10 million users.</li>
+<li>Error handling for server failures or network issues.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Best Practices</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Dos</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Ask Questions:</strong> Clarify ambiguities before diving into solutions.</li>
+<li><strong class="text-gray-900 font-bold">Communicate:</strong> Share your thought process with the interviewer.</li>
+<li><strong class="text-gray-900 font-bold">Iterate with the Interviewer:</strong> Treat them as a collaborator.</li>
+<li><strong class="text-gray-900 font-bold">Show Flexibility:</strong> Suggest alternative approaches and refine your design.</li>
+<li><strong class="text-gray-900 font-bold">Focus on Critical Components:</strong> Prioritize key parts of the system.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Don’ts</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Avoid Premature Solutions:</strong> Don’t design before understanding the requirements.</li>
+<li><strong class="text-gray-900 font-bold">Don’t Go Silent:</strong> Communicate regularly during the process.</li>
+<li><strong class="text-gray-900 font-bold">Avoid Over-Engineering:</strong> Focus on practical, scalable solutions.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Time Management</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Suggested Time Allocation (for 45-Minute Interviews):</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Understand Problem and Scope:</strong> 3–10 minutes</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">High-Level Design and Buy-In:</strong> 10–15 minutes</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Deep Dive:</strong> 10–25 minutes</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Wrap-Up:</strong> 3–5 minutes</p>
+  </div>
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>System Design Interactive Study Suite &bull; AntiGravity IDE</p>
+</footer>
+</body>
+</html>

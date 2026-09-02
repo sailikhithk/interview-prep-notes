@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DSA Skills Visual Comparison — Legacy vs New</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: { extend: {
+    colors: {
+      'ed-pink': '#db2777', 'ed-blue': '#2563eb', 'ed-teal': '#0d9488',
+      'ed-amber': '#d97706', 'ed-sky': '#0284c7', 'ed-purple': '#7c3aed', 'ed-orange': '#ea580c',
+    },
+    fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+  } },
+};
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  details > summary { cursor: pointer; list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  details[open] > summary .chevron { transform: rotate(90deg); }
+  .chevron { transition: transform 0.2s; }
+  .color-card { transition: transform 0.2s, box-shadow 0.2s; }
+  .color-card:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
+  iframe { border: 0; width: 100%; height: 600px; }
+  @media (min-width: 1024px) { iframe { height: 800px; } }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-850 antialiased">
+
+<header class="bg-gradient-to-br from-indigo-50 via-white to-purple-50 border-b border-gray-200">
+  <div class="max-w-7xl mx-auto px-4 py-6 md:px-6 md:py-10">
+    <h1 class="text-2xl md:text-4xl font-extrabold tracking-tight text-gray-900 mb-2">DSA Skills — Visual Comparison</h1>
+    <p class="text-gray-600 text-sm md:text-base">Legacy <span class="mono">DSA_HTML_SKILL</span> vs New <span class="mono">dsa-generator</span> — same problem (905. Sort Array By Parity), two skill outputs.</p>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 py-6 md:px-6 md:py-10 space-y-8">
+
+<!-- COLOR SYSTEM ANALYSIS -->
+<section class="bg-white rounded-2xl border border-gray-200 p-5 md:p-8 shadow-sm">
+  <h2 class="text-xl md:text-2xl font-bold text-gray-900 mb-2">1. Color System — Meaningful Mapping</h2>
+  <p class="text-gray-600 text-sm mb-6">Each color maps to a <strong>cognitive function</strong>, not a section number. This is what makes the guides memorable: your brain learns "pink = stop and notice", "orange = caution", "purple = remember".</p>
+
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+    <div class="color-card bg-pink-50 border border-pink-200 rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-2"><span class="w-4 h-4 rounded bg-ed-pink"></span><h3 class="font-bold text-ed-pink text-sm">Pink</h3></div>
+      <p class="text-xs text-gray-700"><strong>Pattern / Signals</strong></p>
+      <p class="text-xs text-gray-500 mt-1">"Stop and notice this." Section 2 (Pattern Recognition). Catches attention.</p>
+    </div>
+    <div class="color-card bg-blue-50 border border-blue-200 rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-2"><span class="w-4 h-4 rounded bg-ed-blue"></span><h3 class="font-bold text-ed-blue text-sm">Blue</h3></div>
+      <p class="text-xs text-gray-700"><strong>Structure / Thinking</strong></p>
+      <p class="text-xs text-gray-500 mt-1">"Analytical framework." Sections 3-4 (Blueprint, How to Think).</p>
+    </div>
+    <div class="color-card bg-teal-50 border border-teal-200 rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-2"><span class="w-4 h-4 rounded bg-ed-teal"></span><h3 class="font-bold text-ed-teal text-sm">Teal</h3></div>
+      <p class="text-xs text-gray-700"><strong>Concrete / Analysis</strong></p>
+      <p class="text-xs text-gray-500 mt-1">"Grounded understanding." Sections 5, 9, 10 (Analogy, Complexity, Evolution).</p>
+    </div>
+    <div class="color-card bg-amber-50 border border-amber-200 rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-2"><span class="w-4 h-4 rounded bg-ed-amber"></span><h3 class="font-bold text-ed-amber text-sm">Amber</h3></div>
+      <p class="text-xs text-gray-700"><strong>Intuition / Trace</strong></p>
+      <p class="text-xs text-gray-500 mt-1">"Warm up your brain." Sections 6, 8 (Build Intuition, Dry Run).</p>
+    </div>
+    <div class="color-card bg-sky-50 border border-sky-200 rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-2"><span class="w-4 h-4 rounded bg-ed-sky"></span><h3 class="font-bold text-ed-sky text-sm">Sky</h3></div>
+      <p class="text-xs text-gray-700"><strong>Execution / Code</strong></p>
+      <p class="text-xs text-gray-500 mt-1">"Clear steps." Sections 7, 19 (How It Works, Code Solutions).</p>
+    </div>
+    <div class="color-card bg-orange-50 border border-orange-200 rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-2"><span class="w-4 h-4 rounded bg-ed-orange"></span><h3 class="font-bold text-ed-orange text-sm">Orange</h3></div>
+      <p class="text-xs text-gray-700"><strong>Caution / Warnings</strong></p>
+      <p class="text-xs text-gray-500 mt-1">"Watch out." Sections 11, 12 (Edge Cases, Mistakes).</p>
+    </div>
+    <div class="color-card bg-purple-50 border border-purple-200 rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-2"><span class="w-4 h-4 rounded bg-ed-purple"></span><h3 class="font-bold text-ed-purple text-sm">Purple</h3></div>
+      <p class="text-xs text-gray-700"><strong>Memory / Strategy</strong></p>
+      <p class="text-xs text-gray-500 mt-1">"Remember this." Sections 13, 15 (Flashcards, Interview Tips).</p>
+    </div>
+    <div class="color-card bg-gray-100 border border-gray-300 rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-2"><span class="w-4 h-4 rounded bg-gray-500"></span><h3 class="font-bold text-gray-700 text-sm">Gray</h3></div>
+      <p class="text-xs text-gray-700"><strong>Reference / External</strong></p>
+      <p class="text-xs text-gray-500 mt-1">"External context." Sections 14, 16, 17, 21 (Real World, Similar, Related, Quick Ref).</p>
+    </div>
+    <div class="color-card bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-2"><span class="w-4 h-4 rounded bg-indigo-500"></span><h3 class="font-bold text-indigo-600 text-sm">Indigo</h3></div>
+      <p class="text-xs text-gray-700"><strong>Systems / Advanced</strong></p>
+      <p class="text-xs text-gray-500 mt-1">"Big picture." Sections 18, 20 (System Design, Follow-Ups).</p>
+    </div>
+    <div class="color-card bg-red-50 border border-red-200 rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-2"><span class="w-4 h-4 rounded bg-red-500"></span><h3 class="font-bold text-red-600 text-sm">Red</h3></div>
+      <p class="text-xs text-gray-700"><strong>Naive / Broken</strong></p>
+      <p class="text-xs text-gray-500 mt-1">"This fails." v0 in evolution. Signals the starting point that needs fixing.</p>
+    </div>
+    <div class="color-card bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-2"><span class="w-4 h-4 rounded bg-emerald-600"></span><h3 class="font-bold text-emerald-700 text-sm">Emerald</h3></div>
+      <p class="text-xs text-gray-700"><strong>Optimal / Final</strong></p>
+      <p class="text-xs text-gray-500 mt-1">"This is the answer." v2 in evolution, correct output, done state.</p>
+    </div>
+    <div class="color-card bg-gray-900 border border-gray-700 rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-2"><span class="w-4 h-4 rounded bg-gray-300"></span><h3 class="font-bold text-gray-100 text-sm">Dark</h3></div>
+      <p class="text-xs text-gray-300"><strong>Code Surface</strong></p>
+      <p class="text-xs text-gray-500 mt-1">Syntax highlighting background. Six token colors (kw/ty/fn/nm/str/cm).</p>
+    </div>
+  </div>
+</section>
+
+<!-- STRUCTURAL DIFFERENCES -->
+<section class="bg-white rounded-2xl border border-gray-200 p-5 md:p-8 shadow-sm">
+  <h2 class="text-xl md:text-2xl font-bold text-gray-900 mb-4">2. Structural Differences</h2>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+      <thead class="bg-gray-100"><tr>
+        <th class="text-left px-3 py-2 font-semibold">Feature</th>
+        <th class="text-left px-3 py-2 font-semibold text-gray-600">Legacy <span class="mono text-xs">DSA_HTML_SKILL</span></th>
+        <th class="text-left px-3 py-2 font-semibold text-purple-700">New <span class="mono text-xs">dsa-generator</span></th>
+      </tr></thead>
+      <tbody class="text-gray-700">
+        <tr class="border-t"><td class="px-3 py-2 font-semibold">Sections</td><td class="px-3 py-2">21-22</td><td class="px-3 py-2">21 (same skeleton)</td></tr>
+        <tr class="border-t bg-gray-50"><td class="px-3 py-2 font-semibold">Color system</td><td class="px-3 py-2">Per-section, meaningful (9 colors)</td><td class="px-3 py-2">Same 9 colors + red/emerald for evolution</td></tr>
+        <tr class="border-t"><td class="px-3 py-2 font-semibold">Section 7</td><td class="px-3 py-2">"How It Works" (static steps)</td><td class="px-3 py-2 text-purple-700 font-semibold">Interactive Visualization (play/pause/step/reset)</td></tr>
+        <tr class="border-t bg-gray-50"><td class="px-3 py-2 font-semibold">Section 10</td><td class="px-3 py-2">"From Brute Force to Optimal" (generic)</td><td class="px-3 py-2 text-purple-700 font-semibold">Edge-case-driven v0→v2 evolution (each step forced by a failing input)</td></tr>
+        <tr class="border-t"><td class="px-3 py-2 font-semibold">Syntax highlighting</td><td class="px-3 py-2">Yes, 6 token classes + legend</td><td class="px-3 py-2">Yes, same 6 token classes + legend</td></tr>
+        <tr class="border-t bg-gray-50"><td class="px-3 py-2 font-semibold">Mobile responsive</td><td class="px-3 py-2">Yes, 44px taps, no overflow</td><td class="px-3 py-2">Yes, same</td></tr>
+        <tr class="border-t"><td class="px-3 py-2 font-semibold">Self-explanatory names</td><td class="px-3 py-2">Mixed (some <span class="mono">l</span>, <span class="mono">r</span>)</td><td class="px-3 py-2 text-purple-700 font-semibold">All names spelled out (<span class="mono">left_index</span>, <span class="mono">right_index</span>)</td></tr>
+        <tr class="border-t bg-gray-50"><td class="px-3 py-2 font-semibold">Evolution table</td><td class="px-3 py-2">No</td><td class="px-3 py-2 text-purple-700 font-semibold">Yes — "version → edge case → enhancement"</td></tr>
+        <tr class="border-t"><td class="px-3 py-2 font-semibold">Memory principle</td><td class="px-3 py-2">Color + structure</td><td class="px-3 py-2 text-purple-700 font-semibold">Color + structure + interactivity + forced evolution</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- SIDE BY SIDE -->
+<section class="bg-white rounded-2xl border border-gray-200 p-5 md:p-8 shadow-sm">
+  <h2 class="text-xl md:text-2xl font-bold text-gray-900 mb-4">3. Side-by-Side — Same Problem, Both Skills</h2>
+  <p class="text-gray-600 text-sm mb-4">Same problem (905. Sort Array By Parity), generated by each skill. Scroll both to compare color usage, section 7 (static vs interactive), and section 10 (generic vs edge-case-driven evolution).</p>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div>
+      <div class="flex items-center gap-2 mb-2">
+        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-300">Legacy</span>
+        <h3 class="font-bold text-gray-700 text-sm"><span class="mono">DSA_HTML_SKILL</span></h3>
+      </div>
+      <iframe src="sort-array-by-parity.html" loading="lazy" title="Legacy skill output"></iframe>
+    </div>
+    <div>
+      <div class="flex items-center gap-2 mb-2">
+        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 border border-purple-200">New</span>
+        <h3 class="font-bold text-purple-700 text-sm"><span class="mono">dsa-generator v2</span></h3>
+      </div>
+      <iframe src="sort-array-by-parity-v2.html" loading="lazy" title="New skill output"></iframe>
+    </div>
+  </div>
+</section>
+
+<!-- MEMORY ANCHORS -->
+<section class="bg-white rounded-2xl border border-gray-200 p-5 md:p-8 shadow-sm">
+  <h2 class="text-xl md:text-2xl font-bold text-gray-900 mb-4">4. Why This Is Memorable — Color as Cognitive Anchor</h2>
+  <div class="space-y-3 text-gray-700 text-sm">
+    <p>The color system works because each color maps to a <strong>cognitive verb</strong>, not a section label:</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div class="bg-pink-50 border border-pink-200 rounded-lg p-3"><strong class="text-ed-pink">Pink = "STOP, notice this"</strong> &rarr; pattern signals. Your brain learns to perk up when it sees pink.</div>
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-3"><strong class="text-ed-blue">Blue = "THINK structurally"</strong> &rarr; blueprints, frameworks. Analytical mode.</div>
+      <div class="bg-teal-50 border border-teal-200 rounded-lg p-3"><strong class="text-ed-teal">Teal = "GROUND it"</strong> &rarr; analogies, complexity, evolution. Concrete understanding.</div>
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-3"><strong class="text-ed-amber">Amber = "WARM UP"</strong> &rarr; intuition building, dry runs. Get comfortable.</div>
+      <div class="bg-sky-50 border border-sky-200 rounded-lg p-3"><strong class="text-ed-sky">Sky = "EXECUTE"</strong> &rarr; steps, code. Clear, procedural.</div>
+      <div class="bg-orange-50 border border-orange-200 rounded-lg p-3"><strong class="text-ed-orange">Orange = "WATCH OUT"</strong> &rarr; edge cases, mistakes. Caution mode.</div>
+      <div class="bg-purple-50 border border-purple-200 rounded-lg p-3"><strong class="text-ed-purple">Purple = "REMEMBER"</strong> &rarr; flashcards, interview tips. Memory mode.</div>
+      <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3"><strong class="text-indigo-600">Indigo = "SCALE UP"</strong> &rarr; system design, follow-ups. Big picture.</div>
+    </div>
+    <p class="mt-4 text-gray-600">After 5-10 guides, your brain auto-anchors: <em>"I see orange, I'm in caution mode. I see pink, I'm hunting for the pattern."</em> That's the memory hook.</p>
+  </div>
+</section>
+
+</main>
+
+<footer class="bg-gray-900 text-gray-400 text-center text-xs py-6">
+  DSA Skills Visual Comparison &middot; Legacy vs New &middot; 2026
+</footer>
+
+</body>
+</html>

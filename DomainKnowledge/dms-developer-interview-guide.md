@@ -230,6 +230,61 @@ interface DoseOrder {
 
 > **Expected**: Multi-stage: first stage compiles/builds, second stage copies only the artifact. Result: smaller final image (no JDK/npm/build tools), security (no source code in production image), faster deploys (smaller image push/pull).
 
+**Q21b: AI + GitOps Review Automation** — We use GitHub Actions + Copilot + JIRA Context Bot to automate PR review. Walk me through how you would design an AI-assisted review pipeline that reduces human review burden without sacrificing safety. What would you automate, what would you keep human, and where are the traps?
+
+> **Expected**:
+> 1. **Automate (deterministic, high-volume)**:
+>    - PR title/description format validation (W1, W2)
+>    - JIRA context fetch + fix-version vs branch cross-check (W5)
+>    - Migration naming/idempotency/version checks (Gate 2 — 8 sub-checks)
+>    - Build + format + lint (Gates 3, 4, 5)
+>    - File-based labeling (W3), size labeling (W4)
+>    - Cherry-pick propagation post-merge (auto-cherry-pick.yml)
+>    - Branch cleanup (weekly cron)
+> 2. **AI-assist (Copilot, non-blocking)**:
+>    - AC vs code diff comparison — Copilot reads JIRA-CONTEXT-BOT comment first, then reviews diff against acceptance criteria
+>    - Sibling component audit — "does the same anti-pattern exist elsewhere?" (Q66 pattern)
+>    - DMS anti-pattern scan — P1–P7 detection (hardcoded SYSTEM, clear()+addAll(), unconditional setChangedOn, isDataChanged after setters, UTC Z suffix)
+>    - Security review — IDOR, path traversal, missing @PreAuthorize
+>    - Suggests tests for new code paths
+> 3. **Keep human (judgment, domain, risk)**:
+>    - Final approve/merge decision
+>    - Business logic correctness
+>    - Cross-team impact assessment
+>    - Regulatory/compliance sign-off (FDA 21 CFR Part 11)
+>    - Architecture decisions
+> 4. **Traps to avoid**:
+>    - AI rubber-stamping — reviewer clicks "Approve" without reading because Copilot said "looks good"
+>    - Alert fatigue — too many warnings → reviewers ignore all warnings
+>    - Context window limits — Copilot can't see full repo; must feed it JIRA context + checklist explicitly
+>    - False positives → erode trust in automation
+>    - AI can't verify DB→BE→FE ground truth — only human can query the actual DB
+>    - AI doesn't know release history (R1.2.1 audit bugs) — must be prompted with specific anti-patterns
+> 5. **Our actual pipeline**:
+>    - 10 GitHub Actions workflows (6 hygiene + 5 gates + cherry-pick + cleanup)
+>    - Copilot reads `<!-- JIRA-CONTEXT-BOT -->` comment as Phase 1 of review
+>    - Intelligence band: 5–6/12 (hygiene automated, deep review still human + Copilot)
+>    - Known gaps: AC vs diff, sibling audit, deep anti-pattern scan — all manual today
+>
+> **Green flag**: Mentions outbox pattern for AI review events, idempotency keys for re-reviews, human-in-the-loop as non-negotiable for pharma.
+>
+> **Red flag**: "AI can fully replace human reviewers" or "we should auto-merge if Copilot approves."
+
+**Q21c: GitOps Promotion Pipeline** — A fix needs to go from LOCAL → DEV → QA → STAGE → PRD. How do our GitOps scripts automate this, and where can it break?
+
+> **Expected**:
+> 1. **Scripts**: `git-pull-all.sh` (sync), `push-and-deploy.sh` (dev+qa+stage in one PR), `ship-and-deploy.sh` (commit → push → cherry-pick → wait for builds → deploy), `force-push-sync.sh` (2.1 → main), `sync-ci-to-all-branches.sh` (CI files across branches)
+> 2. **Propagation**: `release-2.0` → `release-2.1` → `main` (never cherry-pick individual commits — always merge full branch)
+> 3. **Break points**:
+>    - Cross-repo SHAs differ (BE and FE are separate Git repos)
+>    - Cross-branch SHAs differ (cherry-picks generate new hashes)
+>    - `release-2.1` (LOCAL) can't deploy to DEV/QA until 2.0 validation cycle completes
+>    - Branch protection must be temporarily disabled for force-push-sync
+>    - Must kill BE/FE/Temporal processes before branch checkout
+> 4. **Safety**: CI commits always write to `release-2.0` first with `[Release-2.0]` prefix — propagates forward automatically.
+>
+> **Red flag**: Suggests direct push to `main` or skipping the 2.0 validation cycle.
+
 ---
 
 ## Phase 6: Domain & Architecture (10 min)

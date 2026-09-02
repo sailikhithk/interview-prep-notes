@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: Key-Value Store — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] hero-glow pointer-events-none"></div>
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">SD</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">Key-Value Store</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">System Design Workbook</span>
+      </div>
+    </div>
+    <a href="../README.md" class="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">&larr; Back to System Design Hub</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Architectural Study Guide</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">High Scale &bull; Distributed Systems</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+      <span class="gradient-text">Key-Value Store</span>
+    </h1>
+    <p class="text-gray-600 text-base max-w-3xl leading-relaxed">
+      Comprehensive architectural deep-dive covering high-level data flow, data models, edge case failure modes, scaling strategies, and interview trade-off defenses.
+    </p>
+  </div>
+</div>
+
+<!-- CONTENT MAIN -->
+<main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+  <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm prose prose-blue max-w-none space-y-6">
+    <h1 class="text-2xl font-black text-gray-900 border-b border-gray-200 pb-3 mb-4 mt-6">Chapter 6: Design a Key-Value Store</h1>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Introduction</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A <strong class="text-gray-900 font-bold">key-value store</strong> is a type of non-relational database where data is stored as key-value pairs. Each key is unique, and values are accessed using these keys. This chapter details how to design a scalable, high-availability distributed key-value store that supports operations like:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">put(key, value)</code> for inserting data.</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">get(key)</code> for retrieving data.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Characteristics of the Design</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Small key-value pairs (<10 KB).</li>
+<li>Supports big data with high availability and scalability.</li>
+<li>Automatic scaling and tunable consistency.</li>
+<li>Low latency.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Single Server Key-Value Store</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Implementation</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Use a <strong class="text-gray-900 font-bold">hash table</strong> to store key-value pairs in memory.</li>
+<li>Optimizations:</li>
+<li>Data compression.</li>
+<li>Storing less frequently accessed data on disk.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Limitation</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A single server's memory is limited, requiring a <strong class="text-gray-900 font-bold">distributed approach</strong> for scalability.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Distributed Key-Value Store</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A <strong class="text-gray-900 font-bold">distributed key-value store</strong> partitions data across multiple servers and must address trade-offs outlined by the <strong class="text-gray-900 font-bold">CAP theorem</strong>.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">CAP Theorem</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Consistency:</strong> All clients see the same data simultaneously.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Availability:</strong> The system responds to every request, even if some nodes are down.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Partition Tolerance:</strong> The system continues to operate despite network partitions.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><strong class="text-gray-900 font-bold">Trade-off:</strong> According to CAP theorem only two of the three guarantees can be achieved.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><p align="center"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/cap.png" alt="CAP" width="400"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></p></p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">System Types:</h4>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">CP Systems:</strong> Consistency and partition tolerance while sacrificing availability (e.g., banking systems).</li>
+<li><strong class="text-gray-900 font-bold">AP Systems:</strong> Availability and partition tolerance while sacrificing consistency (e.g., eventual consistency).</li>
+<li><strong class="text-gray-900 font-bold">CA Systems:</strong> Consistency and Availability while sacrificing partition tolerance.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><strong class="text-gray-900 font-bold">Since network failure is unavoidable, a distributed system must tolerate network partition. Thus, a CA system cannot exist in real-world applications.</strong></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In a distributed system, partitions are inevitable. When a partition occurs, we must choose between consistency and availability. For example, if node n3 goes down,</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">any data written to nodes n1 or n2 cannot be propagated to n3. Conversely, if data is written to n3 but not yet propagated to n1 and n2, nodes n1 and n2 will have stale data.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><p align="center"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/server-down.png"  alt="Server down" width="400"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></p></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>If we choose CP system, we must block all write operations to n1 and n2 to avoid data inconsistency.</li>
+<li>If we choose AP system, the system keeps accepting reads, even though it might return stale data.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">For writes, n1 and n2 keep accepting writes,</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">and data will be synced to n3 when the network partition is resolved.</p>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">System Components</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">1. Data Partitioning</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Technique:</strong> Consistent Hashing is used to distribute data across multiple servers evenly.</li>
+<li><strong class="text-gray-900 font-bold">Advantages:</strong></li>
+<li>Automatic scaling with server addition/removal.</li>
+<li>Heterogeneity through virtual nodes. The number of virtual nodes for a server is proportional to the server capacity.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">2. Data Replication</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Replicate data across <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">N</code> servers for high availability.</li>
+<li>The N servers are chosen by walking clockwise from the server position and choose the first N servers on the ring to store data copies.Place replicas in distinct data centers to improve reliability in case of virtual nodes.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><p align="center"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/data-replication.png" alt="Data replication" width="300"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></p></p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">3. Consistency</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Since data is replicated at multiple nodes, it must be synchronized across replicas.</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Quorum Consensus:</strong></li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">N</code>: Total replicas.</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">W</code>: Write quorum size. For a write to be considered successful, write must be acknowledged from W replicas.</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">R</code>: Read quorum size. For a read to be considered as successful, read must wait for responses from at least R replicas.</li>
+<li><strong class="text-gray-900 font-bold">Rule:</strong> <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">W + R > N</code> ensures strong consistency.</li>
+<li>The configuration of W, R and N is a typical tradeoff between latency and consistency.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><p align="center"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/quorum-consensus.png"   alt="Quorum consensus" width="400"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></p></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>If R = 1 and W = N, the system is optimized for a fast read.</li>
+<li>If W = 1 and R = N, the system is optimized for fast write.</li>
+<li>If W + R > N, strong consistency is guaranteed (Usually N = 3, W = R = 2).</li>
+<li>If W + R <= N, strong consistency is not guaranteed.</li>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Models</strong>:</li>
+<li><strong class="text-gray-900 font-bold">Strong Consistency:</strong> A read operation returns a value corresponding to the result of the most updated write data item.</li>
+<li><strong class="text-gray-900 font-bold">Weak Consistency:</strong> Subsequent read operations may not see the most updated value.</li>
+<li><strong class="text-gray-900 font-bold">Eventual Consistency:</strong> Given enough time, all updates are propagated, and all replicas are consisten</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">4. Inconsistency Resolution</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Replication gives high availability but causes inconsistencies among replicas. Versioning and</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">vector locks are used to solve inconsistency problems.</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Versioning:</strong></li>
+<li>Use <strong class="text-gray-900 font-bold">vector clocks</strong> to track data versions and resolve conflicts.</li>
+<li>Versioning means treating each data modification as a new immutable version of data.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/consistent-server.png"   alt="Consisten hashing" width="400"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/inconsistent-server.png"   alt="Inconsistent server" height="230"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Server 1 changes the name , and server 2 also changes the name. These two changes are performed simultaneously. Now, we have conflicting values, called versions v1 and v2.</li>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Vector Clock</strong></li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Setup</strong>: A vector clock is a [server, version] pair associated with a data item. It can be used to check</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">if one version precedes, succeeds, or in conflict with others.</p>
+<li>Assume a vector clock represented by D([S1, v1], [S2, v2], …, [Sn, vn]), If data item D is written to server</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Si, the system must perform one of the following tasks.</p>
+<li>Where: <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">D</code> is the data item.<code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">Si</code> is the server identifier.<code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">vi</code> is the version counter for the data at server <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">Si</code>.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Updating the Vector Clock:</strong>  When a data item is modified at a server:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>If the server exists in the vector clock, its version counter is incremented.</li>
+<li>Otherwise, a new entry is added to the vector clock.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Conflict Detection:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">No Conflict:</strong> A version X is an ancestor of version Y if all counters in X are less than or equal to those in Y.</li>
+<li><strong class="text-gray-900 font-bold">Conflict Exists:</strong> Two versions are siblings if there is at least one counter in Y that is less than its counterpart in X.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Conflict Resolution:</strong> When conflicts are detected (sibling versions), the system relies on application-specific logic or client intervention to   reconcile the data.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><p align="center"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/vector-clock.png"  alt="Server hashing" width="500"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></p></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Challenges:</strong></li>
+<li>Increased complexity for clients.</li>
+<li>Vector clock size may grow with many updates, requiring trimming strategies to limit its size.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">5. Handling Failures</h3>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">a. Failure Detection</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">It is insufficient to believe that a server is down because another server says so.Usually, it requires at least two independent sources of information to mark a server down.</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Gossip Protocol:</strong></li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/gossip-protocol.png"  alt="Gossip protocol" width="600"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Each node maintains member IDs and heartbeat counters.</li>
+<li>Each node periodically increments its heartbeat counter.</li>
+<li>Each node periodically sends heartbeats to a set of random nodes.</li>
+<li>If the heartbeat has not increased for more than predefined periods, the member is</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">considered as offline</p>
+</ul>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">b. Temporary Failures</h4>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Sloppy Quorum:</strong> Use healthy nodes to maintain operations temporarily.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><p align="center"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/sloppy-quorum.png"   alt="Sloppy Quorum" width="400"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></p></p>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>After detecting failures, the system needs to deploy certain mechanisms to ensure availability</li>
+<li>Instead of enforcing the quorum requirement, the system chooses the first W healthy servers for writes and first R</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">healthy servers for reads on the hash ring.</p>
+<li>Offline servers are ignored. If a server is unavailable, another server will process requests temporarily</li>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Hinted Handoff:</strong> Offline servers catch up with changes upon recovery.</li>
+<li>When the down server is up, changes will be pushed back to achieve data consistency</li>
+</ul>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">c. Permanent Failures</h4>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Use <strong class="text-gray-900 font-bold">Merkle Trees</strong> for efficient synchronization between replicas.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">A <strong class="text-gray-900 font-bold">Merkle Tree</strong> (or hash tree) is a data structure to efficiently detect and resolve inconsistencies between replicas during permanent failures.</p>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Working</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Structure:</strong></p>
+<li><strong class="text-gray-900 font-bold">Leaf Nodes</strong> store the hash of individual data blocks.</li>
+<li><strong class="text-gray-900 font-bold">Non-Leaf Nodes</strong> store the hash of their child nodes.</li>
+<li>The <strong class="text-gray-900 font-bold">root hash</strong> represents the combined state of all data in the tree.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Building a Merkle Tree:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Step 1:</strong> Divide the key space into buckets.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/key-bucket.png"   alt="Key Bucket" width="500"></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Step 2:</strong> Hash each key in a bucket using uniform hashing.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/hash-key-bucket.png"   alt="Hash Key Bucket" width="500"></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Step 3:</strong> Create a single hash for each bucket.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/hash-bucket.png"   alt="Hash Bucket" width="500"></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Step 4:</strong> Combine hashes of buckets to compute higher-level hashes, culminating in the root hash.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/merkel-tree.png"   alt="Merkel Tree" width="500"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Synchronization:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>To synchronize two replicas:</li>
+<li>Compare their root hashes.</li>
+<li>If the root hashes match, the replicas are consistent.</li>
+<li>If the root hashes differ, compare child hashes recursively to identify inconsistent buckets.</li>
+<li>Only the inconsistent data is synchronized.</li>
+</ul>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Advantages</li>
+<li><strong class="text-gray-900 font-bold">Efficiency:</strong> Only inconsistent data is synchronized, reducing data transfer.</li>
+<li><strong class="text-gray-900 font-bold">Scalability:</strong> Effective for large datasets with minimal synchronization overhead.</li>
+<li><strong class="text-gray-900 font-bold">Reliability:</strong> Ensures data consistency across replicas.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">6. Handling Data Center Outages</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Replicate data across multiple data centers to ensure availability during outages.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Write and Read Paths</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">1. Write Path (Based on Cassandra architecture)</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/write-path.png"   alt="Hash Bucket" width="500"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Persist the write in a <strong class="text-gray-900 font-bold">commit log</strong>.</li>
+<li>Save data to a <strong class="text-gray-900 font-bold">memory cache</strong>.</li>
+<li>Flush data to <strong class="text-gray-900 font-bold">SSTable</strong> (Sorted String Table) on disk when cache is full.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">2. Read Path</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/read-path.png"   alt="Hash Bucket" width="500"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/read-path-without-cache.png"   alt="Hash Bucket" width="500"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Check <strong class="text-gray-900 font-bold">memory cache</strong> for the data.</li>
+<li>If absent, use a <strong class="text-gray-900 font-bold">Bloom Filter</strong> to locate the data in SSTables.</li>
+<li>Retrieve and return the data.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Final Architecture</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><p align="center"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/final-architecture.png"   alt="Hash Bucket" width="500"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></p></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li> Clients communicate with the key-value store through simple APIs: get(key) and put(key,</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">value).</p>
+<li>A coordinator is a node that acts as a proxy between the client and the key-value store.</li>
+<li>Nodes are distributed on a ring using consistent hashing.</li>
+<li>The system is completely decentralized so adding and moving nodes can be automatic.</li>
+<li>Data is replicated at multiple nodes.</li>
+<li>There is no single point of failure as every node has the same set of responsibilities.</li>
+</ul>
+  </div>
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>System Design Interactive Study Suite &bull; AntiGravity IDE</p>
+</footer>
+</body>
+</html>

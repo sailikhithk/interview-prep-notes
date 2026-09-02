@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design Mastery — Senior &amp; Staff Interactive Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' },
+        coral: { 50:'#fff1f2', 100:'#ffe4e6', 500:'#f43f5e', 600:'#e11d48' },
+        emerald: { 50:'#ecfdf5', 100:'#d1fae5', 500:'#10b981', 600:'#059669' },
+        amber: { 50:'#fffbeb', 100:'#fef3c7', 500:'#f59e0b', 600:'#d97706' },
+        purple: { 50:'#faf5ff', 100:'#f3e8ff', 500:'#a855f7', 600:'#9333ea', 700:'#7e22ce' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+.tab-btn.active { border-color:#2563eb; color:#2563eb; background-color:#eff6ff; font-weight:700; }
+.sim-box { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[400px] hero-glow pointer-events-none"></div>
+
+<!-- NAVIGATION / HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">SD</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">System Design Mastery</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">All 27 Topics &bull; Staff/Senior L6+</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-4 text-xs font-medium">
+      <a href="#simulator" class="text-gray-600 hover:text-blue-600 transition-colors">Simulators</a>
+      <a href="#calculator" class="text-gray-600 hover:text-blue-600 transition-colors">Scale Math</a>
+      <a href="#curriculum" class="text-gray-600 hover:text-blue-600 transition-colors font-bold text-blue-600">27 Topics Matrix</a>
+      <a href="#interview-drill" class="text-gray-600 hover:text-blue-600 transition-colors">Drill Arena</a>
+    </div>
+  </div>
+</header>
+
+<!-- HERO SECTION -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-6xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Mastery Curriculum</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">All 27 Topics Active &bull; 4 Core Pillars</span>
+    </div>
+    <h1 class="text-3xl sm:text-5xl font-black tracking-tight mb-4">
+      Architect Systems <span class="gradient-text">That Survive Failure</span>
+    </h1>
+    <p class="text-gray-600 text-base sm:text-lg max-w-3xl leading-relaxed mb-6">
+      Complete, uncompromised deep-dive covering all 27 system design topics. Explore real-world mechanisms, architectural trade-offs, and critical failure modes under scale.
+    </p>
+
+    <!-- 4 Pillar Quick Summary -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+      <div class="bg-gray-50 border border-gray-200 rounded-xl p-3.5 hover:border-blue-300 transition-all cursor-pointer" onclick="filterTopics('data')">
+        <span class="text-[11px] font-bold text-blue-700 uppercase tracking-wider block mb-1">Pillar 1 (7 Topics)</span>
+        <h3 class="text-sm font-bold text-gray-900 mb-1">Data &amp; Storage</h3>
+        <p class="text-xs text-gray-500">B-Tree/LSM, Sharding, Locks, Object, Search, DBs</p>
+      </div>
+      <div class="bg-gray-50 border border-gray-200 rounded-xl p-3.5 hover:border-purple-300 transition-all cursor-pointer" onclick="filterTopics('access')">
+        <span class="text-[11px] font-bold text-purple-700 uppercase tracking-wider block mb-1">Pillar 2 (5 Topics)</span>
+        <h3 class="text-sm font-bold text-gray-900 mb-1">Access &amp; Traffic</h3>
+        <p class="text-xs text-gray-500">L4/L7 LB, Rate Limiting, Caching, APIs, Real-time</p>
+      </div>
+      <div class="bg-gray-50 border border-gray-200 rounded-xl p-3.5 hover:border-emerald-300 transition-all cursor-pointer" onclick="filterTopics('event')">
+        <span class="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block mb-1">Pillar 3 (8 Topics)</span>
+        <h3 class="text-sm font-bold text-gray-900 mb-1">Async &amp; Events</h3>
+        <p class="text-xs text-gray-500">Kafka Lag, Sagas, Outbox, Payments, Feeds, Chat</p>
+      </div>
+      <div class="bg-gray-50 border border-gray-200 rounded-xl p-3.5 hover:border-rose-300 transition-all cursor-pointer" onclick="filterTopics('reliability')">
+        <span class="text-[11px] font-bold text-rose-700 uppercase tracking-wider block mb-1">Pillar 4 (7 Topics)</span>
+        <h3 class="text-sm font-bold text-gray-900 mb-1">Reliability &amp; Scale</h3>
+        <p class="text-xs text-gray-500">CAP/PACELC, Jitter, SLOs, Multi-Region, Scale</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main class="max-w-6xl mx-auto px-6 py-10 space-y-12">
+
+  <!-- ========================================== -->
+  <!-- SECTION 1: INTERACTIVE ARCHITECTURE SIMULATORS -->
+  <!-- ========================================== -->
+  <section id="simulator" class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-200">
+      <div>
+        <span class="text-xs font-bold text-blue-600 uppercase tracking-wider">Live Architectural Lab</span>
+        <h2 class="text-2xl font-black text-gray-900">Failure Mode &amp; Mechanism Simulators</h2>
+        <p class="text-xs sm:text-sm text-gray-500 mt-1">Interact with core failure modes to understand why naive implementations fail in production.</p>
+      </div>
+      <!-- Tab Controls -->
+      <div class="flex flex-wrap gap-1.5 p-1 bg-gray-100 rounded-xl border border-gray-200 self-start">
+        <button onclick="switchSim('fencing')" id="tab-fencing" class="tab-btn active px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-700 hover:text-blue-600 transition-all">1. Distributed Lock &amp; Fencing</button>
+        <button onclick="switchSim('outbox')" id="tab-outbox" class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-700 hover:text-blue-600 transition-all">2. Dual-Write vs Outbox CDC</button>
+        <button onclick="switchSim('stampede')" id="tab-stampede" class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-700 hover:text-blue-600 transition-all">3. Cache Stampede &amp; Singleflight</button>
+        <button onclick="switchSim('ratelimit')" id="tab-ratelimit" class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-700 hover:text-blue-600 transition-all">4. Distributed Rate Limiter</button>
+      </div>
+    </div>
+
+    <!-- SIMULATOR 1: DISTRIBUTED LOCK & FENCING TOKENS -->
+    <div id="sim-fencing" class="sim-content py-6 space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="md:col-span-1 space-y-4">
+          <div class="bg-blue-50/70 border border-blue-200 rounded-xl p-4">
+            <h4 class="text-xs font-bold text-blue-900 uppercase">The Problem</h4>
+            <p class="text-xs text-blue-800 mt-1 leading-relaxed">
+              Worker 1 acquires a lock with a 5s TTL. Worker 1 hits a 6s JVM GC pause. The lock expires. Worker 2 acquires the lock. Worker 1 wakes up and writes to storage, corrupting data.
+            </p>
+          </div>
+          <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+            <label class="text-xs font-bold text-gray-700 block">Defense Mode:</label>
+            <div class="flex flex-col gap-2">
+              <label class="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                <input type="radio" name="fencing_mode" value="naive" checked>
+                <span><strong>Naive TTL Lock</strong> (No fencing token)</span>
+              </label>
+              <label class="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                <input type="radio" name="fencing_mode" value="fencing">
+                <span><strong>Monotonic Fencing Token</strong> (Verified by DB)</span>
+              </label>
+            </div>
+            <button onclick="runFencingSimulation()" id="btn-run-fencing" class="w-full mt-2 py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all">
+              Trigger GC Pause Simulation &rarr;
+            </button>
+          </div>
+        </div>
+
+        <!-- Simulation Visualization Stage -->
+        <div class="md:col-span-2 bg-gray-900 rounded-xl p-5 text-white flex flex-col justify-between space-y-4">
+          <div class="flex items-center justify-between text-xs border-b border-gray-800 pb-3 font-mono">
+            <span class="text-gray-400">Lock Manager: <span class="text-emerald-400" id="lock-owner-label">None</span></span>
+            <span class="text-gray-400">Storage Version: <span class="text-amber-400" id="db-version-label">v0</span></span>
+            <span class="text-gray-400">State: <span class="text-blue-400" id="sim-status-label">Ready</span></span>
+          </div>
+
+          <!-- Animated Nodes -->
+          <div class="grid grid-cols-2 gap-4 my-4">
+            <div id="worker-1-box" class="sim-box bg-gray-800/90 border-2 border-gray-700 rounded-xl p-4 text-center">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-gray-300">Worker 1</span>
+                <span id="w1-token" class="text-[10px] font-mono bg-blue-900/60 text-blue-300 px-1.5 py-0.5 rounded">Token: --</span>
+              </div>
+              <div id="w1-status" class="text-xs font-mono text-gray-400">Idle</div>
+              <div id="w1-progress" class="w-full bg-gray-700 h-1.5 rounded-full mt-3 overflow-hidden">
+                <div class="bg-blue-500 h-full w-0 transition-all duration-300" id="w1-bar"></div>
+              </div>
+            </div>
+
+            <div id="worker-2-box" class="sim-box bg-gray-800/90 border-2 border-gray-700 rounded-xl p-4 text-center">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-gray-300">Worker 2</span>
+                <span id="w2-token" class="text-[10px] font-mono bg-purple-900/60 text-purple-300 px-1.5 py-0.5 rounded">Token: --</span>
+              </div>
+              <div id="w2-status" class="text-xs font-mono text-gray-400">Idle</div>
+              <div id="w2-progress" class="w-full bg-gray-700 h-1.5 rounded-full mt-3 overflow-hidden">
+                <div class="bg-purple-500 h-full w-0 transition-all duration-300" id="w2-bar"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Storage Target -->
+          <div id="storage-target" class="border border-gray-700 bg-gray-800/50 rounded-lg p-3 text-center text-xs font-mono">
+            <span class="text-gray-400">Database Table Row: </span>
+            <span id="storage-result" class="text-gray-200 font-bold">Unmodified</span>
+          </div>
+
+          <!-- Execution Log Terminal -->
+          <div class="bg-black/60 rounded-lg p-3 text-[11px] font-mono text-gray-300 h-24 overflow-y-auto space-y-1" id="fencing-log">
+            <p class="text-gray-500">&gt; Select defense mode and click "Trigger GC Pause Simulation" to run.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIMULATOR 2: DUAL WRITE VS TRANSACTIONAL OUTBOX -->
+    <div id="sim-outbox" class="sim-content hidden py-6 space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="space-y-4">
+          <div class="bg-purple-50/70 border border-purple-200 rounded-xl p-4">
+            <h4 class="text-xs font-bold text-purple-900 uppercase">The Problem</h4>
+            <p class="text-xs text-purple-800 mt-1 leading-relaxed">
+              Direct Dual-Writes (writing to DB + publishing to Kafka) inevitably fail when network cuts or worker crashes after DB write. The outbox pattern guarantees atomic write + CDC stream.
+            </p>
+          </div>
+          <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+            <label class="text-xs font-bold text-gray-700 block">Architecture Pattern:</label>
+            <div class="flex flex-col gap-2">
+              <label class="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                <input type="radio" name="outbox_mode" value="dual" checked>
+                <span><strong>Direct Dual-Write</strong> (Naive API)</span>
+              </label>
+              <label class="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                <input type="radio" name="outbox_mode" value="outbox">
+                <span><strong>Transactional Outbox + Debezium CDC</strong></span>
+              </label>
+            </div>
+            <button onclick="runOutboxSimulation()" class="w-full mt-2 py-2 px-4 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all">
+              Execute Checkout Order &rarr;
+            </button>
+          </div>
+        </div>
+
+        <div class="md:col-span-2 bg-gray-900 rounded-xl p-5 text-white flex flex-col justify-between space-y-4">
+          <div class="grid grid-cols-3 gap-3 text-center text-xs font-mono">
+            <div class="bg-gray-800 p-3 rounded-lg border border-gray-700">
+              <span class="text-gray-400 block text-[10px]">App Server</span>
+              <span id="status-app" class="text-emerald-400 font-bold">Ready</span>
+            </div>
+            <div class="bg-gray-800 p-3 rounded-lg border border-gray-700">
+              <span class="text-gray-400 block text-[10px]">PostgreSQL</span>
+              <span id="status-db" class="text-blue-400 font-bold">Committed: 0</span>
+            </div>
+            <div class="bg-gray-800 p-3 rounded-lg border border-gray-700">
+              <span class="text-gray-400 block text-[10px]">Kafka Topic</span>
+              <span id="status-kafka" class="text-amber-400 font-bold">Events: 0</span>
+            </div>
+          </div>
+          <div class="bg-black/60 rounded-lg p-3 text-[11px] font-mono text-gray-300 h-32 overflow-y-auto space-y-1" id="outbox-log">
+            <p class="text-gray-500">&gt; Ready for transaction simulation...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIMULATOR 3: CACHE STAMPEDE / THUNDERING HERD -->
+    <div id="sim-stampede" class="sim-content hidden py-6 space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="space-y-4">
+          <div class="bg-rose-50/70 border border-rose-200 rounded-xl p-4">
+            <h4 class="text-xs font-bold text-rose-900 uppercase">The Problem</h4>
+            <p class="text-xs text-rose-800 mt-1 leading-relaxed">
+              When a hot cache key expires under 10,000 QPS, all 10k requests concurrently miss the cache and crush the primary PostgreSQL database, causing connection pool exhaustion.
+            </p>
+          </div>
+          <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+            <label class="text-xs font-bold text-gray-700 block">Mitigation Strategy:</label>
+            <div class="flex flex-col gap-2">
+              <label class="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                <input type="radio" name="stampede_mode" value="none" checked>
+                <span><strong>No Protection</strong> (Raw Cache-Aside)</span>
+              </label>
+              <label class="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                <input type="radio" name="stampede_mode" value="singleflight">
+                <span><strong>Singleflight Mutex Lock</strong></span>
+              </label>
+              <label class="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                <input type="radio" name="stampede_mode" value="xfetch">
+                <span><strong>Probabilistic Early Expiry (XFetch)</strong></span>
+              </label>
+            </div>
+            <button onclick="runStampedeSimulation()" class="w-full mt-2 py-2 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all">
+              Send 5,000 Concurrent Requests &rarr;
+            </button>
+          </div>
+        </div>
+
+        <div class="md:col-span-2 bg-gray-900 rounded-xl p-5 text-white flex flex-col justify-between space-y-4">
+          <div class="grid grid-cols-2 gap-4 text-center text-xs font-mono">
+            <div class="bg-gray-800 p-4 rounded-xl border border-gray-700">
+              <span class="text-gray-400 block text-xs mb-1">Postgres DB Load</span>
+              <span id="stampede-db-hits" class="text-2xl font-bold text-rose-400">0</span>
+              <span class="text-[10px] text-gray-500 block mt-1">Queries executed against DB</span>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-xl border border-gray-700">
+              <span class="text-gray-400 block text-xs mb-1">Cache / App Latency</span>
+              <span id="stampede-latency" class="text-2xl font-bold text-emerald-400">12ms</span>
+              <span class="text-[10px] text-gray-500 block mt-1">P99 response time</span>
+            </div>
+          </div>
+          <div class="bg-black/60 rounded-lg p-3 text-[11px] font-mono text-gray-300 h-28 overflow-y-auto space-y-1" id="stampede-log">
+            <p class="text-gray-500">&gt; Ready for cache stampede test.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIMULATOR 4: DISTRIBUTED RATE LIMITER -->
+    <div id="sim-ratelimit" class="sim-content hidden py-6 space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="space-y-4">
+          <div class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-4">
+            <h4 class="text-xs font-bold text-emerald-900 uppercase">The Problem</h4>
+            <p class="text-xs text-emerald-800 mt-1 leading-relaxed">
+              Multiple gateway nodes checking Redis without atomic Lua script executions create read-then-write race conditions, allowing traffic bursts to exceed configured quotas.
+            </p>
+          </div>
+          <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+            <label class="text-xs font-bold text-gray-700 block">Rate Limiter Algorithm:</label>
+            <div class="flex flex-col gap-2">
+              <label class="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                <input type="radio" name="rl_algo" value="token_bucket" checked>
+                <span><strong>Token Bucket</strong> (Smooth bursts)</span>
+              </label>
+              <label class="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                <input type="radio" name="rl_algo" value="sliding_window">
+                <span><strong>Sliding Window Counter</strong> (Strict window)</span>
+              </label>
+            </div>
+            <button onclick="runRateLimitBurst()" class="w-full mt-2 py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all">
+              Send Burst (15 Requests) &rarr;
+            </button>
+          </div>
+        </div>
+
+        <div class="md:col-span-2 bg-gray-900 rounded-xl p-5 text-white flex flex-col justify-between space-y-4">
+          <div class="flex items-center justify-between text-xs border-b border-gray-800 pb-3 font-mono">
+            <span class="text-gray-400">Limit: <strong class="text-white">10 req / 10s</strong></span>
+            <span class="text-gray-400">Accepted: <strong class="text-emerald-400" id="rl-accepted">0</strong></span>
+            <span class="text-gray-400">Rejected (429): <strong class="text-rose-400" id="rl-rejected">0</strong></span>
+          </div>
+          <div class="grid grid-cols-5 gap-2 py-2" id="rl-traffic-grid">
+            <!-- Visual blocks injected by JS -->
+          </div>
+          <div class="bg-black/60 rounded-lg p-3 text-[11px] font-mono text-gray-300 h-24 overflow-y-auto space-y-1" id="rl-log">
+            <p class="text-gray-500">&gt; Ready for rate limiting burst test.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ========================================== -->
+  <!-- SECTION 2: BACK-OF-THE-ENVELOPE CALCULATOR -->
+  <!-- ========================================== -->
+  <section id="calculator" class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+    <div class="border-b border-gray-200 pb-4 mb-6">
+      <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Capacity Estimation Engine</span>
+      <h2 class="text-2xl font-black text-gray-900">Back-Of-The-Envelope Calculator</h2>
+      <p class="text-xs sm:text-sm text-gray-500 mt-1">Dynamically compute QPS, Peak surges, Storage growth, and 80-20 Cache RAM requirements.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <!-- Input Controls -->
+      <div class="space-y-4 bg-gray-50 p-5 rounded-xl border border-gray-200">
+        <div>
+          <label class="text-xs font-bold text-gray-700 block mb-1">Daily Active Users (DAU):</label>
+          <div class="flex items-center gap-2">
+            <input type="number" id="calc-dau" value="100" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-mono font-bold" oninput="calculateScale()">
+            <span class="text-xs font-bold text-gray-500">Million</span>
+          </div>
+        </div>
+        <div>
+          <label class="text-xs font-bold text-gray-700 block mb-1">Avg Requests / User / Day:</label>
+          <input type="number" id="calc-reqs" value="20" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-mono font-bold" oninput="calculateScale()">
+        </div>
+        <div>
+          <label class="text-xs font-bold text-gray-700 block mb-1">Avg Payload Size (KB):</label>
+          <input type="number" id="calc-size" value="2" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-mono font-bold" oninput="calculateScale()">
+        </div>
+        <div>
+          <label class="text-xs font-bold text-gray-700 block mb-1">Peak Factor (Burst Multiplier):</label>
+          <select id="calc-peak" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-mono font-bold" onchange="calculateScale()">
+            <option value="2">2x (Standard Service)</option>
+            <option value="3" selected>3x (Social / Messaging)</option>
+            <option value="5">5x (Flash Sale / Ticket Drop)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Output KPI Cards -->
+      <div class="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-blue-50/60 border border-blue-200 rounded-xl p-4 flex flex-col justify-between">
+          <span class="text-xs font-bold text-blue-700 uppercase">Average QPS</span>
+          <div class="my-2">
+            <span class="text-2xl font-black text-blue-900 font-mono" id="res-avg-qps">23,148</span>
+            <span class="text-[10px] text-blue-600 block mt-0.5">req / sec</span>
+          </div>
+          <span class="text-[10px] text-gray-500 font-mono">DAU &times; Reqs &divide; 86,400</span>
+        </div>
+
+        <div class="bg-purple-50/60 border border-purple-200 rounded-xl p-4 flex flex-col justify-between">
+          <span class="text-xs font-bold text-purple-700 uppercase">Peak QPS (Design Bar)</span>
+          <div class="my-2">
+            <span class="text-2xl font-black text-purple-900 font-mono" id="res-peak-qps">69,444</span>
+            <span class="text-[10px] text-purple-600 block mt-0.5">peak req / sec</span>
+          </div>
+          <span class="text-[10px] text-gray-500 font-mono">Avg QPS &times; Multiplier</span>
+        </div>
+
+        <div class="bg-emerald-50/60 border border-emerald-200 rounded-xl p-4 flex flex-col justify-between">
+          <span class="text-xs font-bold text-emerald-700 uppercase">5-Year Storage</span>
+          <div class="my-2">
+            <span class="text-2xl font-black text-emerald-900 font-mono" id="res-storage">7.3 PB</span>
+            <span class="text-[10px] text-emerald-600 block mt-0.5">Total Disk Capacity</span>
+          </div>
+          <span class="text-[10px] text-gray-500 font-mono">Daily Ingest &times; 365 &times; 5 yrs</span>
+        </div>
+
+        <div class="bg-amber-50/60 border border-amber-200 rounded-xl p-4 flex flex-col justify-between">
+          <span class="text-xs font-bold text-amber-700 uppercase">80-20 Cache RAM</span>
+          <div class="my-2">
+            <span class="text-2xl font-black text-amber-900 font-mono" id="res-cache">800 GB</span>
+            <span class="text-[10px] text-amber-600 block mt-0.5">Redis Cluster Memory</span>
+          </div>
+          <span class="text-[10px] text-gray-500 font-mono">20% of Daily Volume in RAM</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ========================================== -->
+  <!-- SECTION 3: ALL 27-TOPIC INTERACTIVE CURRICULUM -->
+  <!-- ========================================== -->
+  <section id="curriculum" class="space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold text-blue-600 uppercase tracking-wider">Curriculum Matrix</span>
+          <span class="px-2 py-0.5 text-[10px] font-bold bg-blue-100 text-blue-800 rounded-full" id="visible-count-badge">Showing 27 / 27 Topics</span>
+        </div>
+        <h2 class="text-2xl font-black text-gray-900">The 27 System Design Topics &amp; Failure Mode Defenses</h2>
+      </div>
+      <!-- Search Input -->
+      <div class="w-full sm:w-72">
+        <input type="text" id="topic-search-input" placeholder="Search 27 topics (e.g. Kafka, B-Tree, Raft)..." class="w-full bg-white border border-gray-300 rounded-xl px-3.5 py-2 text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-sm" oninput="handleSearch()">
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
+      <button onclick="filterTopics('all', this)" class="pill-filter px-3.5 py-1.5 text-xs font-bold rounded-full bg-blue-600 text-white shadow-sm transition-all">All (27)</button>
+      <button onclick="filterTopics('data', this)" class="pill-filter px-3.5 py-1.5 text-xs font-semibold rounded-full bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 transition-all">Data &amp; Storage (7)</button>
+      <button onclick="filterTopics('access', this)" class="pill-filter px-3.5 py-1.5 text-xs font-semibold rounded-full bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 transition-all">Access &amp; Traffic (5)</button>
+      <button onclick="filterTopics('event', this)" class="pill-filter px-3.5 py-1.5 text-xs font-semibold rounded-full bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 transition-all">Async &amp; Events (8)</button>
+      <button onclick="filterTopics('reliability', this)" class="pill-filter px-3.5 py-1.5 text-xs font-semibold rounded-full bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 transition-all">Reliability &amp; Scale (7)</button>
+    </div>
+
+    <!-- 27 Cards Grid (Injected Dynamically via JS) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="topic-grid">
+      <!-- Injected by JavaScript -->
+    </div>
+  </section>
+
+  <!-- ========================================== -->
+  <!-- SECTION 4: SENIOR / STAFF INTERVIEW DRILL -->
+  <!-- ========================================== -->
+  <section id="interview-drill" class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+    <div class="border-b border-gray-200 pb-4 mb-6">
+      <span class="text-xs font-bold text-purple-600 uppercase tracking-wider">Interview Sparring Arena</span>
+      <h2 class="text-2xl font-black text-gray-900">Senior / Staff Defense Drills</h2>
+      <p class="text-xs sm:text-sm text-gray-500 mt-1">Test your ability to spot architectural flaws and defend trade-offs out loud.</p>
+    </div>
+
+    <div class="space-y-4">
+
+      <!-- Question 1 -->
+      <details class="group bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
+        <summary class="p-4 flex items-center justify-between font-bold text-sm text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors">
+          <span>Q1: If DB write succeeds but cache eviction fails, how do you prevent stale reads without a TTL timeout?</span>
+          <span class="text-blue-600 text-xs font-semibold group-open:rotate-180 transition-transform">&darr;</span>
+        </summary>
+        <div class="p-5 pt-2 border-t border-gray-200 bg-white text-xs text-gray-700 space-y-2 leading-relaxed">
+          <p><strong>The Trap:</strong> Relying on in-memory application try-catch blocks to evict cache after DB transaction commits. If the server dies between the DB commit and Redis delete, cache stays stale indefinitely.</p>
+          <p><strong>Senior/Staff Solution:</strong> Use <strong>Change Data Capture (CDC via Debezium/Canal)</strong> attached to the PostgreSQL WAL / MySQL Binlog. The CDC worker reads committed DB changes and asynchronously publishes cache invalidation events to Redis. This decouples cache invalidation from web request lifecycles.</p>
+        </div>
+      </details>
+
+      <!-- Question 2 -->
+      <details class="group bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
+        <summary class="p-4 flex items-center justify-between font-bold text-sm text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors">
+          <span>Q2: Why is offset-based pagination (`OFFSET 10000 LIMIT 20`) banned at high scale?</span>
+          <span class="text-blue-600 text-xs font-semibold group-open:rotate-180 transition-transform">&darr;</span>
+        </summary>
+        <div class="p-5 pt-2 border-t border-gray-200 bg-white text-xs text-gray-700 space-y-2 leading-relaxed">
+          <p><strong>The Trap:</strong> The database must still read 10,020 rows from disk, sort them, and discard the first 10,000, causing massive I/O and query latency spikes ($O(N)$ scanning). Furthermore, concurrent row insertions cause duplicate or skipped records between page turns.</p>
+          <p><strong>Senior/Staff Solution:</strong> <strong>Keyset / Cursor Pagination</strong>: `WHERE id > last_seen_id ORDER BY id ASC LIMIT 20`. This uses B-Tree index seeks directly ($O(\log N)$) without scanning preceding pages.</p>
+        </div>
+      </details>
+
+      <!-- Question 3 -->
+      <details class="group bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
+        <summary class="p-4 flex items-center justify-between font-bold text-sm text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors">
+          <span>Q3: How do you invalidate stateless JWT tokens across 100 microservices immediately upon password reset?</span>
+          <span class="text-blue-600 text-xs font-semibold group-open:rotate-180 transition-transform">&darr;</span>
+        </summary>
+        <div class="p-5 pt-2 border-t border-gray-200 bg-white text-xs text-gray-700 space-y-2 leading-relaxed">
+          <p><strong>The Trap:</strong> Storing all tokens in a central database on every API call defeats the purpose of stateless JWT verification.</p>
+          <p><strong>Senior/Staff Solution:</strong> Keep JWT verification local and cryptographic, but maintain a lightweight <strong>Revocation Bloom Filter / Redis Denylist</strong> at the API Gateway containing `(user_id, token_issued_before_timestamp)`. Set short JWT lifetimes (5-15 mins) paired with rotating refresh tokens.</p>
+        </div>
+      </details>
+
+      <!-- Question 4 -->
+      <details class="group bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
+        <summary class="p-4 flex items-center justify-between font-bold text-sm text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors">
+          <span>Q4: In financial ledger systems, why is eventual consistency strictly forbidden?</span>
+          <span class="text-blue-600 text-xs font-semibold group-open:rotate-180 transition-transform">&darr;</span>
+        </summary>
+        <div class="p-5 pt-2 border-t border-gray-200 bg-white text-xs text-gray-700 space-y-2 leading-relaxed">
+          <p><strong>The Trap:</strong> Attempting to scale money transfers using asynchronous eventual consistency causes double-spend race conditions when a user transfers funds simultaneously on two devices.</p>
+          <p><strong>Senior/Staff Solution:</strong> Strict serializable transactions or deterministic state machine replication. Double-entry bookkeeping where every debit has an equal and opposite credit ($ \sum \text{debits} = \sum \text{credits} $), with balance verification constrained in the DB.</p>
+        </div>
+      </details>
+
+    </div>
+  </section>
+
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>System Design Mastery &bull; Senior &amp; Staff Interactive Workbook &bull; AntiGravity IDE</p>
+</footer>
+
+<!-- INTERACTIVE SCRIPTS -->
+<script>
+// ========================================================
+// THE COMPLETE 27 SYSTEM DESIGN TOPICS DATASET
+// ========================================================
+const ALL_TOPICS = [
+  {
+    num: "01",
+    title: "Requirements & Scale Math",
+    category: "reliability",
+    catLabel: "Reliability & Scale",
+    color: "blue",
+    mechanism: "DAU, Peak QPS calculation (DAU × R / 86400 × Peak Multiplier), 5-year storage growth, read:write throughput ratios.",
+    tradeoffs: "Precise capacity planning vs. fast back-of-the-envelope estimation during architectural design rounds.",
+    failureMode: "Calculating average QPS instead of P99.9 burst surges, causing ingress gateway collapse during flash sales."
+  },
+  {
+    num: "02",
+    title: "APIs & Contracts",
+    category: "access",
+    catLabel: "Access & Traffic",
+    color: "purple",
+    mechanism: "REST (HTTP/1.1/2), GraphQL (dynamic schema queries), gRPC (HTTP/2 binary protobuf serialization).",
+    tradeoffs: "gRPC gives 5-10x throughput and low CPU overhead over REST, but lacks direct browser support without Envoy proxy.",
+    failureMode: "Offset pagination (OFFSET 10000) causes slow table scans and duplicate items on concurrent inserts. Fix: Keyset pagination."
+  },
+  {
+    num: "03",
+    title: "Load Balancing (L4 vs L7)",
+    category: "access",
+    catLabel: "Access & Traffic",
+    color: "purple",
+    mechanism: "L4 (IP+Port packet hashing via Maglev/IPVS) vs L7 (HTTP headers, URL routing, TLS termination).",
+    tradeoffs: "L4 processes millions of packets with low CPU; L7 provides intelligent routing and sticky sessions at higher CPU cost.",
+    failureMode: "Sticky session node crash causes instant failover storm crushing the backup node. Fix: Distributed session backplane."
+  },
+  {
+    num: "04",
+    title: "Caching Layers & Invalidation",
+    category: "access",
+    catLabel: "Access & Traffic",
+    color: "purple",
+    mechanism: "Cache-Aside, Write-Through, Write-Behind, Redis Cluster, Multi-tier Edge CDN.",
+    tradeoffs: "Ultra-low read latency vs stale reads and cache coherence maintenance across distributed services.",
+    failureMode: "Cache Stampede (Thundering Herd): Hot key TTL expires; 50k QPS crushes DB. Fix: Singleflight mutex or XFetch."
+  },
+  {
+    num: "05",
+    title: "Storage Internals: B-Tree vs LSM-Tree",
+    category: "data",
+    catLabel: "Data & Storage",
+    color: "blue",
+    mechanism: "B-Tree (in-place page updates, random disk I/O) vs LSM-Tree (append-only WAL, MemTable, SSTables).",
+    tradeoffs: "Read-optimized (B-Tree/Postgres) vs Write-heavy throughput (LSM/RocksDB/Cassandra) with compaction overhead.",
+    failureMode: "Compaction stalls in LSM-Trees during sustained burst writes, causing massive write latency spikes."
+  },
+  {
+    num: "06",
+    title: "Data Partitioning & Sharding",
+    category: "data",
+    catLabel: "Data & Storage",
+    color: "blue",
+    mechanism: "Range-based, Hash-based, Directory-based sharding, Consistent Hashing with virtual nodes.",
+    tradeoffs: "Uniform data distribution vs cross-shard scatter-gather query latency.",
+    failureMode: "Celebrity / Hotspot Partition: Elon Musk writes a tweet; single partition saturates. Fix: Compound keys / Salted keys."
+  },
+  {
+    num: "07",
+    title: "Replication & Consensus",
+    category: "data",
+    catLabel: "Data & Storage",
+    color: "blue",
+    mechanism: "Single-leader, Multi-leader, Leaderless Quorum (R + W > N), Raft/Paxos consensus log.",
+    tradeoffs: "Synchronous replication (zero data loss, higher write latency) vs Asynchronous replication (low latency, lag divergence).",
+    failureMode: "Replication lag causes read-your-own-writes inconsistency after user profile updates."
+  },
+  {
+    num: "08",
+    title: "Consistency Models",
+    category: "data",
+    catLabel: "Data & Storage",
+    color: "blue",
+    mechanism: "Linearizability > Sequential > Causal > Eventual Consistency, CRDTs, Vector Clocks.",
+    tradeoffs: "Strict consistency requires inter-node synchronization latency; Eventual consistency scales horizontally.",
+    failureMode: "Last-Write-Wins (LWW) silently drops concurrent data updates due to unsynchronized NTP server clocks."
+  },
+  {
+    num: "09",
+    title: "CAP & PACELC Trade-Offs",
+    category: "reliability",
+    catLabel: "Reliability & Scale",
+    color: "rose",
+    mechanism: "Partition (P) -> Availability (A) vs Consistency (C); Else (E) -> Latency (L) vs Consistency (C).",
+    tradeoffs: "DynamoDB (PA/EL) maximizes availability; CockroachDB/Spanner (PC/EC) prioritizes serializable correctness.",
+    failureMode: "Split-Brain: Network cut causes two isolated partitions to both elect a leader and accept conflicting writes."
+  },
+  {
+    num: "10",
+    title: "Messaging & Event Streaming",
+    category: "event",
+    catLabel: "Async & Events",
+    color: "emerald",
+    mechanism: "Kafka (append-only partitioned log, pull-based, consumer groups) vs RabbitMQ (AMQP push-based).",
+    tradeoffs: "Replayability & high throughput (Kafka) vs complex message routing and granular per-message acks (RabbitMQ).",
+    failureMode: "Poison-Pill message causes consumer crash loops, stalling entire partition lag. Fix: Dead Letter Queue (DLQ)."
+  },
+  {
+    num: "11",
+    title: "Async Processing & Workflows",
+    category: "event",
+    catLabel: "Async & Events",
+    color: "emerald",
+    mechanism: "Background workers (Temporal, Celery), Priority Queues, Token-bucket backpressure.",
+    tradeoffs: "Fast HTTP client response vs deferred eventual completion and status polling/WebSocket push.",
+    failureMode: "Worker OOM from unconstrained in-memory queues during downstream outage. Fix: Bounded queues & backpressure."
+  },
+  {
+    num: "12",
+    title: "Distributed Rate Limiting",
+    category: "access",
+    catLabel: "Access & Traffic",
+    color: "purple",
+    mechanism: "Token Bucket, Leaky Bucket, Sliding Window Counter, Atomic Redis Lua scripts.",
+    tradeoffs: "Sliding window log (exact, high memory) vs Sliding window counter (approximate 0.05% error, low memory).",
+    failureMode: "Concurrent Redis read-then-write race conditions allowing burst traffic over limit. Fix: Redis Lua scripts."
+  },
+  {
+    num: "13",
+    title: "Reliability & Fault Isolation",
+    category: "reliability",
+    catLabel: "Reliability & Scale",
+    color: "rose",
+    mechanism: "Circuit Breakers (Closed/Open/Half-Open), Exponential Backoff with Full Jitter, Bulkhead pools.",
+    tradeoffs: "Fast error shedding vs retry attempts when downstream service encounters temporary blips.",
+    failureMode: "Retry Storm: Synchronized retries without random jitter triple traffic to a drowning service."
+  },
+  {
+    num: "14",
+    title: "Idempotency & Replay Safety",
+    category: "event",
+    catLabel: "Async & Events",
+    color: "emerald",
+    mechanism: "Idempotency Keys with database unique constraints, Deduplication windows, State machines.",
+    tradeoffs: "Storage overhead of deduplication keys vs risk of double-billing or duplicate entity creation.",
+    failureMode: "Client 504 timeout causes user to click checkout twice, charging card twice on parallel servers."
+  },
+  {
+    num: "15",
+    title: "Distributed Locks & Leases",
+    category: "data",
+    catLabel: "Data & Storage",
+    color: "blue",
+    mechanism: "Redis Redlock, etcd leases, ZooKeeper ephemeral nodes with Raft consensus.",
+    tradeoffs: "Mutual exclusion safety across cluster nodes vs overhead of lease heartbeats and split-brain risks.",
+    failureMode: "JVM GC pause causes lock lease expiration while worker is frozen. Fix: Monotonic fencing tokens checked by DB."
+  },
+  {
+    num: "16",
+    title: "Observability & Capacity SLOs",
+    category: "reliability",
+    catLabel: "Reliability & Scale",
+    color: "rose",
+    mechanism: "OpenTelemetry, Prometheus pull metrics, Jaeger distributed tracing, SLO/SLA error budgets.",
+    tradeoffs: "100% trace sampling CPU & storage cost vs 1% sampling missing rare tail latency anomalies.",
+    failureMode: "Missing trace header propagation (W3C traceparent) drops context at service boundaries, blinding telemetry."
+  },
+  {
+    num: "17",
+    title: "Storage Systems (Object/Blob/Block)",
+    category: "data",
+    catLabel: "Data & Storage",
+    color: "blue",
+    mechanism: "Object storage (S3, MinIO), Erasure Coding (8+4 parity), Metadata DB separation.",
+    tradeoffs: "High durability & sequential throughput vs immutable objects without in-place byte editing.",
+    failureMode: "Small file metadata explosion: 100M 1KB files in S3 wastes metadata indexing. Fix: Haystack bundling."
+  },
+  {
+    num: "18",
+    title: "Search Systems & Inverted Indexes",
+    category: "data",
+    catLabel: "Data & Storage",
+    color: "blue",
+    mechanism: "Inverted index (Lucene/Elasticsearch), TF-IDF, BM25, Vector Embeddings (HNSW index).",
+    tradeoffs: "Ingestion write latency (segment merging) vs sub-50ms search query speed.",
+    failureMode: "Dual-write inconsistency between DB and Elasticsearch. Fix: Transactional Outbox + Debezium CDC."
+  },
+  {
+    num: "19",
+    title: "Real-Time Systems (WebSockets/SSE)",
+    category: "access",
+    catLabel: "Access & Traffic",
+    color: "purple",
+    mechanism: "WebSockets (bidirectional persistent TCP), SSE (unidirectional HTTP stream), Long Polling.",
+    tradeoffs: "Connection density (file descriptors, RAM per socket) vs sub-100ms push latency.",
+    failureMode: "Rolling server restart drops 1M WebSockets; reconnect thundering herd crashes new nodes. Fix: Reconnect jitter."
+  },
+  {
+    num: "20",
+    title: "File Uploads at Scale",
+    category: "event",
+    catLabel: "Async & Events",
+    color: "emerald",
+    mechanism: "Presigned S3 URLs, Multipart chunked uploads, Client MD5 hashing, Resumable uploads.",
+    tradeoffs: "Bypassing app server bandwidth via direct S3 uploads vs validating authorization before each chunk.",
+    failureMode: "Orphaned multipart uploads left unfinished accumulate storage costs indefinitely. Fix: S3 Lifecycle abort."
+  },
+  {
+    num: "21",
+    title: "Feed Systems (Fan-Out Architectures)",
+    category: "event",
+    catLabel: "Async & Events",
+    color: "emerald",
+    mechanism: "Fan-out on Write (push to followers' inbox cache) vs Fan-out on Read (pull on timeline load).",
+    tradeoffs: "Write amplification (O(followers)) vs Read latency (O(following) multi-query merge).",
+    failureMode: "Celebrity Post explosion: 50M writes on a celebrity tweet takes 45s. Fix: Hybrid fan-out (read for celebrities)."
+  },
+  {
+    num: "22",
+    title: "URL Shortener & Sequencers",
+    category: "event",
+    catLabel: "Async & Events",
+    color: "emerald",
+    mechanism: "Base62 encoding (62^7 = 3.5T keys), Distributed Twitter Snowflake ID generator, 301 vs 302 redirects.",
+    tradeoffs: "301 Permanent Redirect (browser caches, fast, no analytics) vs 302 Temporary Redirect (tracks click analytics).",
+    failureMode: "MD5 hash collision retry loops cause high latency. Fix: Pre-allocated 64-bit sequence IDs -> Base62."
+  },
+  {
+    num: "23",
+    title: "Chat Systems & Message Ordering",
+    category: "event",
+    catLabel: "Async & Events",
+    color: "emerald",
+    mechanism: "WebSocket connection servers, Redis Pub/Sub routing, Cassandra message archive, Monotonic sequencer.",
+    tradeoffs: "Strict total ordering across channels vs horizontal partition scalability.",
+    failureMode: "Out-of-order message rendering due to network route divergence. Fix: Channel-level monotonic sequence IDs."
+  },
+  {
+    num: "24",
+    title: "Video Streaming & Transcoding",
+    category: "event",
+    catLabel: "Async & Events",
+    color: "emerald",
+    mechanism: "HLS / MPEG-DASH chunking (2-6s .ts chunks), DAG Transcoding pipeline, CDN Bitrate ladders.",
+    tradeoffs: "Compute cost of generating 8 bitrate ladders vs user mobile bandwidth savings.",
+    failureMode: "Origin shield cache miss on viral video release crushes origin servers. Fix: Byte-range request coalescing."
+  },
+  {
+    num: "25",
+    title: "Geospatial & Ride Matching",
+    category: "reliability",
+    catLabel: "Reliability & Scale",
+    color: "rose",
+    mechanism: "Geohash (Base32 space-filling curve), Google S2, Uber H3 hexagonal spatial hierarchy.",
+    tradeoffs: "Index write frequency for 500k moving drivers vs sub-20ms spatial radius search.",
+    failureMode: "Driver GPS ping saturation (166k QPS) crushes database. Fix: In-memory Redis geospatial buffer (no disk write on raw GPS)."
+  },
+  {
+    num: "26",
+    title: "Financial Ledgers & Payments",
+    category: "event",
+    catLabel: "Async & Events",
+    color: "emerald",
+    mechanism: "Double-entry bookkeeping (sum(debits) = sum(credits)), Idempotency keys, 2PC/Sagas, Reconciliation.",
+    tradeoffs: "Zero tolerance for eventual consistency; requires strict ACID serializability and immutable audit logs.",
+    failureMode: "Transient payment gateway 504 timeout leaves transaction in unknown state. Fix: Asynchronous reconciliation worker."
+  },
+  {
+    num: "27",
+    title: "Large-Scale Multi-Region Architecture",
+    category: "reliability",
+    catLabel: "Reliability & Scale",
+    color: "rose",
+    mechanism: "Tiered storage (NVMe warm -> S3 cold), Anycast DNS routing, Multi-region Active-Active geo-sharding.",
+    tradeoffs: "Cross-region replication latency (100ms+ speed of light) vs disaster recovery RTO/RPO.",
+    failureMode: "Split-Brain in multi-region active-active during undersea cable cut. Fix: Assign authoritative home region per tenant."
+  }
+];
+
+// RENDER ALL 27 TOPICS
+function renderTopicCards(topicsToRender) {
+  const grid = document.getElementById('topic-grid');
+  const countBadge = document.getElementById('visible-count-badge');
+  grid.innerHTML = '';
+
+  countBadge.innerText = `Showing ${topicsToRender.length} / 27 Topics`;
+
+  if (topicsToRender.length === 0) {
+    grid.innerHTML = `
+      <div class="col-span-2 py-12 text-center text-gray-500 bg-gray-50 rounded-xl border border-gray-200">
+        <p class="text-sm font-semibold">No topics match your search query.</p>
+        <button onclick="filterTopics('all')" class="mt-2 text-xs text-blue-600 font-bold hover:underline">Reset Filters</button>
+      </div>
+    `;
+    return;
+  }
+
+  topicsToRender.forEach(t => {
+    let colorStyles = {
+      badgeBg: 'bg-blue-50 text-blue-700 border-blue-200',
+      pillBg: 'text-blue-600'
+    };
+    if (t.category === 'access') {
+      colorStyles = { badgeBg: 'bg-purple-50 text-purple-700 border-purple-200', pillBg: 'text-purple-600' };
+    } else if (t.category === 'event') {
+      colorStyles = { badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200', pillBg: 'text-emerald-600' };
+    } else if (t.category === 'reliability') {
+      colorStyles = { badgeBg: 'bg-rose-50 text-rose-700 border-rose-200', pillBg: 'text-rose-600' };
+    }
+
+    const card = document.createElement('div');
+    card.className = 'topic-card bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:border-blue-300 transition-all flex flex-col justify-between';
+    card.setAttribute('data-category', t.category);
+
+    card.innerHTML = `
+      <div>
+        <div class="flex items-center justify-between mb-2.5">
+          <span class="text-xs font-mono font-bold ${colorStyles.pillBg} bg-gray-100 px-2 py-0.5 rounded">Topic ${t.num}</span>
+          <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${colorStyles.badgeBg}">${t.catLabel}</span>
+        </div>
+        <h3 class="text-base font-bold text-gray-900 mb-1.5">${t.title}</h3>
+        <p class="text-xs text-gray-600 leading-relaxed mb-2.5">
+          <strong class="text-gray-900">Mechanism:</strong> ${t.mechanism}
+        </p>
+        <p class="text-xs text-gray-500 leading-relaxed mb-3">
+          <strong class="text-gray-700">Trade-Off:</strong> ${t.tradeoffs}
+        </p>
+      </div>
+
+      <div class="mt-2 pt-3 border-t border-gray-100 space-y-2">
+        <div class="bg-rose-50/80 border border-rose-200 rounded-lg p-2.5 text-[11px] text-rose-900 leading-relaxed">
+          <strong class="text-rose-950 font-bold block mb-0.5">Failure Mode to Defend:</strong>
+          ${t.failureMode}
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// FILTER TOPICS BY CATEGORY
+let activeCategory = 'all';
+function filterTopics(cat, btnElement) {
+  activeCategory = cat;
+  document.querySelectorAll('.pill-filter').forEach(p => {
+    p.className = 'pill-filter px-3.5 py-1.5 text-xs font-semibold rounded-full bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 transition-all';
+  });
+  if (btnElement) {
+    btnElement.className = 'pill-filter px-3.5 py-1.5 text-xs font-bold rounded-full bg-blue-600 text-white shadow-sm transition-all';
+  } else {
+    // find matching button
+    document.querySelectorAll('.pill-filter').forEach(btn => {
+      if (btn.innerText.toLowerCase().includes(cat)) {
+        btn.className = 'pill-filter px-3.5 py-1.5 text-xs font-bold rounded-full bg-blue-600 text-white shadow-sm transition-all';
+      }
+    });
+  }
+
+  handleSearch();
+}
+
+// SEARCH FILTER
+function handleSearch() {
+  const query = (document.getElementById('topic-search-input').value || '').toLowerCase().trim();
+  const filtered = ALL_TOPICS.filter(t => {
+    const matchesCat = (activeCategory === 'all' || t.category === activeCategory);
+    const matchesQuery = !query || 
+      t.title.toLowerCase().includes(query) ||
+      t.mechanism.toLowerCase().includes(query) ||
+      t.failureMode.toLowerCase().includes(query) ||
+      t.tradeoffs.toLowerCase().includes(query) ||
+      t.num.includes(query);
+    return matchesCat && matchesQuery;
+  });
+
+  renderTopicCards(filtered);
+}
+
+// TAB SWITCHING FOR SIMULATORS
+function switchSim(simId) {
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.sim-content').forEach(c => c.classList.add('hidden'));
+  document.getElementById('tab-' + simId).classList.add('active');
+  document.getElementById('sim-' + simId).classList.remove('hidden');
+}
+
+// 1. FENCING TOKEN SIMULATOR
+function runFencingSimulation() {
+  const mode = document.querySelector('input[name="fencing_mode"]:checked').value;
+  const log = document.getElementById('fencing-log');
+  const w1Box = document.getElementById('worker-1-box');
+  const w2Box = document.getElementById('worker-2-box');
+  const w1Status = document.getElementById('w1-status');
+  const w2Status = document.getElementById('w2-status');
+  const lockLabel = document.getElementById('lock-owner-label');
+  const dbVer = document.getElementById('db-version-label');
+  const storageRes = document.getElementById('storage-result');
+  const btn = document.getElementById('btn-run-fencing');
+
+  btn.disabled = true;
+  btn.innerText = "Simulation running...";
+  log.innerHTML = `<p class="text-blue-400">&gt; [t=0ms] Worker 1 acquires lock (Lease 5s). Token=33.</p>`;
+
+  w1Box.className = "sim-box bg-blue-900/40 border-2 border-blue-500 rounded-xl p-4 text-center";
+  w1Status.innerText = "Processing Write (Token 33)";
+  document.getElementById('w1-token').innerText = "Token: 33";
+  lockLabel.innerText = "Worker 1";
+
+  setTimeout(() => {
+    log.innerHTML += `<p class="text-amber-400">&gt; [t=2000ms] Worker 1 hits long JVM GC Pause (Frozen 6s)...</p>`;
+    w1Status.innerText = "❄️ FROZEN (GC PAUSE)";
+    w1Box.className = "sim-box bg-amber-900/40 border-2 border-amber-500 rounded-xl p-4 text-center";
+
+    setTimeout(() => {
+      log.innerHTML += `<p class="text-rose-400">&gt; [t=5000ms] Redis Lock expires. Worker 2 acquires lock. Token=34.</p>`;
+      w2Box.className = "sim-box bg-purple-900/40 border-2 border-purple-500 rounded-xl p-4 text-center";
+      w2Status.innerText = "Writing data (Token 34)...";
+      document.getElementById('w2-token').innerText = "Token: 34";
+      lockLabel.innerText = "Worker 2";
+
+      setTimeout(() => {
+        log.innerHTML += `<p class="text-emerald-400">&gt; [t=6000ms] Worker 2 successfully commits write to DB (version 34).</p>`;
+        dbVer.innerText = "v34";
+        storageRes.innerText = "Updated by Worker 2 (v34)";
+        w2Status.innerText = "Completed";
+
+        setTimeout(() => {
+          log.innerHTML += `<p class="text-blue-400">&gt; [t=7000ms] Worker 1 wakes up from GC pause and attempts DB write...</p>`;
+          if (mode === 'naive') {
+            log.innerHTML += `<p class="text-rose-500 font-bold">&gt; [DATA CORRUPTION] Naive DB accepted stale write from Worker 1! Overwrote v34 with stale data.</p>`;
+            storageRes.innerText = "CORRUPTED: Overwritten by stale Worker 1";
+            storageRes.className = "text-rose-400 font-bold";
+          } else {
+            log.innerHTML += `<p class="text-emerald-400 font-bold">&gt; [FENCING SUCCESS] DB rejects Worker 1 write! Token 33 < current DB version 34.</p>`;
+            storageRes.innerText = "PROTECTED: Kept Worker 2 data (v34)";
+            storageRes.className = "text-emerald-400 font-bold";
+          }
+          w1Status.innerText = mode === 'naive' ? "Stale Write Succeeded" : "Write Rejected (Stale Token)";
+          btn.disabled = false;
+          btn.innerText = "Trigger GC Pause Simulation →";
+        }, 1500);
+      }, 1500);
+    }, 1500);
+  }, 1200);
+}
+
+// 2. OUTBOX SIMULATOR
+function runOutboxSimulation() {
+  const mode = document.querySelector('input[name="outbox_mode"]:checked').value;
+  const log = document.getElementById('outbox-log');
+  const statusDb = document.getElementById('status-db');
+  const statusKafka = document.getElementById('status-kafka');
+
+  log.innerHTML = `<p class="text-purple-400">&gt; User submits Order #8491 ($120.00)...</p>`;
+  setTimeout(() => {
+    log.innerHTML += `<p class="text-blue-400">&gt; Step 1: PostgreSQL order write committed.</p>`;
+    statusDb.innerText = "Committed: 1";
+
+    setTimeout(() => {
+      if (mode === 'dual') {
+        log.innerHTML += `<p class="text-rose-500 font-bold">&gt; [NETWORK CRASH] App server network dropped before Kafka write! DB has order, but Kafka event lost forever (Dual-write divergence).</p>`;
+        statusKafka.innerText = "Events: 0 (LOST)";
+      } else {
+        log.innerHTML += `<p class="text-emerald-400">&gt; Step 2: Outbox table row committed atomically in same DB transaction.</p>`;
+        setTimeout(() => {
+          log.innerHTML += `<p class="text-emerald-400 font-bold">&gt; [CDC SUCCESS] Debezium tails Postgres WAL &rarr; publishes OrderCreated event to Kafka with guaranteed delivery.</p>`;
+          statusKafka.innerText = "Events: 1 (Guaranteed)";
+        }, 1000);
+      }
+    }, 1000);
+  }, 800);
+}
+
+// 3. CACHE STAMPEDE SIMULATOR
+function runStampedeSimulation() {
+  const mode = document.querySelector('input[name="stampede_mode"]:checked').value;
+  const log = document.getElementById('stampede-log');
+  const dbHits = document.getElementById('stampede-db-hits');
+  const lat = document.getElementById('stampede-latency');
+
+  log.innerHTML = `<p class="text-rose-400">&gt; Hot Key 'product:iphone-16' expired in Redis. 5,000 requests arrive...</p>`;
+  setTimeout(() => {
+    if (mode === 'none') {
+      dbHits.innerText = "5,000 DB Queries";
+      dbHits.className = "text-2xl font-bold text-rose-500";
+      lat.innerText = "1,840ms (P99)";
+      lat.className = "text-2xl font-bold text-rose-500";
+      log.innerHTML += `<p class="text-rose-500 font-bold">&gt; [THUNDERING HERD] Postgres connection pool exhausted! CPU spike 98%, DB queries=5000.</p>`;
+    } else if (mode === 'singleflight') {
+      dbHits.innerText = "1 DB Query";
+      dbHits.className = "text-2xl font-bold text-emerald-400";
+      lat.innerText = "28ms (P99)";
+      lat.className = "text-2xl font-bold text-emerald-400";
+      log.innerHTML += `<p class="text-emerald-400 font-bold">&gt; [SINGLEFLIGHT] Mutex coalesced 5,000 requests into 1 DB query. 4,999 waited and read returned value.</p>`;
+    } else {
+      dbHits.innerText = "0 DB Queries (Background refreshed)";
+      dbHits.className = "text-2xl font-bold text-emerald-400";
+      lat.innerText = "4ms (P99)";
+      lat.className = "text-2xl font-bold text-emerald-400";
+      log.innerHTML += `<p class="text-emerald-400 font-bold">&gt; [XFETCH] Probabilistic early expiration refreshed key 2s before expiry in background. Zero downtime.</p>`;
+    }
+  }, 900);
+}
+
+// 4. RATE LIMITER BURST SIMULATOR
+function runRateLimitBurst() {
+  const grid = document.getElementById('rl-traffic-grid');
+  const log = document.getElementById('rl-log');
+  const acc = document.getElementById('rl-accepted');
+  const rej = document.getElementById('rl-rejected');
+
+  grid.innerHTML = '';
+  log.innerHTML = `<p class="text-emerald-400">&gt; Incoming burst of 15 requests in 1 second...</p>`;
+
+  let acceptedCount = 0;
+  let rejectedCount = 0;
+
+  for (let i = 1; i <= 15; i++) {
+    const isAccepted = i <= 10;
+    if (isAccepted) acceptedCount++; else rejectedCount++;
+
+    const div = document.createElement('div');
+    div.className = `p-2 rounded text-center text-[10px] font-mono font-bold ${isAccepted ? 'bg-emerald-800/80 text-emerald-200 border border-emerald-500' : 'bg-rose-800/80 text-rose-200 border border-rose-500'}`;
+    div.innerText = `Req #${i} (${isAccepted ? '200' : '429'})`;
+    grid.appendChild(div);
+  }
+
+  acc.innerText = acceptedCount;
+  rej.innerText = rejectedCount;
+  log.innerHTML += `<p class="text-gray-300">&gt; Quota enforced: 10 requests accepted, 5 throttled with HTTP 429 Too Many Requests.</p>`;
+}
+
+// SCALE CALCULATOR
+function calculateScale() {
+  const dauM = parseFloat(document.getElementById('calc-dau').value) || 0;
+  const reqs = parseFloat(document.getElementById('calc-reqs').value) || 0;
+  const sizeKB = parseFloat(document.getElementById('calc-size').value) || 0;
+  const peakMult = parseFloat(document.getElementById('calc-peak').value) || 1;
+
+  const totalDailyReqs = dauM * 1000000 * reqs;
+  const avgQps = Math.round(totalDailyReqs / 86400);
+  const peakQps = Math.round(avgQps * peakMult);
+
+  const dailyGB = (totalDailyReqs * sizeKB) / (1024 * 1024);
+  const yearlyTB = (dailyGB * 365) / 1024;
+  const fiveYearPB = (yearlyTB * 5) / 1024;
+
+  const cacheGB = Math.round(dailyGB * 0.20);
+
+  document.getElementById('res-avg-qps').innerText = avgQps.toLocaleString();
+  document.getElementById('res-peak-qps').innerText = peakQps.toLocaleString();
+  document.getElementById('res-storage').innerText = fiveYearPB >= 1 ? fiveYearPB.toFixed(1) + " PB" : (fiveYearPB * 1024).toFixed(0) + " TB";
+  document.getElementById('res-cache').innerText = cacheGB >= 1000 ? (cacheGB / 1024).toFixed(1) + " TB" : cacheGB + " GB";
+}
+
+// INITIALIZE ON LOAD
+renderTopicCards(ALL_TOPICS);
+calculateScale();
+</script>
+</body>
+</html>

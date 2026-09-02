@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Design a Real-Time Fraud Detection System · Capital One Prep</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'neutral' });</script>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        colors: { ed: { pink: '#db2777', blue: '#2563eb', teal: '#0d9488', amber: '#d97706', sky: '#0284c7', purple: '#7c3aed', orange: '#ea580c' } },
+        fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'ui-monospace', 'monospace'] }
+      }}
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .mermaid { background: #fafafa; border-radius: 8px; padding: 1rem; }
+    details > summary { cursor: pointer; list-style: none; }
+    details > summary::-webkit-details-marker { display: none; }
+    details[open] > summary .chevron { transform: rotate(90deg); }
+    .chevron { transition: transform 0.2s; display: inline-block; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased">
+
+<div class="max-w-5xl mx-auto px-6 py-10">
+
+  <header class="mb-12">
+    <div class="flex items-center gap-2 text-xs font-mono text-gray-500 mb-3">
+      <span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded">CAPITAL ONE GPN</span>
+      <span>·</span><span>SYSTEM DESIGN PREP</span>
+    </div>
+    <h1 class="text-4xl font-extrabold tracking-tight text-gray-900 mb-4">Design a Real-Time Fraud Detection System</h1>
+    <p class="text-lg text-gray-600 mb-6 max-w-3xl">Credit-card fraud detection at 50K TPS with &lt;100ms end-to-end latency and &lt;0.1% false positive rate. Capital One Power Day Round 2 real question.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-semibold">Scale: 50K TPS</span>
+      <span class="bg-amber-50 border border-amber-200 text-amber-700 px-3 py-1.5 rounded-lg text-sm font-semibold">Bottleneck: Latency-bound (100ms SLA)</span>
+      <span class="bg-teal-50 border border-teal-200 text-teal-700 px-3 py-1.5 rounded-lg text-sm font-semibold">SLA: p99 &lt; 100ms</span>
+      <span class="bg-pink-50 border border-pink-200 text-pink-700 px-3 py-1.5 rounded-lg text-sm font-semibold">FPR: &lt; 0.1%</span>
+    </div>
+  </header>
+
+  <section class="mb-10 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">1. Real-World Reference &amp; Case Study</h2>
+    <p class="text-gray-700 mb-4">Capital One processes ~70M card transactions/day. Their fraud detection uses a combination of rules (velocity, geo-velocity) and ML models (XGBoost for transaction scoring, deep learning for sequence patterns). The system must decide in &lt;100ms or the transaction times out at the terminal.</p>
+    <div class="grid grid-cols-3 gap-4 mb-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-xs font-mono text-gray-500 mb-1">CAPITAL ONE</div>
+        <div class="text-2xl font-bold text-ed-purple">70M</div><div class="text-sm text-gray-600">txn/day</div>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-xs font-mono text-gray-500 mb-1">PEAK TPS</div>
+        <div class="text-2xl font-bold text-ed-purple">50K</div><div class="text-sm text-gray-600">Black Friday</div>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-xs font-mono text-gray-500 mb-1">FRAUD RATE</div>
+        <div class="text-2xl font-bold text-ed-purple">0.1%</div><div class="text-sm text-gray-600">of transactions</div>
+      </div>
+    </div>
+    <div class="mermaid">
+flowchart LR
+    Swipe["Card Swipe"] --> Kafka["Kafka<br/>part by card BIN"]
+    Kafka --> Flink["Flink<br/>stateful features"]
+    Flink --> Redis["Redis<br/>online features"]
+    Redis --> Model["ML Model<br/>XGBoost"]
+    Model --> Decision["Decision Engine<br/>rules + ML"]
+    Decision -->|"approve"| Auth["Authorize"]
+    Decision -->|"decline"| Block["Block + Alert"]
+    Decision -->|"review"| Manual["Manual Review Queue"]
+    </div>
+    <div class="mt-3 flex flex-wrap gap-3 text-xs">
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-ed-purple rounded"></span> Focal path</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-ed-orange rounded"></span> Async feedback</span>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-white border border-gray-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">2. Requirements &amp; Scope Clarification</h2>
+    <div class="grid md:grid-cols-3 gap-6">
+      <div>
+        <h3 class="font-semibold text-ed-blue mb-2 flex items-center gap-2"><span class="w-2 h-2 bg-ed-blue rounded-full"></span>Functional</h3>
+        <ul class="space-y-1.5 text-sm text-gray-700">
+          <li class="flex gap-2"><span class="text-ed-blue">•</span><span><strong>Score transactions</strong> in real-time</span></li>
+          <li class="flex gap-2"><span class="text-ed-blue">•</span><span><strong>Velocity features</strong> — last 1m/1h/24h counts</span></li>
+          <li class="flex gap-2"><span class="text-ed-blue">•</span><span><strong>Geo-velocity</strong> — impossible travel detection</span></li>
+          <li class="flex gap-2"><span class="text-ed-blue">•</span><span><strong>Merchant risk</strong> — category, history</span></li>
+          <li class="flex gap-2"><span class="text-ed-blue">•</span><span><strong>Feedback loop</strong> — agent labels false positives</span></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-semibold text-ed-teal mb-2 flex items-center gap-2"><span class="w-2 h-2 bg-ed-teal rounded-full"></span>Non-Functional</h3>
+        <ul class="space-y-1.5 text-sm text-gray-700">
+          <li class="flex gap-2"><span class="text-ed-teal">•</span><span><strong>Latency</strong> — p99 &lt; 100ms end-to-end</span></li>
+          <li class="flex gap-2"><span class="text-ed-teal">•</span><span><strong>False positive</strong> — &lt; 0.1% (customer friction)</span></li>
+          <li class="flex gap-2"><span class="text-ed-teal">•</span><span><strong>False negative</strong> — &lt; 0.01% (fraud loss)</span></li>
+          <li class="flex gap-2"><span class="text-ed-teal">•</span><span><strong>Availability</strong> — 99.99% (fail closed)</span></li>
+          <li class="flex gap-2"><span class="text-ed-teal">•</span><span><strong>Throughput</strong> — 50K TPS sustained</span></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-semibold text-gray-500 mb-2 flex items-center gap-2"><span class="w-2 h-2 bg-gray-400 rounded-full"></span>Out of Scope</h3>
+        <ul class="space-y-1.5 text-sm text-gray-600">
+          <li class="flex gap-2"><span>•</span><span>Card-not-present web fraud</span></li>
+          <li class="flex gap-2"><span>•</span><span>Account takeover detection</span></li>
+          <li class="flex gap-2"><span>•</span><span>AML / sanctions screening</span></li>
+          <li class="flex gap-2"><span>•</span><span>Chargeback prediction</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-ed-amber/5 border border-ed-amber/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">3. Scale &amp; Capacity Estimation</h2>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="bg-white border border-amber-200 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-amber mb-3">Throughput</h3>
+        <p class="text-sm text-gray-700 font-mono mb-2">50K TPS, 4.3B txn/day:</p>
+        <p>$$ 50000 \times 86400 = 4.3 \times 10^9 \text{ txn/day} $$</p>
+        <p class="text-xs text-gray-500 mt-2">Each txn generates ~20 features → 86B feature lookups/day</p>
+      </div>
+      <div class="bg-white border border-teal-200 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-teal mb-3">Feature Store</h3>
+        <p class="text-sm text-gray-700 font-mono mb-2">Per-card feature window (24h):</p>
+        <p>$$ 200\text{M cards} \times 1\text{KB} \approx 200\text{GB} $$</p>
+        <p class="text-xs text-gray-500 mt-2">Redis cluster, 10 shards, hot set in memory, cold to DynamoDB</p>
+      </div>
+    </div>
+    <div class="mt-4 bg-white border border-gray-200 rounded-lg p-5">
+      <h3 class="font-semibold text-gray-700 mb-3">Latency Budget Breakdown</h3>
+      <div class="grid md:grid-cols-5 gap-3 text-sm font-mono">
+        <div class="bg-gray-50 rounded p-3"><div class="text-xs text-gray-500">KAFKA</div><div class="font-bold">T+0</div><div class="text-xs">~5ms</div></div>
+        <div class="bg-gray-50 rounded p-3"><div class="text-xs text-gray-500">FLINK</div><div class="font-bold">T+12ms</div><div class="text-xs">feature compute</div></div>
+        <div class="bg-gray-50 rounded p-3"><div class="text-xs text-gray-500">REDIS</div><div class="font-bold">T+18ms</div><div class="text-xs">history lookup</div></div>
+        <div class="bg-gray-50 rounded p-3"><div class="text-xs text-gray-500">MODEL</div><div class="font-bold">T+52ms</div><div class="text-xs">XGBoost inference</div></div>
+        <div class="bg-ed-pink/10 rounded p-3"><div class="text-xs text-gray-500">DECIDE</div><div class="font-bold">T+67ms</div><div class="text-xs">rules + fusion</div></div>
+      </div>
+      <p class="text-xs text-gray-500 mt-2">Total: 67ms, 33ms headroom under 100ms SLA. If model exceeds 30ms, return cached score.</p>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-indigo-50/20 border border-indigo-100 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">4. High-Level Design (HLD)</h2>
+    <p class="text-gray-700 mb-4">Five layers: <strong>ingestion</strong> (Kafka by card BIN), <strong>processing</strong> (Flink stateful), <strong>feature store</strong> (Redis online), <strong>scoring</strong> (ML model), <strong>decision</strong> (rules + ML fusion). Offline training pipeline feeds nightly model updates.</p>
+    <div class="mermaid">
+flowchart TD
+    subgraph Online["ONLINE PATH — 100ms SLA"]
+        Swipe["Card Swipe 50K TPS"]
+        Kafka["Kafka 128 parts<br/>by card BIN"]
+        Flink["Flink<br/>stateful features"]
+        Redis["Redis<br/>online features"]
+        Model["XGBoost<br/>inference"]
+        Decision["Decision Engine<br/>rules + ML"]
+        Swipe --> Kafka --> Flink --> Redis --> Model --> Decision
+    end
+    subgraph Offline["OFFLINE — nightly"]
+        Train["Training Pipeline<br/>Spark + feedback"]
+        Registry["Model Registry<br/>MLflow"]
+    end
+    subgraph Feedback["FEEDBACK LOOP"]
+        Agent["Agent Review Queue"]
+        Label["Labeled Data<br/>S3"]
+    end
+    Decision -->|"review"| Agent
+    Agent --> Label
+    Label --> Train
+    Train --> Registry
+    Registry -->|"shadow deploy"| Model
+    </div>
+    <div class="mt-3 flex flex-wrap gap-3 text-xs">
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-ed-purple rounded"></span> Online hot path</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-ed-orange rounded"></span> Offline training</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-ed-teal rounded"></span> Feedback loop</span>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-white border border-gray-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">5. Read &amp; Write Data Flow Traces</h2>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="bg-ed-blue/5 border border-ed-blue/20 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-blue mb-3">Online Scoring Flow</h3>
+        <ol class="space-y-2 text-sm text-gray-700 list-decimal list-inside">
+          <li>Card swipe → Kafka topic (partition by card BIN)</li>
+          <li>Flink consumer computes velocity features (1m, 1h, 24h windows)</li>
+          <li>Redis lookup: card history, merchant risk, geo pattern</li>
+          <li>XGBoost model scores (0-1 fraud probability)</li>
+          <li>Decision engine: rules first (hard decline), then ML fusion</li>
+          <li>If score &gt; 0.9 → decline + alert. 0.3-0.9 → review. &lt;0.3 → approve</li>
+          <li>Decision sent to auth system in &lt;67ms</li>
+        </ol>
+      </div>
+      <div class="bg-ed-orange/5 border border-ed-orange/20 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-orange mb-3">Feedback &amp; Retrain Flow</h3>
+        <ol class="space-y-2 text-sm text-gray-700 list-decimal list-inside">
+          <li>Agent reviews flagged transactions in UI</li>
+          <li>Agent labels: true fraud or false positive</li>
+          <li>Labeled data written to S3 (partitioned by date)</li>
+          <li>Nightly Spark job joins labels with features</li>
+          <li>Retrain XGBoost on 30-day window + labeled data</li>
+          <li>Model registered to MLflow with version + metrics</li>
+          <li>Shadow deploy: new model runs in parallel, compare scores</li>
+          <li>Promote if FPR and FNR both improve by &gt;1%</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-indigo-50 border border-indigo-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">6. Core Entities &amp; Database Schema</h2>
+    <p class="text-gray-700 mb-4">DynamoDB for transaction events (write-heavy, time-series). Redis for online features (sub-ms reads). S3 + Parquet for training data.</p>
+    <div class="bg-gray-900 text-gray-100 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+<pre>-- DynamoDB: transactions (partition by card_id, sort by timestamp)
+{
+  card_id:        "uuid",        // partition key
+  timestamp:      1700000000,    // sort key
+  txn_id:         "uuid",
+  amount_cents:   15000,
+  merchant_id:    "uuid",
+  merchant_cat:   "grocery",
+  geo_lat:        40.7,
+  geo_lon:        -74.0,
+  chip_auth:      true,
+  pin_used:       false,
+  score:          0.12,
+  decision:       "approve"
+}
+
+-- Redis: card_features:{card_id} (Hash, TTL 24h)
+{
+  velocity_1m:    2,
+  velocity_1h:    5,
+  velocity_24h:   12,
+  last_geo:       "40.7,-74.0",
+  last_ts:        1699999990,
+  avg_amount:     8500,
+  distinct_merchants_24h: 4
+}
+
+-- Redis: merchant_risk:{merchant_id} (String, TTL 1h)
+"0.15"  // risk score 0-1
+
+-- S3: s3://fraud-training/year=2026/month=07/day=22/
+Parquet: txn_id, card_id, features[], label, model_version</pre>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-indigo-50 border border-indigo-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">7. API Design &amp; Data Contract</h2>
+    <div class="space-y-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="bg-ed-blue text-white text-xs font-mono px-2 py-0.5 rounded">POST</span>
+          <code class="text-sm font-mono">/v1/score</code>
+        </div>
+        <pre class="text-xs font-mono text-gray-700 bg-gray-50 p-3 rounded">Request: { card_id, txn_id, amount_cents, merchant_id, geo, chip_auth }
+Response 200: { score: 0.12, decision: "approve", model_version: "v2.3.1", latency_ms: 67 }</pre>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="bg-ed-pink text-white text-xs font-mono px-2 py-0.5 rounded">POST</span>
+          <code class="text-sm font-mono">/v1/feedback</code>
+        </div>
+        <pre class="text-xs font-mono text-gray-700 bg-gray-50 p-3 rounded">Request: { txn_id, label: "fraud"|"legit", agent_id, notes }
+Response 202: { accepted: true }</pre>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="bg-ed-teal text-white text-xs font-mono px-2 py-0.5 rounded">GET</span>
+          <code class="text-sm font-mono">/v1/model/status</code>
+        </div>
+        <pre class="text-xs font-mono text-gray-700 bg-gray-50 p-3 rounded">Response 200: { version: "v2.3.1", shadow_version: "v2.4.0", fpr: 0.0008, fnr: 0.00009 }</pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">8. Distributed Coordination &amp; State Management</h2>
+    <p class="text-gray-700 mb-4">Flink uses checkpointing (RocksDB state, S3 checkpoints) for exactly-once processing. Kafka consumer groups handle parallelism. Model version coordination via MLflow.</p>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <h3 class="font-semibold text-ed-purple mb-2">Flink Checkpointing</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li><strong>State backend</strong> — RocksDB (incremental)</li>
+          <li><strong>Checkpoint interval</strong> — 30s</li>
+          <li><strong>Checkpoint store</strong> — S3</li>
+          <li><strong>Exactly-once</strong> — Kafka source + sink</li>
+        </ul>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <h3 class="font-semibold text-ed-purple mb-2">Model Versioning</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li><strong>Registry</strong> — MLflow, semantic version</li>
+          <li><strong>Shadow mode</strong> — new model runs in parallel</li>
+          <li><strong>Promotion</strong> — gated on FPR + FNR metrics</li>
+          <li><strong>Rollback</strong> — instant, previous version kept 7d</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">9. Partitioning &amp; Database Scaling</h2>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div>
+        <h3 class="font-semibold text-ed-teal mb-3">Kafka: Partition by card BIN</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li><strong>Why</strong> — preserves card-level ordering</li>
+          <li><strong>128 partitions</strong> — 50K TPS / 128 ≈ 390 TPS/partition</li>
+          <li><strong>Consumer group</strong> — one Flink task per partition</li>
+          <li><strong>Hot card</strong> — rare, but split via sub-partition</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-semibold text-ed-blue mb-3">Redis: Shard by card_id</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li><strong>10 shards</strong> — 20M cards/shard, 20GB/shard</li>
+          <li><strong>Consistent hashing</strong> — minimal reshuffle on scale</li>
+          <li><strong>Read replica</strong> — 1 replica per shard for reads</li>
+          <li><strong>Eviction</strong> — TTL 24h, LRU for overflow</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-ed-pink/5 border border-ed-pink/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">10. Consistent Hashing &amp; Ring Mechanics</h2>
+    <p class="text-gray-700 mb-4">Redis cluster uses 16384 hash slots. Each card_id maps to a slot via CRC16. Slots are assigned to shards. Resharding moves slots without rehashing all keys.</p>
+    <div class="mermaid">
+flowchart LR
+    subgraph Slots["Redis Cluster — 16384 slots"]
+        S1["Shard A<br/>slots 0-5460"]
+        S2["Shard B<br/>slots 5461-10922"]
+        S3["Shard C<br/>slots 10923-16383"]
+    end
+    Card["card_id CRC16"] -->|"slot 3210"| S1
+    Card2["card_id CRC16"] -->|"slot 8900"| S2
+    </div>
+  </section>
+
+  <section class="mb-10 bg-indigo-50 border border-indigo-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">11. Caching Topology &amp; Invalidation</h2>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <h3 class="font-semibold text-indigo-700 mb-2">Feature Cache (Redis)</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li><strong>Key</strong> — <code>card_features:{card_id}</code></li>
+          <li><strong>TTL</strong> — 24h, updated on every txn</li>
+          <li><strong>Write-through</strong> — Flink updates on every event</li>
+          <li><strong>Read</strong> — &lt;1ms p99 from Redis cluster</li>
+        </ul>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <h3 class="font-semibold text-indigo-700 mb-2">Model Cache</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li><strong>In-process</strong> — XGBoost loaded in worker memory</li>
+          <li><strong>Size</strong> — ~200MB per model</li>
+          <li><strong>Reload</strong> — hot-reload on version bump, no restart</li>
+          <li><strong>Fallback</strong> — if model fails, use cached score</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-ed-orange/5 border border-ed-orange/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">12. Asynchronous Processing &amp; Message Queues</h2>
+    <p class="text-gray-700 mb-4">Kafka topics: <code>transactions.raw</code> → <code>transactions.scored</code> → <code>transactions.decided</code>. Feedback topic: <code>feedback.labels</code>. Dead-letter for poison messages.</p>
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-xs font-mono text-ed-orange mb-1">TOPIC</div>
+        <p class="font-semibold text-sm">transactions.raw</p>
+        <p class="text-xs text-gray-600 mt-1">128 partitions by card BIN, 50K TPS, 7d retention</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-xs font-mono text-ed-orange mb-1">TOPIC</div>
+        <p class="font-semibold text-sm">transactions.decided</p>
+        <p class="text-xs text-gray-600 mt-1">Consumed by auth system + analytics, 30d retention</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-xs font-mono text-ed-orange mb-1">TOPIC</div>
+        <p class="font-semibold text-sm">feedback.labels</p>
+        <p class="text-xs text-gray-600 mt-1">Agent labels, consumed by training pipeline</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-ed-sky/5 border border-ed-sky/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">13. Low-Level Component Design (LLD)</h2>
+    <div class="mermaid mb-6">
+sequenceDiagram
+    participant T as Terminal
+    participant K as Kafka
+    participant F as Flink
+    participant R as Redis
+    participant M as Model
+    participant D as Decision
+    T->>K: publish txn (card BIN key)
+    K->>F: consume (partition)
+    F->>F: compute velocity features
+    F->>R: GET card_features
+    R-->>F: history
+    F->>M: score(features)
+    M-->>F: 0.12
+    F->>D: decide(score, rules)
+    D-->>F: "approve"
+    F->>K: publish decided
+    F->>R: UPDATE card_features
+    </div>
+
+    <h3 class="font-semibold text-ed-sky mb-3">Java — Flink Feature Processor</h3>
+    <div class="bg-gray-900 text-gray-100 rounded-lg p-4 font-mono text-sm overflow-x-auto mb-4">
+<pre>public class FraudFeatureProcessor extends ProcessFunction&lt;Transaction, ScoredTxn&gt; {
+    private transient RedisClient redis;
+    private transient XGBoostModel model;
+
+    @Override
+    public void open(Configuration cfg) {
+        redis = RedisClient.create("redis://fraud-cluster:6379");
+        model = XGBoostModel.load("/models/fraud_v2.3.1.json");
+    }
+
+    @Override
+    public void processElement(Txn txn, Context ctx, Collector&lt;ScoredTxn&gt; out) {
+        // 1. Compute velocity from Flink state
+        VelocityState state = getRuntimeContext().getState(velocityDesc);
+        long count1m = state.incrementAndGet(txn.getTimestamp());
+
+        // 2. Fetch card history from Redis
+        CardFeatures hist = redis.get("card_features:" + txn.getCardId());
+
+        // 3. Build feature vector
+        float[] features = buildFeatures(txn, count1m, hist);
+
+        // 4. Score
+        float score = model.predict(features);
+
+        // 5. Decide
+        String decision = decisionEngine.decide(score, txn, hist);
+
+        // 6. Update Redis (async)
+        redis.asyncSet("card_features:" + txn.getCardId(), hist.updated(txn));
+
+        out.collect(new ScoredTxn(txn, score, decision));
+    }
+}</pre>
+    </div>
+
+    <h3 class="font-semibold text-ed-sky mb-3">Python — Decision Engine</h3>
+    <div class="bg-gray-900 text-gray-100 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+<pre>from enum import Enum
+from dataclasses import dataclass
+
+class Decision(str, Enum):
+    APPROVE = "approve"
+    REVIEW = "review"
+    DECLINE = "decline"
+
+@dataclass
+class DecisionEngine:
+    decline_threshold: float = 0.9
+    review_threshold: float = 0.3
+
+    def decide(self, score: float, txn: dict, hist: dict) -> Decision:
+        # Rules first (hard declines — fast, explainable)
+        if self._hard_decline(txn, hist):
+            return Decision.DECLINE
+        # ML fusion
+        if score &gt;= self.decline_threshold:
+            return Decision.DECLINE
+        if score &gt;= self.review_threshold:
+            return Decision.REVIEW
+        return Decision.APPROVE
+
+    def _hard_decline(self, txn: dict, hist: dict) -> bool:
+        # Impossible travel: &gt; 1000km in &lt; 5 min
+        if hist.get("last_geo") and self._distance(hist["last_geo"], txn["geo"]) &gt; 1000:
+            if txn["timestamp"] - hist["last_ts"] &lt; 300:
+                return True
+        # Velocity: &gt; 10 txn in 1 min
+        if hist.get("velocity_1m", 0) &gt; 10:
+            return True
+        # Amount: &gt; 10x average
+        if hist.get("avg_amount") and txn["amount_cents"] &gt; 10 * hist["avg_amount"]:
+            return True
+        return False
+
+    def _distance(self, geo1: str, geo2: str) -> float:
+        # Haversine simplified
+        lat1, lon1 = map(float, geo1.split(","))
+        lat2, lon2 = map(float, geo2.split(","))
+        return ((lat2 - lat1)**2 + (lon2 - lon1)**2) ** 0.5 * 111</pre>
+    </div>
+  </section>
+
+  <section class="mb-10">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">14. Resiliency &amp; Failure Mitigations</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-red-50 border border-red-200 rounded-lg p-5">
+        <h3 class="font-semibold text-red-700 mb-2">⚡ Model Inference Timeout</h3>
+        <p class="text-sm text-gray-700">XGBoost exceeds 30ms. <strong>Mitigation</strong>: return cached score from Redis (last known good). If no cache, default to 0.0 (approve) — fail open for latency, catch in reconciliation.</p>
+      </div>
+      <div class="bg-ed-orange/5 border border-ed-orange/15 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-orange mb-2">⚡ Redis Down</h3>
+        <p class="text-sm text-gray-700">Feature store unavailable. <strong>Mitigation</strong>: Flink state has 1m window in memory. For 24h history, degrade to rules-only mode. Alert P1.</p>
+      </div>
+      <div class="bg-red-50 border border-red-200 rounded-lg p-5">
+        <h3 class="font-semibold text-red-700 mb-2">⚡ Flink Checkpoint Failure</h3>
+        <p class="text-sm text-gray-700">Checkpoint to S3 fails. <strong>Mitigation</strong>: retain old checkpoint, retry with backoff. If 3 consecutive failures, restart from last good checkpoint. Unprocessed events replayed from Kafka (7d retention).</p>
+      </div>
+      <div class="bg-ed-orange/5 border border-ed-orange/15 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-orange mb-2">⚡ Model Regression</h3>
+        <p class="text-sm text-gray-700">New model has worse FPR. <strong>Mitigation</strong>: shadow mode for 24h, compare metrics. Auto-rollback if FPR degrades &gt;10%. MLflow keeps last 5 versions.</p>
+      </div>
+      <div class="bg-red-50 border border-red-200 rounded-lg p-5">
+        <h3 class="font-semibold text-red-700 mb-2">⚡ Kafka Partition Hotspot</h3>
+        <p class="text-sm text-gray-700">One card BIN dominates. <strong>Mitigation</strong>: sub-partition by card_id within BIN. Or rekey by card_id (loses BIN ordering but balances load).</p>
+      </div>
+      <div class="bg-ed-orange/5 border border-ed-orange/15 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-orange mb-2">⚡ Feedback Label Delay</h3>
+        <p class="text-sm text-gray-700">Agents take 48h to label. <strong>Mitigation</strong>: train on 30-day window with labels, accept delay. Use active learning — prioritize borderline cases for agents.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-white border border-gray-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">15. Security, Auth &amp; Data Protection</h2>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div>
+        <h3 class="font-semibold text-gray-700 mb-3">Data Protection</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li>• <strong>PCI-DSS</strong> — no PAN in feature store, use tokenized card_id</li>
+          <li>• <strong>Encryption</strong> — KMS at rest, TLS 1.3 in transit</li>
+          <li>• <strong>Geo data</strong> — coarse to 0.1° for privacy, fine for fraud</li>
+          <li>• <strong>Model IP</strong> — encrypted in MLflow, decrypted in worker only</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-semibold text-gray-700 mb-3">Access Control</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li>• <strong>RBAC</strong> — agents see only their queue</li>
+          <li>• <strong>Audit</strong> — every model decision logged with version</li>
+          <li>• <strong>Explainability</strong> — SHAP values for declined txn</li>
+          <li>• <strong>Fair lending</strong> — bias audit quarterly</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-green-50 border border-green-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">16. Observability, Monitoring &amp; Alerting</h2>
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="bg-white border border-green-200 rounded-lg p-4">
+        <h3 class="font-semibold text-green-700 mb-2">Metrics</h3>
+        <ul class="text-sm text-gray-700 space-y-1">
+          <li>• fraud_score_duration_ms</li>
+          <li>• fraud_decision_total{decision}</li>
+          <li>• model_fpr / model_fnr (gauge)</li>
+          <li>• kafka_lag_per_partition</li>
+          <li>• flink_checkpoint_duration</li>
+        </ul>
+      </div>
+      <div class="bg-white border border-green-200 rounded-lg p-4">
+        <h3 class="font-semibold text-green-700 mb-2">Dashboards</h3>
+        <ul class="text-sm text-gray-700 space-y-1">
+          <li>• Real-time decision funnel</li>
+          <li>• Model performance (FPR/FNR)</li>
+          <li>• Latency percentiles (p50/p99)</li>
+          <li>• Agent review queue depth</li>
+        </ul>
+      </div>
+      <div class="bg-white border border-green-200 rounded-lg p-4">
+        <h3 class="font-semibold text-green-700 mb-2">Alerts</h3>
+        <ul class="text-sm text-gray-700 space-y-1">
+          <li>• p99 &gt; 100ms for 1 min → P1</li>
+          <li>• FPR &gt; 0.15% for 1h → P2</li>
+          <li>• Model inference fail &gt; 1% → P1</li>
+          <li>• Kafka lag &gt; 50K → P2</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-amber-50 border border-amber-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">17. Technical Trade-Off &amp; CAP Matrix</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-amber-100"><tr>
+          <th class="text-left p-3 font-semibold">Decision</th>
+          <th class="text-left p-3 font-semibold">Option A</th>
+          <th class="text-left p-3 font-semibold">Option B</th>
+          <th class="text-left p-3 font-semibold">Choice &amp; Why</th>
+        </tr></thead>
+        <tbody class="divide-y divide-gray-200">
+          <tr class="bg-white"><td class="p-3 font-medium">Stream processor</td><td class="p-3">Flink</td><td class="p-3">Spark Streaming</td><td class="p-3"><strong>A</strong> — lower latency, true streaming</td></tr>
+          <tr class="bg-white"><td class="p-3 font-medium">Feature store</td><td class="p-3">Redis</td><td class="p-3">DynamoDB</td><td class="p-3"><strong>A</strong> — sub-ms reads, 100ms SLA</td></tr>
+          <tr class="bg-white"><td class="p-3 font-medium">Model</td><td class="p-3">XGBoost</td><td class="p-3">Deep learning</td><td class="p-3"><strong>A</strong> — &lt;30ms inference, explainable</td></tr>
+          <tr class="bg-white"><td class="p-3 font-medium">Decision</td><td class="p-3">Rules only</td><td class="p-3">Rules + ML fusion</td><td class="p-3"><strong>B</strong> — rules fast + explainable, ML for nuance</td></tr>
+          <tr class="bg-white"><td class="p-3 font-medium">Failure mode</td><td class="p-3">Fail open (approve)</td><td class="p-3">Fail closed (decline)</td><td class="p-3"><strong>Hybrid</strong> — fail open on latency, closed on fraud signal</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">18. The Interview Pitch Script</h2>
+    <div class="bg-white border border-gray-200 rounded-lg p-5 font-mono text-sm text-gray-700 leading-relaxed">
+      <p class="mb-3"><span class="text-ed-purple font-semibold">[0:00]</span> "I'll design a real-time fraud detection system for 50K TPS with a 100ms SLA. The key tension is: we need sub-100ms decisions but also ML inference, which is expensive. Let me walk through how I'd balance that."</p>
+      <p class="mb-3"><span class="text-ed-purple font-semibold">[3:00]</span> "Five layers. Kafka partitions by card BIN to preserve per-card ordering. Flink computes stateful features — velocity, geo-velocity — using RocksDB state with 30s checkpoints to S3. Redis holds the online feature store: 200M cards, 200GB, sub-ms reads. XGBoost scores in &lt;30ms. A decision engine fuses rules and ML — rules for hard declines (impossible travel, velocity &gt; 10/min), ML for borderline cases."</p>
+      <p class="mb-3"><span class="text-ed-purple font-semibold">[8:00]</span> "The latency budget is tight: Kafka 5ms, Flink 12ms, Redis 6ms, model 34ms, decision 15ms — total 67ms with 33ms headroom. If the model exceeds 30ms, I return a cached score. If Redis is down, I degrade to rules-only mode. Fail open on latency, fail closed on fraud signal."</p>
+      <p><span class="text-ed-purple font-semibold">[12:00]</span> "For the feedback loop: agents label false positives in a review queue, labels go to S3, nightly Spark job retrains XGBoost on a 30-day window. New models run in shadow mode for 24h, promoted only if FPR and FNR both improve. MLflow tracks versions, rollback is instant."</p>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">19. Handling Interviewer Pushbacks</h2>
+    <div class="space-y-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <p class="font-semibold text-ed-purple mb-2">Q: "What if the model gives a wrong score — how do you explain a decline to the customer?"</p>
+        <p class="text-sm text-gray-700">"We log SHAP values for every declined transaction. The agent sees the top 5 contributing features — e.g., 'amount 10x average', 'velocity 8 in 1 min', 'geo mismatch'. The customer gets a reason code. This is both a regulatory requirement (fair lending) and a trust requirement."</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <p class="font-semibold text-ed-purple mb-2">Q: "How do you handle concept drift — fraud patterns change?"</p>
+        <p class="text-sm text-gray-700">"Three signals: (1) FPR/FNR drift in production metrics, (2) feature distribution drift via KS test on incoming features vs training, (3) agent feedback volume spike. Any of these triggers an out-of-cycle retrain. We also retrain nightly regardless. The 30-day training window adapts to recent patterns."</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <p class="font-semibold text-ed-purple mb-2">Q: "Why not use deep learning for better accuracy?"</p>
+        <p class="text-sm text-gray-700">"Two reasons: (1) latency — XGBoost is &lt;30ms, a decent LSTM is 100ms+. (2) explainability — SHAP works on tree models, deep learning requires LIME or attention which is less precise. If I had more latency budget (batch scoring), I'd use a sequence model for transaction history. For real-time, XGBoost is the right trade."</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <p class="font-semibold text-ed-purple mb-2">Q: "What if a fraudster adapts to your rules?"</p>
+        <p class="text-sm text-gray-700">"Rules are the first line — fast and explainable but rigid. ML is the second line — adaptive but slower. If fraudsters adapt to rules, the ML model catches the residual pattern. We also run adversarial testing: red team tries to evade the model, we retrain on their attempts. It's a cat-and-mouse game; the feedback loop is how we stay ahead."</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <p class="font-semibold text-ed-purple mb-2">Q: "How do you ensure 99.99% availability with a 100ms SLA?"</p>
+        <p class="text-sm text-gray-700">"Fail open on latency — if any component times out, approve the transaction and catch it in post-transaction review. The fraud rate is 0.1%, so approving everything costs 0.1% of transactions in fraud loss. The SLA is for the legitimate 99.9% — they should never be blocked by our latency. We'd rather eat fraud than block good customers."</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">20. Advanced Concept Deep Dives</h2>
+    <div class="space-y-3">
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-4">
+        <summary class="font-semibold text-indigo-700 flex items-center gap-2"><span class="chevron">▶</span> Feature Store Architecture (Online vs Offline)</summary>
+        <div class="mt-3 text-sm text-gray-700">
+          <p class="mb-2">Two-tier feature store: <strong>online</strong> (Redis, sub-ms, last 24h, hot features) and <strong>offline</strong> (S3 + Parquet, Spark-queryable, years of history, for training). The offline store is the source of truth; the online store is a projection. Feast or Tecton can manage the sync.</p>
+          <p><strong>Challenge</strong>: training-serving skew. The online features must match what training used. We log every feature vector used in scoring to S3, so training can replay exact features.</p>
+        </div>
+      </details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-4">
+        <summary class="font-semibold text-indigo-700 flex items-center gap-2"><span class="chevron">▶</span> Shadow Mode & Model Promotion</summary>
+        <div class="mt-3 text-sm text-gray-700">
+          <p class="mb-2">New model runs in parallel — receives the same features, produces a score, but the score is logged not acted upon. After 24h, compare: (1) FPR on legitimate txn, (2) FNR on known fraud, (3) score distribution shift. If FPR and FNR both improve by &gt;1% and distribution shift is &lt;5%, promote. Otherwise, iterate or abandon.</p>
+          <p><strong>Why 24h?</strong> Captures daily patterns (morning rush, evening dining, weekend spikes).</p>
+        </div>
+      </details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-4">
+        <summary class="font-semibold text-indigo-700 flex items-center gap-2"><span class="chevron">▶</span> Geo-Velocity Feature (Impossible Travel)</summary>
+        <div class="mt-3 text-sm text-gray-700">
+          <p class="mb-2">Track last transaction geo + timestamp per card. On new txn, compute Haversine distance. If distance / time_diff &gt; 1000 km/h (faster than commercial flight), flag as impossible travel. Edge cases: airplane Wi-Fi purchases (legit but geo jumps), timezone bugs (use UTC always).</p>
+          <p><strong>Implementation</strong>: store last_geo + last_ts in Redis. Flink computes the feature. Use coarse geo (0.1° ~ 11km) to avoid GPS jitter.</p>
+        </div>
+      </details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-4">
+        <summary class="font-semibold text-indigo-700 flex items-center gap-2"><span class="chevron">▶</span> Active Learning for Feedback Efficiency</summary>
+        <div class="mt-3 text-sm text-gray-700">
+          <p class="mb-2">Agents can't review every transaction. Active learning prioritizes borderline cases (score 0.3-0.7) for agent review — these are the most informative labels. Clear approves and clear declines are auto-labeled. This reduces agent load by 80% while improving model quality faster.</p>
+        </div>
+      </details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-4">
+        <summary class="font-semibold text-indigo-700 flex items-center gap-2"><span class="chevron">▶</span> Explainability (SHAP vs LIME)</summary>
+        <div class="mt-3 text-sm text-gray-700">
+          <p class="mb-2">SHAP (SHapley Additive exPlanations) gives exact feature contributions for tree models. LIME is approximate but model-agnostic. For XGBoost, SHAP is the standard — it's fast (TreeSHAP algorithm) and precise. Every declined transaction gets a SHAP plot in the agent UI and a reason code for the customer.</p>
+          <p><strong>Regulatory</strong>: Fair lending laws require explainable declines. SHAP satisfies this.</p>
+        </div>
+      </details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-4">
+        <summary class="font-semibold text-indigo-700 flex items-center gap-2"><span class="chevron">▶</span> Flink Exactly-Once with Kafka</summary>
+        <div class="mt-3 text-sm text-gray-700">
+          <p class="mb-2">Flink's exactly-once uses (1) Kafka source with committed offsets in Flink checkpoints, (2) Kafka sink with two-phase commit via Flink checkpoints. On checkpoint, Flink commits pending Kafka offsets and sink transactions atomically. If a checkpoint fails, the source rewinds and the sink doesn't commit — no duplicates, no loss.</p>
+          <p><strong>Cost</strong>: checkpoint interval trades latency for overhead. 30s is a good default for 100ms SLA.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <footer class="border-t border-gray-200 pt-6 text-center text-xs text-gray-500 font-mono">
+    CAPITAL ONE GPN · SYSTEM DESIGN PREP · Real-Time Fraud Detection · Generated with career-tools-sysdesign-generator
+  </footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: Distributed Email Service — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] hero-glow pointer-events-none"></div>
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">SD</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">Distributed Email Service</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">System Design Workbook</span>
+      </div>
+    </div>
+    <a href="../README.md" class="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">&larr; Back to System Design Hub</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Architectural Study Guide</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">High Scale &bull; Distributed Systems</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+      <span class="gradient-text">Distributed Email Service</span>
+    </h1>
+    <p class="text-gray-600 text-base max-w-3xl leading-relaxed">
+      Comprehensive architectural deep-dive covering high-level data flow, data models, edge case failure modes, scaling strategies, and interview trade-off defenses.
+    </p>
+  </div>
+</div>
+
+<!-- CONTENT MAIN -->
+<main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+  <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm prose prose-blue max-w-none space-y-6">
+    <h1 class="text-2xl font-black text-gray-900 border-b border-gray-200 pb-3 mb-4 mt-6">Chapter 23: Distributed Email Service</h1>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Introduction</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We'll design a <strong class="text-gray-900 font-bold">distributed email service</strong>, similar to <strong class="text-gray-900 font-bold">Gmail</strong> in this chapter.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In 2020, <strong class="text-gray-900 font-bold">Gmail</strong> had 1.8bil active users, while <strong class="text-gray-900 font-bold">Outlook</strong> had 400mil users worldwide.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 1: Understand the Problem and Establish Design Scope</h2>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>C: How many users use the system?</li>
+<li>I: 1bil users</li>
+<li>C: I think following features are important - auth, send/receive email, fetch email, filter emails, search email, anti-spam protection.</li>
+<li>I: Good list. Don't worry about auth for now.</li>
+<li>C: How do users connect \w email servers?</li>
+<li>I: Typically, email clients connect via SMTP, POP, IMAP, but we'll use HTTP for this problem.</li>
+<li>C: Can emails have attachments?</li>
+<li>I: Yes</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Non-functional requirements**</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Reliability</strong> - we shouldn't lose data</li>
+<li><strong class="text-gray-900 font-bold">Availability</strong> - We should use replication to prevent single points of failure. We should also tolerate partial system failures.</li>
+<li><strong class="text-gray-900 font-bold">Scalability</strong> - As userbase grows, our system should be able to handle them.</li>
+<li><strong class="text-gray-900 font-bold">Flexibility and extensibility</strong> - system should be flexible and easy to extend with new features. One of the reasons we chose HTTP over SMTP/other mail protocols.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Back-of-the-envelope estimation**</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">1bil users</strong></li>
+<li>Assuming one person sends 10 emails per day -> <strong class="text-gray-900 font-bold">100k emails per second</strong>.</li>
+<li>Assuming one person receives 40 emails per day and each email on average has 50kb metadata -> <strong class="text-gray-900 font-bold">730pb storage per year</strong>.</li>
+<li>Assuming 20% of emails have storage attachments and average size is 500kb -> <strong class="text-gray-900 font-bold">1,460pb per year</strong>.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 2: Propose High-Level Design and Get Buy-In</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Email knowledge 101**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">There are various protocols used for sending and receiving emails:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">SMTP</strong> - standard protocol for sending emails from one server to another.</li>
+<li><strong class="text-gray-900 font-bold">POP</strong> - standard protocol for receiving and downloading emails from a remote mail server to a local client. Once retrieved, emails are deleted from remote server.</li>
+<li><strong class="text-gray-900 font-bold">IMAP</strong> - similar to POP, it is used for receiving and downloading emails from a remote server, but it keeps the emails on the server-side.</li>
+<li><strong class="text-gray-900 font-bold">HTTPS</strong> - not technically an email protocol, but it can be used for web-based email clients.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Apart from the mailing protocol, there are some DNS records we need to configure for our email server - the MX records:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/dns-lookup.png" alt="dns-lookup" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Email attachments are sent base64-encoded and there is usually a size limit of 25mb on most mail services.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This is configurable and varies from individual to corporate accounts.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Traditional mail servers**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Traditional mail servers work well when there are a limited number of users, connected to a single server.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/traditional-mail-server.png" alt="traditional-mail-server" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Alice logs into her Outlook email and presses "send". Email is sent to Outlook mail server. Communication is via SMTP.</li>
+<li>Outlook server queries DNS to find MX record for gmail.com and transfers the email to their servers. Communication is via SMTP.</li>
+<li>Bob fetches emails from his gmail server via IMAP/POP.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In traditional mail servers, emails were stored on the local file system. Every email was a separate file.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/local-dir-storage.png" alt="local-dir-storage" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">As the scale grew, disk I/O became a bottleneck. Also, it doesn't satisfy our high availability and reliability requirements.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Disks can be damaged and server can go down.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Distributed mail servers**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Distributed mail servers are designed to support modern use-cases and solve modern scalability issues.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">These servers can still support IMAP/POP for native email clients and SMTP for mail exchange across servers.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">But for rich web-based mail clients, a RESTful API over HTTP is typically used.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Example APIs:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">POST /v1/messages</code> - sends a message to recipients in To, Cc, Bcc headers.</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">GET /v1/folders</code> - returns all folders of an email account</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Example response:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>[{id: string        Unique folder identifier.
+  name: string      Name of the folder.
+                    According to RFC6154 [9], the default folders can be one of
+                    the following: All, Archive, Drafts, Flagged, Junk, Sent,
+                    and Trash.
+  user_id: string   Reference to the account owner
+}]</code></pre></div>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">GET /v1/folders/{:folder_id}/messages</code> - returns all messages under a folder \w pagination</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">GET /v1/messages/{:message_id}</code> - get all information about a particular message</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Example response:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>{
+  user_id: string                      // Reference to the account owner.
+  from: {name: string, email: string}  // <name, email> pair of the sender.
+  to: [{name: string, email: string}]  // A list of <name, email> paris
+  subject: string                      // Subject of an email
+  body: string                         //  Message body
+  is_read: boolean                     //  Indicate if a message is read or not.
+}</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Here's the high-level design of the distributed mail server:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/high-level-architecture.png" alt="high-level-architecture" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Webmail</strong> - users use web browsers to send/receive emails</li>
+<li><strong class="text-gray-900 font-bold">Web servers</strong> - public-facing request/response services used to manage login, signup, user profile, etc.</li>
+<li><strong class="text-gray-900 font-bold">Real-time servers</strong> - Used for pushing new email updates to clients in real-time. We use websockets for real-time communication but fallback to long-polling for older browsers that don't support them.</li>
+<li><strong class="text-gray-900 font-bold">Metadata db</strong> - stores email metadata such as subject, body, from, to, etc.</li>
+<li><strong class="text-gray-900 font-bold">Attachment store</strong> - Object store (eg Amazon S3), suitable for storing large files.</li>
+<li><strong class="text-gray-900 font-bold">Distributed cache</strong> - We can cache recent emails in Redis to improve UX.</li>
+<li><strong class="text-gray-900 font-bold">Search store</strong> - distributed document store, used for supporting full-text searches.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Here's what the email sending flow looks like:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/email-sending-flow.png" alt="email-sending-flow" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>User writes an email and presses "send". Email is sent to load balancer.</li>
+<li>Load balancer rate limits excessive mail sends and routes to one of the web servers.</li>
+<li>Web servers do basic email validation (eg email size) and short-circuits outbound flow if domain is same as sender. But does spam check first.</li>
+<li>If basic validation passes, email is sent to message queue (attachment is referenced from object store)</li>
+<li>If basic validation fails, email is sent to error queue</li>
+<li>SMTP outgoing workers pull messages from outgoing queue, do spam/virus checks and route to destination mail server.</li>
+<li>Email is stored in the "Sent Emails" folder</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We need to also monitor size of outgoing message queue. Growing too large might indicate a problem:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Recipient's mail server is unavailable. We can retry sending the email at a later time using exponential backoff.</li>
+<li>Not enough consumers to handle the load, we might have to scale the consumers.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Here's the email receiving flow:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/email-receiving-flkow.png" alt="email-receiving-flow" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Incoming emails arrive at the SMTP load balancer. Mails are distributed to SMTP servers, where mail acceptance policy is done (eg invalid emails are directly discarded).</li>
+<li>If attachment of email is too large, we can put it in object store (s3).</li>
+<li>Mail processing workers do preliminary checks, after which mails are forwarded to storage, cache, object store and real-time servers.</li>
+<li>Offline users get their new emails once they come back online via HTTP API.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 3: Design Deep Dive</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Let's now go deeper into some of the components.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Metadata database**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Here are some of the characteristics of email metadata:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>headers are usually small and frequently accessed</li>
+<li>Body size ranges from small to big, but is typically read once</li>
+<li>Most mail operations are isolated to a single user - eg fetching email, marking as read, searching.</li>
+<li>Data recency impacts data usage. Users typically read only recent emails</li>
+<li>Data has high-reliability requirements. Data loss is unacceptable.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">At gmail/outlook scale, the database is typically custom made to reduce input/output operations per second (IOPS).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Let's consider what database options we have:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Relational database</strong> - we can build indexes for headers and body, but these DBs are typically optimized for small chunks of data.</li>
+<li><strong class="text-gray-900 font-bold">Distributed object store</strong> - this can be a good option for backup storage, but can't efficiently support searching/marking as read/etc.</li>
+<li><strong class="text-gray-900 font-bold">NoSQL</strong> - Google BigTable is used by gmail, but it's not open-sourced.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Based on above analysis, very few existing solutions seems to fit our needs perfectly.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In an interview setting, it's infeasible to design a new distributed database solution, but important to mention characteristics:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Single column can be a single-digit MB</li>
+<li>Strong data consistency</li>
+<li>Designed to reduce disk I/O</li>
+<li>Highly available and fault tolerant</li>
+<li>Should be easy to create incremental backups</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In order to partition the data, we can use the <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">user_id</code> as a partition key, so that one user's data is stored on a single shard.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This prohibits us from sharing an email with multiple users, but this is not a requirement for this interview.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Let's define the tables:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Primary key consists of partition key (data distribution) and clustering key (sorting data)</li>
+<li>Queries we need to support - get all folders for a user, display all emails for a folder, create/get/delete an email, fetch read/unread email, get conversation threads (bonus)</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Legend for tables to follow:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/legend.png" alt="legend" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Here is the folders table:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/folders-table.png" alt="folders-table" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">emails table:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/emails-table.png" alt="emails-table" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>email_id is timeuuid which allows sorting based on timestamp when email was created</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Attachments are stored in a separate table, identified by filename:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/attachments.png" alt="attachments" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Supporting fetchin read/unread emails is easy in a traditional relational database, but not in Cassandra, since filtering on non-partition/clustering key is prohibited.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">One workaround to fetch all emails in a folder and filter in-memory, but that doesn't work well for a big-enough application.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">What we can do is denormalize the emails table into read/unread emails tables:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/read-unread-emails.png" alt="read-unread-emails" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In order to support conversation threads, we can include some headers, which mail clients interpret and use to reconstruct a conversation thread:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>{
+  "headers" {
+     "Message-Id": "<7BA04B2A-430C-4D12-8B57-862103C34501@gmail.com>",
+     "In-Reply-To": "<CAEWTXuPfN=LzECjDJtgY9Vu03kgFvJnJUSHTt6TW@gmail.com>",
+     "References": ["<7BA04B2A-430C-4D12-8B57-862103C34501@gmail.com>"]
+  }
+}</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Finally, we'll trade availability for consistency for our distributed database, since it is a hard requirement for this problem.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Hence, in the event of a failover or network parititon, sync/update actions will be briefly unavailable to impacted users.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Email deliverability**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">It is easy to setup a server to send emails, but getting the email to a receiver's inbox is hard, due to spam-protection algorithms.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">If we just setup a new mail server and start sending mails through it, our emails will probably end up in the spam folder.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Here's what we can do to prevent that:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Dedicated IPs</strong> - use dedicated IPs for sending emails, otherwise, recipient servers will not trust you.</li>
+<li><strong class="text-gray-900 font-bold">Classify emails</strong> - avoid sending marketing emails from the same servers to prevent more important email to be classified as spam</li>
+<li><strong class="text-gray-900 font-bold">Warm up your IP address</strong> slowly to build a good reputation with big email providers. It takes 2 to 6 weeks to warm up a new IP</li>
+<li><strong class="text-gray-900 font-bold">Ban spammers</strong> quickly to not deteriorate your reputation</li>
+<li><strong class="text-gray-900 font-bold">Feedback processing</strong> - setup a feedback loop with ISPs to keep track of complaint rate and ban spam accounts quickly.</li>
+<li><strong class="text-gray-900 font-bold">Email authentication</strong> - use common techniques to combat phishing such as Sender Policy Framework, DomainKeys Identified Mail, etc.</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">You don't need to remember all of this. Just know that building a good mail server requires a lot of domain knowledge.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Search**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Searching includes doing a full-text search based on email contents or more advanced queries based on from, to, subject, unread, etc filters.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">One characteristic of email search is that it is local to the user and it has more writes than reads, because we need to re-index it on each operation, but users rarely use the search tab.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Let's compare google search with email search:</p>
+<div class="text-xs text-gray-700 font-mono py-0.5">|               | Scope                | Sorting                               | Accuracy                                          |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">|---------------|----------------------|---------------------------------------|---------------------------------------------------|</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| Google search | The whole internet   | Sort by relevance                     | Indexing takes some time, so not instant results. |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| Email search  | User's own email box | Sort by attributes eg time, date, etc | Indexing should be quick and results accurate.    |</div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">To achieve this search functionality, one option is to use an Elasticsearch cluster. We can use <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">user_id</code> as the partition key to group data under the same node:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/elasticsearch.png" alt="elasticsearch" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Mutating operations are async via Kafka in order to decouple services from the reindexing flow.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Actually searching for data happens synchronously.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Elasticsearch is one of the most popular search-engine databases and supports full-text search for emails very well.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Alternatively, we can attempt to develop our own custom search solution to meet our specific requirements.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Designing such a system is out of scope. One of the core challenges when building it is to optimize it for write-heavy workloads.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">To achieve that, we can use Log-Structured Merge-Trees (LSM) to structure the index data on disk. Write path is optimized for sequential writes only.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This technique is used in Cassandra, BigTable and RocksDB.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Its core idea is to store data in-memory until a predefined threshold is reached, after which it is merged in the next layer (disk):</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/lsm-tree.png" alt="lsm-tree" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Main trade-offs between the two approaches:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Elasticsearch scales to some extent, whereas a custom search engine can be fine-tuned for the email use-case, allowing it to scale further.</li>
+<li>Elasticsearch is a separate service we need to maintain, alongside the metadata store. A custom solution can be the datastore itself.</li>
+<li>Elasticsearch is an off-the-shelf solution, whereas the custom search engine would require significant engineering effort to build.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Scalability and availability**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Since individual user operations don't collide with other users, most components can be independently scaled.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">To ensure high availability, we can also use a multi-DC setup with leader-folower failover in case of failures:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/multi-dc-example.png" alt="multi-dc-example" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 4: Wrap Up</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Additional talking points:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Fault tolerance</strong> - Many parts of the system could fail. It is worthwhile how we'd handle node failures.</li>
+<li><strong class="text-gray-900 font-bold">Compliance</strong> - PII needs to be stored in a reasonable way, given Europe's GDPR laws.</li>
+<li><strong class="text-gray-900 font-bold">Security</strong> - email encryption, phishing protection, safe browsing, etc.</li>
+<li><strong class="text-gray-900 font-bold">Optimizations</strong> - eg preventing duplication of the same attachments, sent multiple times by different users.</li>
+</ul>
+  </div>
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>System Design Interactive Study Suite &bull; AntiGravity IDE</p>
+</footer>
+</body>
+</html>

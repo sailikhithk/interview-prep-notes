@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: Google Maps — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] hero-glow pointer-events-none"></div>
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">SD</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">Google Maps</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">System Design Workbook</span>
+      </div>
+    </div>
+    <a href="../README.md" class="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">&larr; Back to System Design Hub</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Architectural Study Guide</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">High Scale &bull; Distributed Systems</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+      <span class="gradient-text">Google Maps</span>
+    </h1>
+    <p class="text-gray-600 text-base max-w-3xl leading-relaxed">
+      Comprehensive architectural deep-dive covering high-level data flow, data models, edge case failure modes, scaling strategies, and interview trade-off defenses.
+    </p>
+  </div>
+</div>
+
+<!-- CONTENT MAIN -->
+<main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+  <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm prose prose-blue max-w-none space-y-6">
+    <h1 class="text-2xl font-black text-gray-900 border-b border-gray-200 pb-3 mb-4 mt-6">Chapter 18: Google Maps</h1>
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Introduction</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We'll design a simple version of <strong class="text-gray-900 font-bold">Google Maps</strong>.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Some facts about google maps:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Started in 2005</li>
+<li>Provides various services - satellite imagery, street maps, real-time traffic conditions, route planning</li>
+<li>By 2021, had 1bil daily active users, 99% coverage of the world, 25mil updates daily of real-time location info</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 1: Understand the Problem and Establish Design Scope</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Sample Q&A between candidate and interviewer:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>C: How many daily active users are we dealing with?</li>
+<li>I: 1bil DAU</li>
+<li>C: What features should we focus on?</li>
+<li>I: Location update, navigation, ETA, map rendering</li>
+<li>C: How large is road data? Do we have access to it?</li>
+<li>I: We obtained road data from various sources, it's TBs of raw data</li>
+<li>C: Should we take traffic conditions into consideration?</li>
+<li>I: Yes, we should for accurate time estimations</li>
+<li>C: How about different travel modes - by foot, biking, driving?</li>
+<li>I: We should support those</li>
+<li>C: How about multi-stop directions?</li>
+<li>I: Let's not focus on that for scope of interview</li>
+<li>C: Business places and photos?</li>
+<li>I: Good question, but no need to consider those</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We'll focus on three key features - user location update, navigation service including ETA, map rendering.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Non-functional requirements**</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Accuracy</strong>: user shouldn't get wrong directions</li>
+<li><strong class="text-gray-900 font-bold">Smooth navigation</strong>: Users should experience smooth map rendering</li>
+<li><strong class="text-gray-900 font-bold">Data and battery usage</strong>: Client should use as little data and battery as possible. Important for mobile devices.</li>
+<li>General availability and scalability requirements</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Map 101**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Before jumping into the design, there are some map-related concepts we should understand.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Positioning system</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">World is a sphere, rotating on its axis. Positiions are defined by latitude (how far north/south you are) and longitude (how far east/west you are):</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/partitioning-system.png" alt="partitioning-system" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Going from 3D to 2D</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The process of translating points from 3D to 2D plane is called "map projection".</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">There are different ways to do it and each comes with its pros and cons. Almost all distort the actual geometry.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/map-projections.png" alt="map-projections" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Google maps selected a modified version of Mercator projection called "Web Mercator".</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Geocoding</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Geocoding is the process of converting addresses to geographic coordinates.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The reverse process is called "reverse geocoding".</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">One way to achieve this is to use interpolation - leveraging data from different sources (eg GIS-es) where street network is mapped to geo coordinate space.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Geohashing</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Geohashing is an encoding system which encodes a geographic area into a string of letters and digits.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">It depicts the world as a flattened surface and recursively sub-divides it into four quadrants:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/geohashing.png" alt="geohashing" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Map rendering</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Map rendering happens via tiling. Instead of rendering entire map as one big custom image, world is broken up into smaller tiles.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Client only downloads relevant tiles and renders them like stitching together a mosaic.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">There are different tiles for different zoom levels. Client chooses appropriate tiles based on the client's zoom level.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Eg, zooming out the entire world would download only a single 256x256 tile, representing the whole world.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Road data processing for navigation algorithms</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">In most routing algorithms, intersections are represented as nodes and roads are represented as edges:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/road-representation.png" alt="road-representation" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Most navigation algorithms use a modified version of Djikstra or A* algorithms.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Pathfinding performance is sensitive to the size of the graph. To work at scale, we can't represent the whole world as a graph and run the algorithm on it.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Instead, we use a technique similar to tiling - we subdivide the world into smaller and smaller graphs.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Routing tiles hold references to neighboring tiles and algorithms can stitch together a bigger road graph as it traverses interconnected tiles:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/routing-tiles.png" alt="routing-tiles" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This technique enables us to significantly reduce memory bandwidth and only load the tiles we need for the given source/destination pair.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">However, for larger routes, stitching together small, detailed routing tiles would still be time/memory consuming. Instead, there are routing tiles with different level of detail and the algorithm uses the appropriately-detailed tiles, based on the destination we're headed for:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/map-routing-hierarchical.png" alt="map-routing-hierarchical" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Back-of-the-envelope estimation**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">For storage, we need to store:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>map of the world - estimated as ~70pb based on all the tiles we need to store, but factoring in compression of very similar tiles (eg vast desert)</li>
+<li>metadata - negligible in size, so we can skip it from calculation</li>
+<li>Road info - stored as routing tiles</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Estimated QPS for navigation requests - 1bil DAU at 35min of usage per week -> 5bil minutes per day.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Assuming gps update requests are batched, we arrive at 200k QPS and 1mil QPS at peak load</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 2: Propose High-Level Design and Get Buy-In</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/high-level-design.png" alt="high-level-design" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Location service**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/location-service.png" alt="location-service" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">It is responsible for recording a user's location updates:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>location updates are sent every <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">t</code> seconds</li>
+<li>location data streams can be used to improve the service over time, eg provide more accurate ETAs, monitor traffic data, detect closed roads, analyze user behavior, etc</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Instead of sending location updates to the server all the time, we can batch the updates on the client-side and send batches instead:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/location-update-batches.png" alt="location-update-batches" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Despite this optimization, for a system of Google Maps scale, load will still be significant. Therefore, we can leverage a database, optimized for heavy writes such as Cassandra.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We can also leverage Kafka for efficient stream processing of location updates, meant for further analysis.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Example location update request payload:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>POST /v1/locations
+Parameters
+  locs: JSON encoded array of (latitude, longitude, timestamp) tuples.</code></pre></div>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Navigation service**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This component is responsible for finding fast routes between A and B in a reasonable time (a little bit of latency is okay). Route need not be the fastest, but accuracy is important.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Example request payload:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>GET /v1/nav?origin=1355+market+street,SF&destination=Disneyland</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Example response:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>{
+  "distance": {"text":"0.2 mi", "value": 259},
+  "duration": {"text": "1 min", "value": 83},
+  "end_location": {"lat": 37.4038943, "Ing": -121.9410454},
+  "html_instructions": "Head <b>northeast</b> on <b>Brandon St</b> toward <b>Lumin Way</b><div style=\"font-size:0.9em\">Restricted usage road</div>",
+  "polyline": {"points": "_fhcFjbhgVuAwDsCal"},
+  "start_location": {"lat": 37.4027165, "lng": -121.9435809},
+  "geocoded_waypoints": [
+    {
+       "geocoder_status" : "OK",
+       "partial_match" : true,
+       "place_id" : "ChIJwZNMti1fawwRO2aVVVX2yKg",
+       "types" : [ "locality", "political" ]
+    },
+    {
+       "geocoder_status" : "OK",
+       "partial_match" : true,
+       "place_id" : "ChIJ3aPgQGtXawwRLYeiBMUi7bM",
+       "types" : [ "locality", "political" ]
+    }
+  ],
+  "travel_mode": "DRIVING"
+}</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Traffic changes and reroutes are not taken into consideration yet, those will be tackled in the deep dive section.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Map rendering**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Holding the entire data set of mapping tiles on the client-side is not feasible as it's petabytes in size.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">They need to be fetched on-demand from the server, based on the client's location and zoom level.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">When should new tiles be fetched - while user is zooming in/out and during navigation, while they're going towards a new tile.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">How should the map tiles be served to the client?</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>They can be built dynamically, but that puts a huge load on the server and also makes caching hard</li>
+<li>Map tiles are served statically, based on their geohash, which a client can calculate. They can be statically stored & served from a CDN</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/static-map-tiles.png" alt="static-map-tiles" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">CDNs enable users to fetch map tiles from point-of-presence servers (POP) which are closest to users in order to minimize latency:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/cdn-vs-no-cdn.png" alt="cdn-vs-no-cdn" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Options to consider for determining map tiles:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>geohash for map tile can be calculated on the client-side. If that's the case, we should be careful that we commit to this type of map tile calculation for the long-term as forcing clients to update is hard</li>
+<li>alternatively, we can have simple API which calculates the map tile URLs on behalf of the clients at the cost of additional API call</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/map-tile-url-calculation.png" alt="map-tile-url-calculation" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 3: Design Deep Dive</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Data model**</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Let's discuss how we store the different types of data we're dealing with.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Routing tiles</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Initial road data set is obtained from different sources. It is improved over time based on location updates data.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The road data is unstructured. We have a periodic offline processing pipeline, which transforms this raw data into the graph-based routing tiles our app needs.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Instead of storing these tiles in a database as we don't need any database features. We can store them in S3 object storage, while caching them agressively.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We can also leverage libraries to compress adjacency lists into binary files efficiently.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">User location data</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">User location data is very useful for updaring traffic conditions and doing all sorts of other analysis.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We can use Cassandra for storing this kind of data as its nature is to be write-heavy.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Example row:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/user-location-data-torw.png" alt="user-location-data-row" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Geocoding database</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This database stores a key-value pair of lat/long pairs and places.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We can use Redis for its fast read access speed, as we have frequent read and infrequent writes.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Precomputed images of the world map</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">As we discussed, we will precompute map tiling images and store them in CDN.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/precomputed-map-tile-image.png" alt="precomputed-map-tile-image" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">**Services**</h3>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Location service</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Let's focus on the database design and how user location is stored in detail for this service.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/location-service-diagram.png" alt="location-service-diagram" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We can use a NoSQL database to facilitate the heavy write load we have on location updates. We prioritize availability over consistency as user location data often changes and becomes stale as new updates arrive.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We'll choose Cassandra as our database choice as it nicely fits all our requirements.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Example row we're going to store:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/user-location-row-example.png" alt="user-location-row-example" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">user_id</code> is the partition key in order to quickly access all location updates for a particular user</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">timestamp</code> is the clustering key in order to store the data sorted by the time a location update is received</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We also leverage Kafka to stream location updates to various other service which need the location updates for various purposes:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/location-update-streaming.png" alt="location-update-streaming" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Rendering map</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Map tiles are stored at various zoom levels. At the lowest zoom level, the entire world is represented by a single 256x256 tile.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">As zoom levels increase, the number of map tiles quadruples:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/zoom-level-increases.png" alt="zoom-level-increases" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">One optimization we can use is to not send the entire image information over the network, but instead represent tiles as vectors (paths & polygons) and let the client render the tiles dynamically.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This will have substantial bandwidth savings.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Navigation service</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This service is responsible for finding the fastest routes:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/navigation-service.png" alt="navigation-service" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Let's go through each component in this sub-system.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">First, we have the geocoding service which resolves an address to a location of lat/long pair.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Example request:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>https://maps.googleapis.com/maps/api/geocode/json?address=1600+Amphitheatre+Parkway,+Mountain+View,+CA</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Example response:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>{
+   "results" : [
+      {
+         "formatted_address" : "1600 Amphitheatre Parkway, Mountain View, CA 94043, USA",
+         "geometry" : {
+            "location" : {
+               "lat" : 37.4224764,
+               "lng" : -122.0842499
+            },
+            "location_type" : "ROOFTOP",
+            "viewport" : {
+               "northeast" : {
+                  "lat" : 37.4238253802915,
+                  "lng" : -122.0829009197085
+               },
+               "southwest" : {
+                  "lat" : 37.4211274197085,
+                  "lng" : -122.0855988802915
+               }
+            }
+         },
+         "place_id" : "ChIJ2eUgeAK6j4ARbn5u_wAGqWA",
+         "plus_code": {
+            "compound_code": "CWC8+W5 Mountain View, California, United States",
+            "global_code": "849VCWC8+W5"
+         },
+         "types" : [ "street_address" ]
+      }
+   ],
+   "status" : "OK"
+}</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The route planner service computes a suggested route, optimized for travel time according to current traffic conditions.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The shortest-path service runs a variation of the A* algorithm against the routing tiles in object storage to compute an optimal path:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>It receives the source/destination pairs, converts them to lat/long pairs and derives the geohashes from those pairs to derive the routing tiles</li>
+<li>The algorithm starts from the initial routing tile and starts traversing it until a good enough path is found to the destination tile</li>
+</ul>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/shortest-path-service.png" alt="shortest-path-service" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The ETA service is called by the route planner to get estimated time based on machine learning algorithms, predicting ETA based on traffic data.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The ranker service is responsible to rank different possible paths based on filters, passed by the user, ie flags to avoid toll roads or freeways.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The updater service asynchronously update some of the important databases to keep them up-to-date.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Improvement - adaptive ETA and rerouting</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">One improvement we can do is to adaptively update in-flight routes based on newly available traffic data.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">One way to implement this is to store users who are currently navigating through a route in the database by storing all the tiles they're supposed to go through.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Data might look like this:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>user_1: r_1, r_2, r_3, …, r_k
+user_2: r_4, r_6, r_9, …, r_n
+user_3: r_2, r_8, r_9, …, r_m
+...
+user_n: r_2, r_10, r21, ..., r_l</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">If a traffic accident happens on some tile, we can identify all users whose path goes through that tile and re-route them.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">To reduce the amount of tiles we store in the database, we can instead store the origin routing tile and several routing tiles in different resolution levels until the destination tile is also included:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>user_1, r_1, super(r_1), super(super(r_1)), ...</code></pre></div>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/adaptive-eta-data-storage.png" alt="adaptive-eta-data-storage" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Using this, we only need to check if the final tile of a user includes the traffic accident tile to see if user is impacted.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We can also keep track of all possible routes for a navigating user and notify them if a faster re-route is available.</p>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Delivery protocols</h4>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">We have several options, which enable us to proactively push data to clients from the server:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Mobile push notifications don't work because payload is limited and it's not available for web apps</li>
+<li>WebSocket is generally a better option than long-polling as it has less compute footprint on servers</li>
+<li>We can also use server-sent events (SSE) but lean towards web sockets as they support bi-directional communication which can come in handy for eg a last-mile delivery feature</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Step 4: Wrap Up</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">This is our final design:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><div style="margin-left:3rem"></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"><img src="./images/final-design.png" alt="final-design" width="500" /></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2"></div></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">One additional feature we could provide is multi-stop navigation which can be sold to enterprise customers such as Uber or Lyft in order to determine optimal path for visiting a set of locations.</p>
+  </div>
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>System Design Interactive Study Suite &bull; AntiGravity IDE</p>
+</footer>
+</body>
+</html>

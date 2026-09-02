@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Design a Distributed Rate Limiter · Capital One Prep</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'neutral' });</script>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        colors: { ed: { pink: '#db2777', blue: '#2563eb', teal: '#0d9488', amber: '#d97706', sky: '#0284c7', purple: '#7c3aed', orange: '#ea580c' } },
+        fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'ui-monospace', 'monospace'] }
+      }}
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .mermaid { background: #fafafa; border-radius: 8px; padding: 1rem; }
+    details > summary { cursor: pointer; list-style: none; }
+    details > summary::-webkit-details-marker { display: none; }
+    details[open] > summary .chevron { transform: rotate(90deg); }
+    .chevron { transition: transform 0.2s; display: inline-block; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased">
+
+<div class="max-w-5xl mx-auto px-6 py-10">
+
+  <header class="mb-12">
+    <div class="flex items-center gap-2 text-xs font-mono text-gray-500 mb-3">
+      <span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded">CAPITAL ONE GPN</span>
+      <span>·</span><span>SYSTEM DESIGN PREP</span>
+    </div>
+    <h1 class="text-4xl font-extrabold tracking-tight text-gray-900 mb-4">Design a Distributed Rate Limiter</h1>
+    <p class="text-lg text-gray-600 mb-6 max-w-3xl">API rate limiter for 100K RPS across multiple gateway nodes with per-client fairness and sub-millisecond decisions. Real Capital One Power Day question.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-semibold">Scale: 100K RPS</span>
+      <span class="bg-amber-50 border border-amber-200 text-amber-700 px-3 py-1.5 rounded-lg text-sm font-semibold">Bottleneck: Latency-bound (1ms SLA)</span>
+      <span class="bg-teal-50 border border-teal-200 text-teal-700 px-3 py-1.5 rounded-lg text-sm font-semibold">SLA: p99 &lt; 1ms</span>
+      <span class="bg-pink-50 border border-pink-200 text-pink-700 px-3 py-1.5 rounded-lg text-sm font-semibold">Accuracy: &lt; 1% error</span>
+    </div>
+  </header>
+
+  <section class="mb-10 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">1. Real-World Reference &amp; Case Study</h2>
+    <p class="text-gray-700 mb-4">Capital One's API gateway rate-limits 100K+ RPS across dozens of gateway nodes. Stripe uses a similar distributed limiter with Redis sorted sets. The challenge: a naive per-node limiter is unfair (client hits different nodes), and a centralized limiter is a bottleneck.</p>
+    <div class="grid grid-cols-3 gap-4 mb-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-xs font-mono text-gray-500 mb-1">CAPITAL ONE</div>
+        <div class="text-2xl font-bold text-ed-purple">100K</div><div class="text-sm text-gray-600">RPS peak</div>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-xs font-mono text-gray-500 mb-1">GATEWAY NODES</div>
+        <div class="text-2xl font-bold text-ed-purple">50</div><div class="text-sm text-gray-600">EKS pods</div>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-xs font-mono text-gray-500 mb-1">LATENCY BUDGET</div>
+        <div class="text-2xl font-bold text-ed-purple">1ms</div><div class="text-sm text-gray-600">p99</div>
+      </div>
+    </div>
+    <div class="mermaid">
+flowchart LR
+    Client["Client"] --> LB["Load Balancer"]
+    LB --> N1["Gateway 1"]
+    LB --> N2["Gateway 2"]
+    LB --> N3["Gateway N"]
+    N1 -->|"check + increment"| Redis["Redis Cluster<br/>sorted set per client"]
+    N2 -->|"check + increment"| Redis
+    N3 -->|"check + increment"| Redis
+    Redis -->|"allow/deny"| N1
+    Redis -->|"allow/deny"| N2
+    Redis -->|"allow/deny"| N3
+    </div>
+    <div class="mt-3 flex flex-wrap gap-3 text-xs">
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-ed-purple rounded"></span> Focal path</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-ed-orange rounded"></span> Async token refill</span>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-white border border-gray-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">2. Requirements &amp; Scope Clarification</h2>
+    <div class="grid md:grid-cols-3 gap-6">
+      <div>
+        <h3 class="font-semibold text-ed-blue mb-2 flex items-center gap-2"><span class="w-2 h-2 bg-ed-blue rounded-full"></span>Functional</h3>
+        <ul class="space-y-1.5 text-sm text-gray-700">
+          <li class="flex gap-2"><span class="text-ed-blue">•</span><span><strong>Per-client limit</strong> — 1000 req/min per API key</span></li>
+          <li class="flex gap-2"><span class="text-ed-blue">•</span><span><strong>Tiered limits</strong> — free vs paid vs enterprise</span></li>
+          <li class="flex gap-2"><span class="text-ed-blue">•</span><span><strong>Burst allowance</strong> — token bucket for spikes</span></li>
+          <li class="flex gap-2"><span class="text-ed-blue">•</span><span><strong>Headers</strong> — X-RateLimit-Remaining, Retry-After</span></li>
+          <li class="flex gap-2"><span class="text-ed-blue">•</span><span><strong>Dynamic config</strong> — update limits without restart</span></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-semibold text-ed-teal mb-2 flex items-center gap-2"><span class="w-2 h-2 bg-ed-teal rounded-full"></span>Non-Functional</h3>
+        <ul class="space-y-1.5 text-sm text-gray-700">
+          <li class="flex gap-2"><span class="text-ed-teal">•</span><span><strong>Latency</strong> — p99 &lt; 1ms added to request</span></li>
+          <li class="flex gap-2"><span class="text-ed-teal">•</span><span><strong>Accuracy</strong> — &lt; 1% error vs configured limit</span></li>
+          <li class="flex gap-2"><span class="text-ed-teal">•</span><span><strong>Availability</strong> — 99.99% (fail open on limiter down)</span></li>
+          <li class="flex gap-2"><span class="text-ed-teal">•</span><span><strong>Consistency</strong> — eventual (1-2s skew OK)</span></li>
+          <li class="flex gap-2"><span class="text-ed-teal">•</span><span><strong>Fairness</strong> — no client starved by noisy neighbor</span></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-semibold text-gray-500 mb-2 flex items-center gap-2"><span class="w-2 h-2 bg-gray-400 rounded-full"></span>Out of Scope</h3>
+        <ul class="space-y-1.5 text-sm text-gray-600">
+          <li class="flex gap-2"><span>•</span><span>Per-IP rate limiting (bot mitigation)</span></li>
+          <li class="flex gap-2"><span>•</span><span>CAPTCHA / bot detection</span></li>
+          <li class="flex gap-2"><span>•</span><span>Quota / billing (monthly limits)</span></li>
+          <li class="flex gap-2"><span>•</span><span>API key provisioning</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-ed-amber/5 border border-ed-amber/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">3. Scale &amp; Capacity Estimation</h2>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="bg-white border border-amber-200 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-amber mb-3">Throughput</h3>
+        <p class="text-sm text-gray-700 font-mono mb-2">100K RPS, 8.6B req/day:</p>
+        <p>$$ 100000 \times 86400 = 8.64 \times 10^9 \text{ req/day} $$</p>
+        <p class="text-xs text-gray-500 mt-2">Each req = 1 Redis ZADD + 1 ZREMRANGEBYSCORE = 2 ops → 200K Redis ops/s</p>
+      </div>
+      <div class="bg-white border border-teal-200 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-teal mb-3">Memory</h3>
+        <p class="text-sm text-gray-700 font-mono mb-2">Per-client sorted set (1 min window):</p>
+        <p>$$ 1\text{M clients} \times 1000 \text{ tokens} \times 50\text{B} \approx 50\text{GB} $$</p>
+        <p class="text-xs text-gray-500 mt-2">Redis cluster, 10 shards, hot set in memory</p>
+      </div>
+    </div>
+    <div class="mt-4 bg-white border border-gray-200 rounded-lg p-5">
+      <h3 class="font-semibold text-gray-700 mb-3">Latency Budget</h3>
+      <div class="grid md:grid-cols-4 gap-3 text-sm font-mono">
+        <div class="bg-gray-50 rounded p-3"><div class="text-xs text-gray-500">GATEWAY</div><div class="font-bold">0.1ms</div><div class="text-xs">local check</div></div>
+        <div class="bg-gray-50 rounded p-3"><div class="text-xs text-gray-500">REDIS</div><div class="font-bold">0.5ms</div><div class="text-xs">ZADD + cleanup</div></div>
+        <div class="bg-gray-50 rounded p-3"><div class="text-xs text-gray-500">NETWORK</div><div class="font-bold">0.3ms</div><div class="text-xs">RTT to Redis</div></div>
+        <div class="bg-ed-pink/10 rounded p-3"><div class="text-xs text-gray-500">TOTAL</div><div class="font-bold">0.9ms</div><div class="text-xs">under 1ms SLA</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-indigo-50/20 border border-indigo-100 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">4. High-Level Design (HLD)</h2>
+    <p class="text-gray-700 mb-4">Two-tier: <strong>local token bucket</strong> per gateway node (in-process, sub-ms, absorbs bursts) + <strong>global Redis sorted set</strong> (source of truth, per-client fairness). Local bucket refills from Redis every 100ms; if Redis is down, fail open using local bucket alone.</p>
+    <div class="mermaid">
+flowchart TD
+    Client["Client Request"] --> GW["Gateway Node<br/>local token bucket"]
+    GW -->|"local allow?"| Decision{Decision}
+    Decision -->|"yes, local token"| Forward["Forward to service"]
+    Decision -->|"no, check global"| Redis["Redis Cluster<br/>sorted set per client"]
+    Redis -->|"ZADD + count"| Decision2{Count &lt; limit?}
+    Decision2 -->|"yes"| Forward
+    Decision2 -->|"no"| Deny["429 Too Many Requests"]
+    </div>
+    <div class="mt-3 flex flex-wrap gap-3 text-xs">
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-indigo-500 rounded"></span> Local fast path</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-ed-purple rounded"></span> Global source of truth</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-ed-orange rounded"></span> Deny path</span>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-white border border-gray-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">5. Read &amp; Write Data Flow Traces</h2>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="bg-ed-blue/5 border border-ed-blue/20 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-blue mb-3">Allow Flow (fast path)</h3>
+        <ol class="space-y-2 text-sm text-gray-700 list-decimal list-inside">
+          <li>Request hits gateway node</li>
+          <li>Local token bucket: check if token available</li>
+          <li>If yes → decrement local bucket, forward request (0.1ms)</li>
+          <li>Background: local bucket refills from Redis every 100ms</li>
+          <li>Redis ZADD: add timestamp to client's sorted set</li>
+          <li>ZREMRANGEBYSCORE: remove entries older than 60s</li>
+          <li>ZCARD: count entries → if &lt; limit, allow</li>
+        </ol>
+      </div>
+      <div class="bg-ed-orange/5 border border-ed-orange/20 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-orange mb-3">Deny Flow (slow path)</h3>
+        <ol class="space-y-2 text-sm text-gray-700 list-decimal list-inside">
+          <li>Local token bucket empty</li>
+          <li>Gateway queries Redis sorted set</li>
+          <li>ZCARD returns count &gt; limit</li>
+          <li>Return 429 with headers:</li>
+          <li>X-RateLimit-Limit: 1000</li>
+          <li>X-RateLimit-Remaining: 0</li>
+          <li>Retry-After: 30 (seconds until oldest entry expires)</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-indigo-50 border border-indigo-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">6. Core Entities &amp; Database Schema</h2>
+    <p class="text-gray-700 mb-4">Redis sorted set per client (score = timestamp, member = unique request_id). DynamoDB for limit config (per-tier). Redis for local bucket state.</p>
+    <div class="bg-gray-900 text-gray-100 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+<pre>-- Redis: rate_limit:{api_key} (Sorted Set, TTL 120s)
+-- score = timestamp_ms, member = request_uuid
+ZADD rate_limit:ak_123 1700000000123 "req_001"
+ZADD rate_limit:ak_123 1700000000456 "req_002"
+ZREMRANGEBYSCORE rate_limit:ak_123 0 1699999940000  -- remove &gt; 60s old
+ZCARD rate_limit:ak_123  -- returns 2
+
+-- Redis: local_bucket:{node_id}:{api_key} (Hash, in-process)
+{
+  tokens:     850,    -- current token count
+  last_refill: 1700000000000  -- ms timestamp
+}
+
+-- DynamoDB: rate_limit_config (partition by tier)
+{
+  tier:        "enterprise",   // partition key
+  limit_rpm:   10000,
+  burst:       2000,
+  window_sec:  60,
+  updated_at:  1700000000
+}
+
+-- DynamoDB: api_key_mapping (partition by api_key)
+{
+  api_key:     "ak_123",       // partition key
+  client_id:   "uuid",
+  tier:        "enterprise",
+  status:      "active"
+}</pre>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-indigo-50 border border-indigo-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">7. API Design &amp; Data Contract</h2>
+    <div class="space-y-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="bg-ed-blue text-white text-xs font-mono px-2 py-0.5 rounded">MIDDLEWARE</span>
+          <code class="text-sm font-mono">rateLimit(apiKey, tier) → allow|deny</code>
+        </div>
+        <pre class="text-xs font-mono text-gray-700 bg-gray-50 p-3 rounded">Internal call from gateway:
+  in:  { api_key, client_ip, endpoint }
+  out: { allowed: true, remaining: 842, reset_at: 1700000060 }
+  out: { allowed: false, remaining: 0, retry_after: 30 }</pre>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="bg-ed-pink text-white text-xs font-mono px-2 py-0.5 rounded">429</span>
+          <code class="text-sm font-mono">Too Many Requests</code>
+        </div>
+        <pre class="text-xs font-mono text-gray-700 bg-gray-50 p-3 rounded">Headers:
+  X-RateLimit-Limit:     1000
+  X-RateLimit-Remaining: 0
+  X-RateLimit-Reset:     1700000060
+  Retry-After:           30
+Body: { error: "rate_limit_exceeded", retry_after_sec: 30 }</pre>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="bg-ed-teal text-white text-xs font-mono px-2 py-0.5 rounded">PUT</span>
+          <code class="text-sm font-mono">/admin/v1/limits/{tier}</code>
+        </div>
+        <pre class="text-xs font-mono text-gray-700 bg-gray-50 p-3 rounded">Request: { limit_rpm: 5000, burst: 1000, window_sec: 60 }
+Response 200: { tier, limit_rpm, updated_at }
+-- Propagated to gateway nodes via config broadcast (1s TTL)</pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">8. Distributed Coordination &amp; State Management</h2>
+    <p class="text-gray-700 mb-4">No Raft needed. Redis cluster (10 shards, hash by api_key) is the coordination primitive. Local token buckets are eventually consistent with Redis — 100ms sync interval.</p>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <h3 class="font-semibold text-ed-purple mb-2">Local Bucket Sync</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li><strong>Refill interval</strong> — 100ms background task</li>
+          <li><strong>Refill amount</strong> — (limit / 600) tokens per 100ms</li>
+          <li><strong>Cap</strong> — never exceed burst size</li>
+          <li><strong>Fail open</strong> — if Redis down, use local only</li>
+        </ul>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <h3 class="font-semibold text-ed-purple mb-2">Config Broadcast</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li><strong>Store</strong> — DynamoDB config table</li>
+          <li><strong>Broadcast</strong> — Redis Pub/Sub to all nodes</li>
+          <li><strong>Cache</strong> — in-process, 5s TTL</li>
+          <li><strong>Rollback</strong> — instant via new config publish</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">9. Partitioning &amp; Database Scaling</h2>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div>
+        <h3 class="font-semibold text-ed-teal mb-3">Redis: Shard by api_key</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li><strong>10 shards</strong> — 100K RPS / 10 = 10K ops/shard</li>
+          <li><strong>Hash slot</strong> — CRC16(api_key) mod 16384</li>
+          <li><strong>Hot client</strong> — split by api_key + endpoint</li>
+          <li><strong>Replica</strong> — 1 replica per shard for HA</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-semibold text-ed-blue mb-3">Local Bucket</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li><strong>In-process</strong> — Caffeine cache, no network</li>
+          <li><strong>Key</strong> — {node_id, api_key}</li>
+          <li><strong>Eviction</strong> — LRU, 10K entries per node</li>
+          <li><strong>Size</strong> — ~50 bytes per entry → 500KB/node</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-ed-pink/5 border border-ed-pink/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">10. Consistent Hashing &amp; Ring Mechanics</h2>
+    <p class="text-gray-700 mb-4">Redis cluster uses 16384 hash slots. Each api_key maps to a slot via CRC16. Slots are assigned to shards. Resharding moves slots without rehashing all keys.</p>
+    <div class="mermaid">
+flowchart LR
+    subgraph Ring["Redis Cluster — 16384 slots"]
+        S1["Shard A<br/>slots 0-5460"]
+        S2["Shard B<br/>slots 5461-10922"]
+        S3["Shard C<br/>slots 10923-16383"]
+    end
+    Key1["api_key CRC16"] -->|"slot 3210"| S1
+    Key2["api_key CRC16"] -->|"slot 8900"| S2
+    Key3["api_key CRC16"] -->|"slot 15000"| S3
+    </div>
+    <div class="mt-3 flex flex-wrap gap-3 text-xs">
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-ed-pink rounded"></span> Shards (10 total)</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-ed-teal rounded"></span> Key lookup (CRC16)</span>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-indigo-50 border border-indigo-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">11. Caching Topology &amp; Invalidation</h2>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <h3 class="font-semibold text-indigo-700 mb-2">Local Token Bucket</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li><strong>L1</strong> — in-process Caffeine (sub-ms)</li>
+          <li><strong>Refill</strong> — 100ms background, from Redis</li>
+          <li><strong>Burst</strong> — up to 2x per-second rate</li>
+          <li><strong>Eviction</strong> — LRU, 5min idle</li>
+        </ul>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <h3 class="font-semibold text-indigo-700 mb-2">Config Cache</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li><strong>L1</strong> — in-process, 5s TTL</li>
+          <li><strong>L2</strong> — Redis, 60s TTL</li>
+          <li><strong>Invalidation</strong> — Pub/Sub broadcast on change</li>
+          <li><strong>Fallback</strong> — if Pub/Sub down, poll L2</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-ed-orange/5 border border-ed-orange/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">12. Asynchronous Processing &amp; Message Queues</h2>
+    <p class="text-gray-700 mb-4">Rate limiting is synchronous. Async is used for: (1) config broadcast via Redis Pub/Sub, (2) metrics emission to Kafka, (3) local bucket refill from Redis.</p>
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-xs font-mono text-ed-orange mb-1">PUB/SUB</div>
+        <p class="font-semibold text-sm">rate_limit_config</p>
+        <p class="text-xs text-gray-600 mt-1">Config changes broadcast to all gateway nodes</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-xs font-mono text-ed-orange mb-1">KAFKA</div>
+        <p class="font-semibold text-sm">rate_limit_events</p>
+        <p class="text-xs text-gray-600 mt-1">Allow/deny events for analytics + billing</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-xs font-mono text-ed-orange mb-1">ASYNC</div>
+        <p class="font-semibold text-sm">bucket_refill</p>
+        <p class="text-xs text-gray-600 mt-1">100ms scheduled task per node</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-ed-sky/5 border border-ed-sky/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">13. Low-Level Component Design (LLD)</h2>
+    <div class="mermaid mb-6">
+sequenceDiagram
+    participant C as Client
+    participant GW as Gateway
+    participant LB as LocalBucket
+    participant R as Redis
+    participant S as Service
+    C->>GW: GET /api (api_key)
+    GW->>LB: tryConsume(api_key)
+    alt local token available
+        LB-->>GW: true (0.1ms)
+        GW->>S: forward request
+        S-->>GW: 200 OK
+        GW-->>C: 200 OK
+    else local empty
+        GW->>R: ZADD + ZREMRANGEBYSCORE + ZCARD
+        R-->>GW: count=1001
+        alt count &lt; limit
+            GW->>S: forward
+            S-->>GW: 200
+            GW-->>C: 200 + X-RateLimit-Remaining
+        else count &gt;= limit
+            GW-->>C: 429 + Retry-After
+        end
+    end
+    </div>
+
+    <h3 class="font-semibold text-ed-sky mb-3">Java — Token Bucket + Redis Sorted Set</h3>
+    <div class="bg-gray-900 text-gray-100 rounded-lg p-4 font-mono text-sm overflow-x-auto mb-4">
+<pre>public class DistributedRateLimiter {
+    private final RedisClient redis;
+    private final Cache&lt;String, TokenBucket&gt; localBuckets;
+    private final RateLimitConfig config;
+
+    public RateLimitResult check(String apiKey) {
+        // 1. Try local bucket first (fast path)
+        TokenBucket bucket = localBuckets.get(apiKey, k -> new TokenBucket(config));
+        if (bucket.tryConsume()) {
+            return RateLimitResult.allow(bucket.remaining());
+        }
+        // 2. Fall back to Redis sorted set (slow path)
+        String key = "rate_limit:" + apiKey;
+        long now = System.currentTimeMillis();
+        long windowStart = now - (config.getWindowSec() * 1000L);
+
+        // Lua script for atomicity
+        String lua = """
+            redis.call('ZREMRANGEBYSCORE', KEYS[1], 0, ARGV[1])
+            local count = redis.call('ZCARD', KEYS[1])
+            if count &lt; tonumber(ARGV[2]) then
+                redis.call('ZADD', KEYS[1], ARGV[3], ARGV[4])
+                redis.call('EXPIRE', KEYS[1], ARGV[5])
+                return {1, tonumber(ARGV[2]) - count - 1}
+            else
+                return {0, 0}
+            end
+            """;
+
+        Object[] result = redis.eval(lua, List.of(key),
+            List.of(String.valueOf(windowStart),
+                    String.valueOf(config.getLimitRpm()),
+                    String.valueOf(now),
+                    UUID.randomUUID().toString(),
+                    String.valueOf(config.getWindowSec() * 2)));
+
+        boolean allowed = ((Long) result[0]) == 1;
+        long remaining = ((Long) result[1]);
+
+        if (allowed) {
+            bucket.refill(config.getRefillAmount());
+            return RateLimitResult.allow(remaining);
+        } else {
+            long retryAfter = config.getWindowSec() - (now % (config.getWindowSec() * 1000L)) / 1000;
+            return RateLimitResult.deny(retryAfter);
+        }
+    }
+}</pre>
+    </div>
+
+    <h3 class="font-semibold text-ed-sky mb-3">Python — Sliding Window Log</h3>
+    <div class="bg-gray-900 text-gray-100 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+<pre>import time, uuid, redis
+from dataclasses import dataclass
+
+@dataclass
+class RateLimitConfig:
+    limit_rpm: int = 1000
+    window_sec: int = 60
+
+class SlidingWindowLimiter:
+    def __init__(self, redis_client: redis.Redis, config: RateLimitConfig):
+        self.r = redis_client
+        self.config = config
+
+    def check(self, api_key: str) -> dict:
+        key = f"rate_limit:{api_key}"
+        now_ms = int(time.time() * 1000)
+        window_start = now_ms - (self.config.window_sec * 1000)
+
+        # Atomic Lua script
+        lua = """
+        redis.call('ZREMRANGEBYSCORE', KEYS[1], 0, ARGV[1])
+        local count = redis.call('ZCARD', KEYS[1])
+        if count &lt; tonumber(ARGV[2]) then
+            redis.call('ZADD', KEYS[1], ARGV[3], ARGV[4])
+            redis.call('EXPIRE', KEYS[1], ARGV[5])
+            return {1, tonumber(ARGV[2]) - count - 1}
+        else
+            return {0, 0}
+        end
+        """
+
+        allowed, remaining = self.r.eval(
+            lua, 1, key,
+            window_start, self.config.limit_rpm,
+            now_ms, str(uuid.uuid4()),
+            self.config.window_sec * 2
+        )
+
+        if allowed == 1:
+            return {"allowed": True, "remaining": remaining}
+        else:
+            retry_after = self.config.window_sec
+            return {"allowed": False, "remaining": 0, "retry_after": retry_after}</pre>
+    </div>
+  </section>
+
+  <section class="mb-10">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">14. Resiliency &amp; Failure Mitigations</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-red-50 border border-red-200 rounded-lg p-5">
+        <h3 class="font-semibold text-red-700 mb-2">⚡ Redis Down</h3>
+        <p class="text-sm text-gray-700">Redis cluster unavailable. <strong>Mitigation</strong>: fail open using local token bucket only. Each node allows up to (limit / num_nodes) per second. Slight over-allowing but no outage. Alert P1.</p>
+      </div>
+      <div class="bg-ed-orange/5 border border-ed-orange/15 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-orange mb-2">⚡ Hot Client</h3>
+        <p class="text-sm text-gray-700">One client dominates traffic, causes Redis hotspot. <strong>Mitigation</strong>: split key by api_key + endpoint. Or use local-only limiting for that client (less accurate but no hotspot).</p>
+      </div>
+      <div class="bg-red-50 border border-red-200 rounded-lg p-5">
+        <h3 class="font-semibold text-red-700 mb-2">⚡ Clock Skew</h3>
+        <p class="text-sm text-gray-700">Gateway nodes have different clocks. <strong>Mitigation</strong>: use Redis TIME for timestamp in Lua script (server-side). Local buckets use NTP-synced clocks, 50ms skew tolerance.</p>
+      </div>
+      <div class="bg-ed-orange/5 border border-ed-orange/15 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-orange mb-2">⚡ Config Propagation Delay</h3>
+        <p class="text-sm text-gray-700">New limit takes time to reach all nodes. <strong>Mitigation</strong>: Pub/Sub broadcast (1s), 5s TTL poll fallback. Worst case 6s skew — acceptable for rate limits.</p>
+      </div>
+      <div class="bg-red-50 border border-red-200 rounded-lg p-5">
+        <h3 class="font-semibold text-red-700 mb-2">⚡ Gateway Node Down</h3>
+        <p class="text-sm text-gray-700">A gateway pod crashes. <strong>Mitigation</strong>: local bucket state lost, but Redis has the truth. New pod starts with empty local bucket, refills from Redis. No over-allowing.</p>
+      </div>
+      <div class="bg-ed-orange/5 border border-ed-orange/15 rounded-lg p-5">
+        <h3 class="font-semibold text-ed-orange mb-2">⚡ Redis Memory Full</h3>
+        <p class="text-sm text-gray-700">Sorted sets grow too large. <strong>Mitigation</strong>: TTL on every key (2x window). Eviction policy: allkeys-lru. Monitor memory, alert at 80%.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-white border border-gray-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">15. Security, Auth &amp; Data Protection</h2>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div>
+        <h3 class="font-semibold text-gray-700 mb-3">Auth</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li>• <strong>API key</strong> — HMAC-signed, rotated quarterly</li>
+          <li>• <strong>Tier validation</strong> — check key → tier mapping in DynamoDB</li>
+          <li>• <strong>No PII</strong> — rate limit keys are api_key, not user_id</li>
+          <li>• <strong>Audit</strong> — all 429s logged with api_key + endpoint</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-semibold text-gray-700 mb-3">Protection</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li>• <strong>Redis auth</strong> — TLS + ACL, per-shard password</li>
+          <li>• <strong>Encryption</strong> — TLS 1.3 in transit, at-rest optional</li>
+          <li>• <strong>DDoS</strong> — AWS Shield + WAF at edge</li>
+          <li>• <strong>Admin API</strong> — OAuth2, scope: <code>limits:write</code></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-green-50 border border-green-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">16. Observability, Monitoring &amp; Alerting</h2>
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="bg-white border border-green-200 rounded-lg p-4">
+        <h3 class="font-semibold text-green-700 mb-2">Metrics</h3>
+        <ul class="text-sm text-gray-700 space-y-1">
+          <li>• rate_limit_check_duration_ms</li>
+          <li>• rate_limit_decision_total{decision}</li>
+          <li>• rate_limit_redis_ops_total</li>
+          <li>• rate_limit_local_bucket_hit_ratio</li>
+          <li>• rate_limit_config_update_total</li>
+        </ul>
+      </div>
+      <div class="bg-white border border-green-200 rounded-lg p-4">
+        <h3 class="font-semibold text-green-700 mb-2">Dashboards</h3>
+        <ul class="text-sm text-gray-700 space-y-1">
+          <li>• Allow/deny ratio by tier</li>
+          <li>• p99 latency (local vs Redis path)</li>
+          <li>• Top 10 denied clients</li>
+          <li>• Redis memory + QPS per shard</li>
+        </ul>
+      </div>
+      <div class="bg-white border border-green-200 rounded-lg p-4">
+        <h3 class="font-semibold text-green-700 mb-2">Alerts</h3>
+        <ul class="text-sm text-gray-700 space-y-1">
+          <li>• p99 &gt; 1ms for 1 min → P1</li>
+          <li>• Redis down → P1</li>
+          <li>• Deny rate &gt; 10% for 5 min → P2</li>
+          <li>• Local hit ratio &lt; 80% → P3</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-amber-50 border border-amber-200 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">17. Technical Trade-Off &amp; CAP Matrix</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-amber-100"><tr>
+          <th class="text-left p-3 font-semibold">Decision</th>
+          <th class="text-left p-3 font-semibold">Option A</th>
+          <th class="text-left p-3 font-semibold">Option B</th>
+          <th class="text-left p-3 font-semibold">Choice &amp; Why</th>
+        </tr></thead>
+        <tbody class="divide-y divide-gray-200">
+          <tr class="bg-white"><td class="p-3 font-medium">Algorithm</td><td class="p-3">Token bucket</td><td class="p-3">Sliding window log</td><td class="p-3"><strong>Both</strong> — token bucket local, sliding window global</td></tr>
+          <tr class="bg-white"><td class="p-3 font-medium">Store</td><td class="p-3">Redis</td><td class="p-3">DynamoDB</td><td class="p-3"><strong>A</strong> — sub-ms reads, 1ms SLA</td></tr>
+          <tr class="bg-white"><td class="p-3 font-medium">Topology</td><td class="p-3">Centralized</td><td class="p-3">Two-tier (local + global)</td><td class="p-3"><strong>B</strong> — local absorbs bursts, global ensures fairness</td></tr>
+          <tr class="bg-white"><td class="p-3 font-medium">Failure mode</td><td class="p-3">Fail open</td><td class="p-3">Fail closed</td><td class="p-3"><strong>A</strong> — rate limiting is secondary, don't block legit traffic</td></tr>
+          <tr class="bg-white"><td class="p-3 font-medium">Accuracy</td><td class="p-3">Exact (sorted set)</td><td class="p-3">Approximate (counter)</td><td class="p-3"><strong>A</strong> — 1% error budget allows approximate, but exact is simpler</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">18. The Interview Pitch Script</h2>
+    <div class="bg-white border border-gray-200 rounded-lg p-5 font-mono text-sm text-gray-700 leading-relaxed">
+      <p class="mb-3"><span class="text-ed-purple font-semibold">[0:00]</span> "I'll design a distributed rate limiter for 100K RPS with a 1ms p99 SLA. The key challenge: a naive per-node limiter is unfair — a client hitting different nodes gets N times the limit. A centralized limiter is accurate but adds latency. I'll use a two-tier approach."</p>
+      <p class="mb-3"><span class="text-ed-purple font-semibold">[3:00]</span> "Each gateway node has a local token bucket — in-process, sub-ms, absorbs bursts. It refills from Redis every 100ms. Redis holds the source of truth: a sorted set per client, with timestamps as scores. On every request, we ZADD the current timestamp, ZREMRANGEBYSCORE to remove old entries, and ZCARD to count. If count &lt; limit, allow. The Lua script makes this atomic."</p>
+      <p class="mb-3"><span class="text-ed-purple font-semibold">[7:00]</span> "The fast path is local: 90% of requests never hit Redis. The slow path — when the local bucket is empty — hits Redis, which is sharded by api_key across 10 Redis nodes. At 100K RPS, that's 10K ops/s per shard, well within Redis capacity. Total latency: 0.1ms local + 0.5ms Redis + 0.3ms network = 0.9ms, under the 1ms SLA."</p>
+      <p><span class="text-ed-purple font-semibold">[12:00]</span> "For failure modes: if Redis is down, fail open using local buckets only — each node allows limit/N per second, slight over-allowing but no outage. Config changes broadcast via Redis Pub/Sub, 1s propagation. Clock skew handled by using Redis TIME in the Lua script."</p>
+    </div>
+  </section>
+
+  <section class="mb-10 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">19. Handling Interviewer Pushbacks</h2>
+    <div class="space-y-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <p class="font-semibold text-ed-purple mb-2">Q: "What if Redis goes down — do you fail open or closed?"</p>
+        <p class="text-sm text-gray-700">"Fail open. Rate limiting is a secondary concern — we'd rather over-allow than block legitimate traffic. Each node continues with its local token bucket, allowing limit/N per second. We alert P1 on Redis down and page the on-call. If we fail closed, a Redis outage becomes a full API outage, which is worse."</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <p class="font-semibold text-ed-purple mb-2">Q: "How do you handle a hot client that overwhelms one Redis shard?"</p>
+        <p class="text-sm text-gray-700">"Three options: (1) split the key by api_key + endpoint, distributing across shards. (2) Use local-only limiting for that client — less accurate but no hotspot. (3) Promote the client to a dedicated Redis shard. I'd start with option 1, then option 3 if the client is consistently hot."</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <p class="font-semibold text-ed-purple mb-2">Q: "Why token bucket instead of sliding window?"</p>
+        <p class="text-sm text-gray-700">"Token bucket allows bursts — a client can save up tokens and make a quick burst of requests. Sliding window is stricter but less flexible. For APIs, token bucket is the standard — it handles legitimate bursts (a client loading a dashboard) while enforcing an average rate. I use sliding window log in Redis as the source of truth because it's exact, and token bucket locally for speed."</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <p class="font-semibold text-ed-purple mb-2">Q: "How accurate is this? Can a client exceed the limit?"</p>
+        <p class="text-sm text-gray-700">"Yes, slightly. The local bucket can over-allow by up to (limit/N) per node during the 100ms sync window. Worst case: a client gets limit + (N-1) * (limit/N) * 0.1s skew ≈ limit * 1.1. That's 10% over, within our 1% error budget if we tune the local bucket to 90% of per-node share. The Redis path is exact — the over-allowing is only during local bucket depletion."</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <p class="font-semibold text-ed-purple mb-2">Q: "How do you test this at scale?"</p>
+        <p class="text-sm text-gray-700">"Three levels: (1) unit tests for the algorithm — token bucket, sliding window. (2) integration tests with a real Redis — verify atomicity, TTL, eviction. (3) load tests with 100K RPS against a staging cluster — measure p99 latency, Redis QPS, failover behavior. We also run chaos tests — kill Redis shards, gateway nodes, network partitions — and verify fail-open works."</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">20. Advanced Concept Deep Dives</h2>
+    <div class="space-y-3">
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-4">
+        <summary class="font-semibold text-indigo-700 flex items-center gap-2"><span class="chevron">▶</span> Token Bucket vs Sliding Window vs Leaky Bucket</summary>
+        <div class="mt-3 text-sm text-gray-700">
+          <p class="mb-2"><strong>Token bucket</strong>: tokens added at fixed rate, consumed per request. Allows bursts up to bucket size. Best for APIs.</p>
+          <p class="mb-2"><strong>Sliding window log</strong>: stores timestamps of all requests in window. Exact but memory-heavy. Best for source of truth.</p>
+          <p class="mb-2"><strong>Sliding window counter</strong>: divides window into sub-windows, counts per sub-window, extrapolates. Approximate but memory-light.</p>
+          <p><strong>Leaky bucket</strong>: requests enter queue, processed at fixed rate. Smooths bursts but adds latency. Best for message queues.</p>
+        </div>
+      </details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-4">
+        <summary class="font-semibold text-indigo-700 flex items-center gap-2"><span class="chevron">▶</span> Lua Script Atomicity in Redis</summary>
+        <div class="mt-3 text-sm text-gray-700">
+          <p class="mb-2">Redis executes Lua scripts atomically — no other command runs during the script. This is critical for rate limiting: ZADD + ZREMRANGEBYSCORE + ZCARD must be atomic, or two concurrent requests could both see count &lt; limit and both be allowed.</p>
+          <p><strong>Optimization</strong>: Redis caches compiled Lua scripts by SHA. Use EVALSHA instead of EVAL to avoid re-sending the script. Saves bandwidth at 100K RPS.</p>
+        </div>
+      </details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-4">
+        <summary class="font-semibold text-indigo-700 flex items-center gap-2"><span class="chevron">▶</span> Fairness and Noisy Neighbor Problem</summary>
+        <div class="mt-3 text-sm text-gray-700">
+          <p class="mb-2">Without per-client limits, one noisy client can degrade service for all. The distributed limiter enforces per-client fairness: each client gets their configured rate, regardless of others. For shared resources (a single backend), add a global limit on top — but that's a circuit breaker, not a rate limiter.</p>
+          <p><strong>Edge case</strong>: a client with 1000 req/min limit can still cause issues if they burst all 1000 in 1 second. Token bucket with burst=100 prevents this.</p>
+        </div>
+      </details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-4">
+        <summary class="font-semibold text-indigo-700 flex items-center gap-2"><span class="chevron">▶</span> Anycast and Geo-Distributed Limiting</summary>
+        <div class="mt-3 text-sm text-gray-700">
+          <p class="mb-2">For global APIs, clients hit the nearest gateway (anycast). Each region has its own Redis cluster. Global limits require aggregation: each region gets limit/N, and a periodic sync reconciles. This is eventually consistent — a client could exceed the global limit by up to (N-1) * region_limit during sync. For exact global limits, use a single Redis region (adds latency).</p>
+        </div>
+      </details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-4">
+        <summary class="font-semibold text-indigo-700 flex items-center gap-2"><span class="chevron">▶</span> Adaptive Rate Limiting</summary>
+        <div class="mt-3 text-sm text-gray-700">
+          <p class="mb-2">Static limits don't account for backend health. Adaptive limiting adjusts based on response times, error rates, or queue depth. If p99 &gt; 500ms, reduce limit by 20%. If healthy, increase by 5%. This is a feedback loop — the limiter monitors the backend and adjusts. Used by Stripe, GitHub. More complex but more resilient.</p>
+        </div>
+      </details>
+      <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-4">
+        <summary class="font-semibold text-indigo-700 flex items-center gap-2"><span class="chevron">▶</span> Client-Side Rate Limiting</summary>
+        <div class="mt-3 text-sm text-gray-700">
+          <p class="mb-2">The server returns X-RateLimit-Remaining and Retry-After headers. Well-behaved clients use these to throttle themselves — avoiding 429s. This reduces server load but can't be trusted (malicious clients ignore headers). Server-side limiting is the source of truth; client-side is a courtesy.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <footer class="border-t border-gray-200 pt-6 text-center text-xs text-gray-500 font-mono">
+    CAPITAL ONE GPN · SYSTEM DESIGN PREP · Distributed Rate Limiter · Generated with career-tools-sysdesign-generator
+  </footer>
+
+</div>
+</body>
+</html>

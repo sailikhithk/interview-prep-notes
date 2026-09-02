@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Real-Time Fraud Detection &mdash; Capital One GPN</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = { theme: { extend: { colors: {
+  'ed-pink': '#db2777', 'ed-blue': '#2563eb', 'ed-teal': '#0d9488',
+  'ed-amber': '#d97706', 'ed-sky': '#0284c7', 'ed-purple': '#7c3aed', 'ed-orange': '#ea580c',
+}, fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } } } };
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  details > summary { cursor: pointer; list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  .chevron { transition: transform 0.2s; }
+  details[open] .chevron { transform: rotate(90deg); }
+  pre.mono { white-space: pre; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:'neutral',securityLevel:'loose'});</script>
+<script>window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+<main class="max-w-5xl mx-auto px-4 py-6 md:py-10 space-y-4">
+
+<header class="bg-gradient-to-r from-rose-600 to-gray-900 text-white rounded-2xl p-6 md:p-8 shadow-lg">
+  <div class="flex items-center gap-2 text-sm text-gray-300 mb-2">
+    <span class="bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-bold">SYSTEM DESIGN</span>
+    <span class="text-gray-400">&middot;</span>
+    <span>Capital One GPN &middot; Senior Round</span>
+  </div>
+  <h1 class="text-3xl md:text-4xl font-extrabold">Real-Time Fraud Detection</h1>
+  <p class="text-gray-300 mt-2 text-sm md:text-base">Design a real-time fraud detection system that scores 12K transactions per second with &lt;50ms latency, using rules + ML models, and adapts to new fraud patterns.</p>
+  <div class="mt-4 flex flex-wrap gap-2 text-xs">
+    <span class="bg-white/10 px-3 py-1 rounded-full">Scale: 12K tx/sec</span>
+    <span class="bg-white/10 px-3 py-1 rounded-full">Latency: p99 &lt; 50ms</span>
+    <span class="bg-white/10 px-3 py-1 rounded-full">Accuracy: 95%+ recall, &lt;1% false positive</span>
+    <span class="bg-white/10 px-3 py-1 rounded-full">ML + Rules hybrid</span>
+  </div>
+</header>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <h2 class="text-xl md:text-2xl font-bold text-gray-900 mb-3">1. Problem Statement</h2>
+  <p class="text-sm text-gray-700 mb-3">Design a fraud detection system for Capital One that evaluates every card transaction in real time. The system must score transactions in under 50ms, catch known fraud patterns (velocity, location, amount), adapt to new patterns using ML, and minimize false positives (declining a legitimate transaction loses customer trust).</p>
+  <div class="bg-gray-100/60 rounded-lg p-4 text-sm">
+    <p class="font-semibold mb-2">Functional Requirements:</p>
+    <ul class="space-y-1 ml-4">
+      <li>&bull; <strong>Real-time scoring:</strong> Score every transaction in &lt;50ms. Return approve/decline/review.</li>
+      <li>&bull; <strong>Rules engine:</strong> Velocity checks, geo-velocity, blocklists, amount thresholds.</li>
+      <li>&bull; <strong>ML scoring:</strong> Gradient boosted model on transaction features. Score 0-100.</li>
+      <li>&bull; <strong>Case management:</strong> Review queue for borderline transactions. Analyst workflow.</li>
+      <li>&bull; <strong>Feedback loop:</strong> Confirmed fraud feeds back into model retraining.</li>
+      <li>&bull; <strong>Alerting:</strong> Notify customer of suspicious transaction via SMS/app.</li>
+    </ul>
+    <p class="font-semibold mt-3 mb-2">Non-Functional Requirements:</p>
+    <ul class="space-y-1 ml-4">
+      <li>&bull; <strong>Latency:</strong> p99 &lt; 50ms (customer waiting at POS)</li>
+      <li>&bull; <strong>Throughput:</strong> 12K tx/sec peak</li>
+      <li>&bull; <strong>Accuracy:</strong> 95%+ recall (catch 95% of fraud), &lt;1% false positive rate</li>
+      <li>&bull; <strong>Adaptability:</strong> Model retrains daily on new fraud patterns</li>
+      <li>&bull; <strong>Explainability:</strong> Analysts must understand why a transaction was declined</li>
+    </ul>
+  </div>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details open><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">2. Pattern Recognition</h2><span class="chevron text-ed-pink">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-pink/5 border border-ed-pink/15 rounded-lg p-4">
+    <p class="text-sm text-gray-800 mb-2"><strong class="text-ed-pink">Why signals:</strong></p>
+    <ul class="text-sm space-y-1">
+      <li>&bull; Real-time scoring with tight latency &rarr; pre-compute features, cache hot data</li>
+      <li>&bull; Rules + ML hybrid &rarr; rules first (fast), ML for borderline</li>
+      <li>&bull; Velocity checks (transactions per hour) &rarr; sliding window counters in Redis</li>
+      <li>&bull; Model retraining &rarr; offline training, online serving with model versioning</li>
+      <li>&bull; Feedback loop &rarr; event sourcing, confirmed fraud labeled and fed to training</li>
+      <li>&bull; Explainability &rarr; SHAP values or feature importance for each decision</li>
+    </ul>
+    <p class="text-sm text-gray-800 mt-3"><strong class="text-ed-pink">Core pattern:</strong> Two-tier scoring: fast rules engine (10ms) + ML model (30ms) for borderline. Redis for velocity features (sliding windows). Feature store for pre-computed aggregates. Model serving with versioning and A/B testing. Kafka for the feedback loop.</p>
+  </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">3. High-Level Architecture</h2><span class="chevron text-ed-blue">&#9654;</span></summary>
+  <div class="mt-3 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg p-4">
+    <pre class="mono text-xs bg-gray-900 text-gray-100 rounded p-3 overflow-x-auto">Payment Service
+     |
+     v
+[Fraud Gateway] --- API, rate limit, timeout 50ms
+     |
+     +---> [Rules Engine] (10ms)
+     |       |--- Redis: velocity (sliding window)
+     |       |--- Redis: blocklist (card, merchant, IP)
+     |       |--- Redis: geo (last known location)
+     |       returns: APPROVE / DECLINE / REVIEW
+     |
+     +---> [ML Scoring Service] (30ms, only if rules say REVIEW)
+     |       |--- Feature Store (pre-computed aggregates)
+     |       |--- Model Server (XGBoost, versioned)
+     |       returns: score 0-100, top features (SHAP)
+     |
+     v
+[Decision Combiner] --- rules + ML -> final decision
+     |
+     v
+[Kafka] --- fraud.decision event
+     |
+     +---> [Case Management] (review queue for analysts)
+     +---> [Feedback Service] (confirmed fraud -> labels)
+     +---> [Alerting] (SMS/push to customer)
+     +---> [Model Training] (daily retrain on new labels)
+
+  Stores:
+  - Redis: velocity counters, blocklists, geo cache, model cache
+  - Feature Store (Feast/Tecton): pre-computed user aggregates
+  - Model Registry (MLflow): versioned models, A/B test routing
+  - Case DB (PostgreSQL): review cases, analyst decisions
+  - Data Lake (S3): raw transactions for training</pre>
+  <div class="mt-4">
+    <p class="text-xs font-semibold text-gray-500 mb-2">Architecture Diagram (Mermaid):</p>
+    <div class="mermaid">
+flowchart LR
+    A[Payment Service] --> B[Fraud Gateway]
+    B --> C[Rules Engine]
+    C --> C1[(Redis Velocity)]
+    C --> C2[(Redis Blocklist)]
+    C --> C3[(Redis Geo)]
+    C --> D{REVIEW?}
+    D -->|yes| E[ML Scoring Service]
+    E --> E1[(Feature Store)]
+    E --> E2[(MLflow Models)]
+    D -->|no| F[Decision Combiner]
+    E --> F
+    F --> G[(Kafka)]
+    G --> H[Case Management]
+    G --> I[Feedback Service]
+    G --> J[Alerting]
+    G --> K[Model Training]
+    </div>
+  </div>
+  </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">4. How to Think About It</h2><span class="chevron text-ed-blue">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-blue/5 border border-gray-300 rounded-lg p-4 space-y-3">
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">1</span> Why two-tier (rules + ML)?</p>
+      <p class="text-gray-700 ml-8">Rules are fast (10ms) and explainable. They catch known patterns: "card used in 2 countries in 1 hour" or "merchant on blocklist." ML catches subtle patterns rules miss: "this transaction is 87% similar to a known fraud cluster." Rules handle 90% of decisions instantly. ML handles the 10% that rules flag as REVIEW. This keeps latency low and explainability high.</p>
+    </div>
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">2</span> How do you compute velocity in real time?</p>
+      <p class="text-gray-700 ml-8">Redis sliding window counters. For "transactions in last hour": a sorted set per card, keyed by timestamp. Count entries in the last 3600 seconds. O(log n) per update. For "amount spent in last 24h": a counter per card, incremented on each tx, decremented when entries expire. Pre-aggregated in Redis, not computed from raw events.</p>
+    </div>
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">3</span> How do you handle model updates without downtime?</p>
+      <p class="text-gray-700 ml-8">Model registry (MLflow) with versioned models. The scoring service loads models at startup and hot-swaps on signal. A/B testing: route 5% of traffic to the new model, compare metrics. If better, promote to 100%. If worse, roll back. No downtime, data-driven decisions.</p>
+    </div>
+    <div class="text-sm">
+      <p class="font-semibold mb-1"><span class="bg-ed-blue/15 text-ed-blue rounded-full w-6 h-6 inline-flex items-center justify-center font-bold mr-2">4</span> <span class="text-ed-teal">&rarr;</span> What about false positives?</p>
+      <p class="text-gray-700 ml-8">False positives (declining a legitimate transaction) are worse than false negatives (missing fraud). A declined transaction loses customer trust and may cause them to switch cards. Tune the model to prioritize precision. For borderline cases, send to review queue instead of declining. Analyst feedback retrains the model.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- PLACEHOLDER: Sections 5-22 -->
+
+<!-- 5. Real-World Analogy -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">5. Real-World Analogy</h2><span class="chevron text-ed-teal">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-4 text-sm text-gray-800">
+    <p class="mb-2">Think of a <strong>nightclub bouncer with a metal detector and a behavioral analyst</strong>. The metal detector (rules engine) is fast: everyone passes through, it beeps if you have metal. 90% of people pass in 2 seconds. The 10% who beep go to the analyst (ML model) who looks at behavior, past history, and makes a judgment in 5 seconds.</p>
+    <p class="mb-2">The bouncer keeps a count of how many people entered in the last hour (velocity counter in Redis). If someone tries to enter 5 times in 10 minutes, that is suspicious. The blocklist is a photo book of known troublemakers (Redis set).</p>
+    <p>The feedback loop: if a fight breaks out inside, the bouncer notes the person's characteristics and adds them to the training data for the analyst (model retraining). Tomorrow, the analyst is better at spotting similar people.</p>
+  </div>
+  </details>
+</section>
+
+<!-- 6. Build Your Intuition -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">6. Build Your Intuition</h2><span class="chevron text-ed-amber">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Q: Why not just use ML for everything?</p>
+      <p class="text-gray-700">ML models are slower (30ms vs 10ms for rules), harder to explain ("the model said decline" is not actionable for an analyst), and harder to update (retrain vs update a rule). Rules catch the obvious cases fast. ML catches the subtle ones. Hybrid is the best of both.</p>
+    </div>
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-3 text-sm text-ed-teal">
+      <p class="font-semibold mb-1">Q: How do you handle the 50ms budget?</p>
+      <p class="text-gray-800">Rules: 10ms (Redis lookups). ML: 30ms (feature fetch + model inference). Decision combiner: 5ms. Kafka publish: 5ms. Total: 50ms. Pre-compute features in the feature store. Cache model in memory. Use gRPC for internal calls. No disk I/O on the hot path.</p>
+    </div>
+    <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Q: What features does the ML model use?</p>
+      <p class="text-gray-700">Transaction features: amount, currency, merchant category, time of day. User features: historical spend pattern, average transaction amount, preferred merchants. Velocity features: transactions in last 1h/24h/7d, amount in last 24h. Context features: device, IP, geo distance from last transaction. ~50-100 features total.</p>
+    </div>
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-3 text-sm text-ed-teal">
+      <p class="font-semibold mb-1">Q: How do you deal with concept drift (fraud patterns change)?</p>
+      <p class="text-gray-800">Daily model retraining on the latest labeled data. Monitor model performance metrics (precision, recall) in production. If recall drops below threshold, trigger an alert. A/B test new models against the champion. The feedback loop from analysts and confirmed fraud cases is the key to adaptation.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 7. How It Works (Step by Step) -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">7. How It Works (Step by Step)</h2><span class="chevron text-ed-sky">&#9654;</span></summary>
+  <div class="mt-3 space-y-2 text-sm">
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 1:</strong> Payment Service calls Fraud Gateway with transaction data (card, amount, merchant, location, timestamp).</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 2:</strong> Fraud Gateway calls Rules Engine. Rules Engine checks Redis: velocity (tx count last 1h), blocklist (card, merchant, IP), geo (distance from last tx), amount threshold.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 3:</strong> Rules Engine returns: APPROVE (low risk), DECLINE (known fraud pattern), or REVIEW (borderline).</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 4:</strong> If APPROVE or DECLINE, skip ML. Return decision. 90% of transactions stop here (10ms total).</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 5:</strong> If REVIEW, call ML Scoring Service. Fetch pre-computed features from Feature Store. Run XGBoost model. Returns score 0-100 and top SHAP features.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 6:</strong> Decision Combiner: if ML score &gt; 80, DECLINE. If 50-80, REVIEW (send to case queue). If &lt; 50, APPROVE.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 7:</strong> Publish fraud.decision event to Kafka. Return decision to Payment Service. Total: 40-50ms.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 8:</strong> Async: Case Management creates a review case for REVIEW decisions. Analyst reviews, marks as fraud or legitimate. Feedback Service records the label.</div>
+    <div class="bg-ed-sky/15 text-ed-sky rounded-lg p-3"><strong>Step 9:</strong> Daily: Model Training job pulls new labels from Feedback Service, retrains XGBoost, validates against holdout, registers new model in MLflow. A/B test against champion.</div>
+  </div>
+  </details>
+</section>
+
+<!-- 8. Data Model -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">8. Data Model</h2><span class="chevron text-ed-amber">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Velocity Counters (Redis Sorted Sets)</p>
+      <pre class="mono text-xs bg-gray-200 rounded p-2 mt-1">velocity:tx_count:{card_id} = ZSET(timestamp, tx_id)
+  -- Count entries with score > (now - 3600) for 1h velocity
+velocity:tx_amount:{card_id} = ZSET(timestamp, amount)
+  -- Sum amounts with score > (now - 86400) for 24h spend</pre>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Blocklists (Redis Sets)</p>
+      <pre class="mono text-xs bg-gray-200 rounded p-2 mt-1">blocklist:cards = SET of blocked card tokens
+blocklist:merchants = SET of blocked merchant IDs
+blocklist:ips = SET of blocked IP addresses
+blocklist:devices = SET of blocked device fingerprints</pre>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Feature Store (Feast/Tecton)</p>
+      <pre class="mono text-xs bg-gray-200 rounded p-2 mt-1">user_features:{customer_id} = {
+  avg_tx_amount_30d: DECIMAL,
+  tx_count_30d: INT,
+  distinct_merchants_30d: INT,
+  preferred_merchant_category: VARCHAR,
+  last_tx_location: GEOPOINT,
+  account_age_days: INT,
+  ...
+}</pre>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Case (PostgreSQL)</p>
+      <pre class="mono text-xs bg-gray-200 rounded p-2 mt-1">fraud_cases:
+  case_id        UUID PK
+  tx_id          UUID
+  customer_id    VARCHAR
+  score          INT  -- ML score
+  reason         TEXT  -- SHAP top features
+  status         ENUM(open, reviewed, confirmed_fraud, confirmed_legit)
+  analyst_id     VARCHAR NULL
+  created_at     TIMESTAMP
+  resolved_at    TIMESTAMP NULL</pre>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 9. Interactive Fraud Score Simulator -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details open><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">9. Interactive Fraud Score Simulator</h2><span class="chevron text-ed-pink">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-pink/5 border border-ed-pink/15 rounded-lg p-4">
+    <p class="text-sm text-gray-800 mb-3"><span class="bg-ed-pink/10 text-ed-pink px-2 py-0.5 rounded text-xs font-bold mr-2">INTERACTIVE</span>Adjust transaction parameters and see the fraud score and decision.</p>
+    <div class="grid md:grid-cols-2 gap-4 mb-3">
+      <div>
+        <label class="text-xs text-gray-600 block mb-1">Amount ($): <span id="amt-val">500</span></label>
+        <input id="fraud-amt" type="range" min="10" max="5000" step="10" value="500" class="w-full">
+      </div>
+      <div>
+        <label class="text-xs text-gray-600 block mb-1">Transactions in last 1h: <span id="vel-val">2</span></label>
+        <input id="fraud-vel" type="range" min="0" max="20" step="1" value="2" class="w-full">
+      </div>
+      <div>
+        <label class="text-xs text-gray-600 block mb-1">Distance from last tx (km): <span id="dist-val">100</span></label>
+        <input id="fraud-dist" type="range" min="0" max="10000" step="50" value="100" class="w-full">
+      </div>
+      <div>
+        <label class="text-xs text-gray-600 block mb-1">Merchant on blocklist: <span id="bl-val">No</span></label>
+        <select id="fraud-bl" class="w-full border border-gray-300 rounded p-1 text-sm">
+          <option value="no">No</option>
+          <option value="yes">Yes</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid md:grid-cols-3 gap-3">
+      <div id="rules-result" class="bg-gray-100 rounded-lg p-3 text-center"></div>
+      <div id="ml-result" class="bg-gray-100 rounded-lg p-3 text-center"></div>
+      <div id="final-result" class="bg-gray-100 rounded-lg p-3 text-center"></div>
+    </div>
+    <p id="fraud-explanation" class="text-sm text-gray-700 mt-3"></p>
+  </div>
+  <script>
+    function fraudScore() {
+      const amt = parseInt(document.getElementById('fraud-amt').value);
+      const vel = parseInt(document.getElementById('fraud-vel').value);
+      const dist = parseInt(document.getElementById('fraud-dist').value);
+      const bl = document.getElementById('fraud-bl').value;
+      document.getElementById('amt-val').textContent = '$' + amt;
+      document.getElementById('vel-val').textContent = vel;
+      document.getElementById('dist-val').textContent = dist + ' km';
+      document.getElementById('bl-val').textContent = bl === 'yes' ? 'Yes' : 'No';
+      // Rules engine
+      let rulesDecision = 'APPROVE', rulesReason = [];
+      if (bl === 'yes') { rulesDecision = 'DECLINE'; rulesReason.push('Merchant on blocklist'); }
+      if (vel > 10) { rulesDecision = 'DECLINE'; rulesReason.push('Velocity > 10 tx/hour'); }
+      else if (vel > 5) { rulesDecision = 'REVIEW'; rulesReason.push('High velocity: ' + vel + ' tx/hour'); }
+      if (dist > 5000) { rulesDecision = 'DECLINE'; rulesReason.push('Impossible travel: ' + dist + 'km'); }
+      else if (dist > 1000 && rulesDecision !== 'DECLINE') { rulesDecision = 'REVIEW'; rulesReason.push('Geo-velocity: ' + dist + 'km'); }
+      if (amt > 2000 && rulesDecision === 'APPROVE') { rulesDecision = 'REVIEW'; rulesReason.push('High amount: $' + amt); }
+      if (rulesDecision === 'APPROVE') rulesReason.push('No rules triggered');
+      const rulesEl = document.getElementById('rules-result');
+      rulesEl.innerHTML = '<p class="text-xs text-gray-600 mb-1">Rules Engine</p><p class="text-lg font-bold ' + (rulesDecision === 'APPROVE' ? 'text-emerald-600' : rulesDecision === 'DECLINE' ? 'text-red-600' : 'text-amber-600') + '">' + rulesDecision + '</p><p class="text-xs text-gray-500 mt-1">' + rulesReason.join(', ') + '</p>';
+      // ML scoring (only if REVIEW)
+      let mlScore = 0, mlDecision = 'SKIP', features = [];
+      if (rulesDecision === 'REVIEW') {
+        mlScore = Math.min(100, Math.round(amt / 50 + vel * 5 + dist / 100 + (bl === 'yes' ? 30 : 0)));
+        if (mlScore > 80) mlDecision = 'DECLINE';
+        else if (mlScore > 50) mlDecision = 'REVIEW';
+        else mlDecision = 'APPROVE';
+        features.push('Amount: +' + Math.round(amt/50));
+        features.push('Velocity: +' + vel * 5);
+        features.push('Distance: +' + Math.round(dist/100));
+      }
+      const mlEl = document.getElementById('ml-result');
+      mlEl.innerHTML = '<p class="text-xs text-gray-600 mb-1">ML Score</p>' + (mlDecision === 'SKIP' ? '<p class="text-lg font-bold text-gray-400">SKIP</p><p class="text-xs text-gray-500">Rules sufficient</p>' : '<p class="text-lg font-bold ' + (mlDecision === 'APPROVE' ? 'text-emerald-600' : mlDecision === 'DECLINE' ? 'text-red-600' : 'text-amber-600') + '">' + mlScore + '</p><p class="text-xs text-gray-500 mt-1">' + mlDecision + ' (' + features.join(', ') + ')</p>');
+      // Final
+      let finalDecision = rulesDecision;
+      if (rulesDecision === 'REVIEW') finalDecision = mlDecision;
+      const finalEl = document.getElementById('final-result');
+      finalEl.innerHTML = '<p class="text-xs text-gray-600 mb-1">Final Decision</p><p class="text-xl font-bold ' + (finalDecision === 'APPROVE' ? 'text-emerald-600' : finalDecision === 'DECLINE' ? 'text-red-600' : 'text-amber-600') + '">' + finalDecision + '</p>';
+      let explanation = '';
+      if (finalDecision === 'APPROVE') explanation = 'Transaction approved. Rules passed' + (rulesDecision === 'REVIEW' ? ', ML score low (' + mlScore + ')' : '') + '.';
+      else if (finalDecision === 'DECLINE') explanation = 'Transaction declined. ' + (rulesDecision === 'DECLINE' ? 'Rule triggered: ' + rulesReason.join(', ') : 'ML score ' + mlScore + ' > 80 (high fraud probability).');
+      else explanation = 'Transaction sent to review queue. Analyst will evaluate. ML score: ' + mlScore + '.';
+      document.getElementById('fraud-explanation').textContent = explanation;
+    }
+    ['fraud-amt', 'fraud-vel', 'fraud-dist', 'fraud-bl'].forEach(id => {
+      const el = document.getElementById(id);
+      el.oninput = fraudScore;
+      el.onchange = fraudScore;
+    });
+    fraudScore();
+  </script>
+  </details>
+</section>
+
+<!-- 10. Scalability Deep Dive -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">10. Scalability Deep Dive</h2><span class="chevron text-ed-teal">&#9654;</span></summary>
+  <div class="mt-3 grid md:grid-cols-2 gap-3">
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-4">
+      <h3 class="font-bold text-ed-teal mb-2">Throughput</h3>
+      <p class="text-sm text-gray-800">12K tx/sec. Fraud Gateway: stateless, 50 pods. Rules Engine: stateless, 30 pods. Redis: 10-node cluster for velocity and blocklists. ML Scoring: 20 pods with model in memory. Feature Store: 5 replicas.</p>
+    </div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-4">
+      <h3 class="font-bold text-ed-purple mb-2">Latency</h3>
+      <p class="text-sm text-gray-800">p99 &lt; 50ms. Rules: 10ms (Redis pipeline). ML: 30ms (feature fetch 10ms + model inference 20ms). Decision: 5ms. Kafka publish: 5ms. 90% of tx skip ML, so p99 for those is 20ms.</p>
+    </div>
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-700">
+      <h3 class="font-bold mb-2">Feature Store</h3>
+      <p class="text-sm text-gray-800">Pre-computed user aggregates (30-day spend, merchant preferences) updated nightly. Real-time features (velocity) in Redis. Online feature fetch: 10ms from Redis + feature store. Offline training features from data lake.</p>
+    </div>
+    <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-4 text-ed-amber">
+      <h3 class="font-bold mb-2">Model Serving</h3>
+      <p class="text-sm text-gray-800">XGBoost model loaded in memory (JVM/Python). 20ms inference for 100 features. Model versioned in MLflow. Hot-swap on signal. A/B test routing in Fraud Gateway. Champion vs challenger pattern.</p>
+    </div>
+  </div>
+  <div class="mt-4 bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+    <h3 class="font-bold text-indigo-700 mb-2">Back-of-the-Envelope Estimation</h3>
+    <p class="text-sm text-gray-800 mb-2">12K tx/sec peak, 1B tx/day.</p>
+    <p class="text-sm text-gray-800 mb-2">$$\text{Daily volume} = 10^9 \text{ tx} \quad \text{Fraud rate} \approx 0.1\% \Rightarrow 10^6 \text{ fraud cases/day}$$</p>
+    <p class="text-sm text-gray-800 mb-2">Rules Engine: 90% of tx handled by rules. $$\text{Rules throughput} = 12{,}000 \times 0.9 = 10{,}800 \text{ tx/sec} \quad \text{ML throughput} = 1{,}200 \text{ tx/sec}$$</p>
+    <p class="text-sm text-gray-800 mb-2">Redis velocity: sliding window 1h per card. $$\text{Keys} = 10^8 \text{ cards} \times 1 \text{ key} = 10^8 \text{ keys} \times 100 \text{ bytes} \approx 10 \text{ GB}$$</p>
+    <p class="text-sm text-gray-800">Feature Store: 100 features $\times$ $10^8$ users $\times$ 4 bytes $\approx 40$ GB. Model training: $10^9$ tx/day $\times$ 100 features, XGBoost retrain $\approx 30$ min on 100-core cluster.</p>
+  </div>
+  </details>
+</section>
+
+<!-- 11. Failure Modes & Resilience -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">11. Failure Modes & Resilience</h2><span class="chevron text-ed-teal">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-red-700 mb-1">Rules Engine Timeout</p>
+      <p class="text-gray-800">Fail open (APPROVE) for low-risk transactions. Fail closed (DECLINE) for high-risk (e.g., amount &gt; $5000). Circuit breaker: after 5 timeouts, stop calling rules, use ML only with a conservative threshold.</p>
+    </div>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-red-700 mb-1">ML Scoring Service Down</p>
+      <p class="text-gray-800">Rules engine still works. For REVIEW decisions, fail open (APPROVE with post-transaction review) or fail closed (DECLINE). Business decision. Circuit breaker on ML service. Post-transaction review queue for fail-open cases.</p>
+    </div>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-red-700 mb-1">Redis (Velocity) Down</p>
+      <p class="text-gray-800">Velocity checks fail. Fall back to ML-only scoring with a conservative threshold. Or fail open with post-transaction review. When Redis recovers, rebuild velocity from Kafka event replay.</p>
+    </div>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-red-700 mb-1">Feature Store Down</p>
+      <p class="text-gray-800">ML scoring cannot fetch user features. Fall back to rules-only. Circuit breaker. When feature store recovers, ML resumes. Cache features locally for 5 min as a buffer.</p>
+    </div>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-red-700 mb-1">Model Performance Degradation</p>
+      <p class="text-gray-800">Monitor precision/recall in real time. If recall drops below 90%, alert. If precision drops (too many false positives), alert. Roll back to previous model version. Investigate concept drift.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 12. Edge Cases & Gotchas -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">12. Edge Cases & Gotchas</h2><span class="chevron text-ed-orange">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">New card with no history</p>
+      <p class="text-gray-800">No velocity, no historical features. ML model has little to work with. Use a higher base risk score for new cards. Rules: lower velocity threshold. After 30 days of history, normal scoring applies.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Legitimate high-amount transaction</p>
+      <p class="text-gray-800">Customer buys a $5000 TV. Rules flag as REVIEW (high amount). ML sees: normal merchant, customer has history of large purchases, location matches. ML score low. APPROVE. The model must learn from the user's pattern, not just the amount.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Traveling abroad</p>
+      <p class="text-gray-800">Customer travels to Europe. Distance from last tx is 5000km. Rules flag as REVIEW. ML sees: customer has traveled before, ticket purchase pattern, hotel category. ML score low. APPROVE. Travel notification feature lets customers pre-notify.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Coordinated fraud attack</p>
+      <p class="text-gray-800">Fraudster tests 100 cards with $1 transactions. Each card looks normal individually. But the merchant or IP is shared. Aggregate-level rules: "same IP, 100 cards, 1 hour" triggers an alert. Graph-based ML can detect fraud rings.</p>
+    </div>
+    <div class="bg-ed-orange/5 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-orange mb-1">Model bias and fairness</p>
+      <p class="text-gray-800">The model might disproportionately decline transactions from certain demographics. Monitor fairness metrics. Ensure features do not proxy for protected classes. Regular bias audits. Regulatory requirement.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 13. Flashcards -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">13. Flashcards</h2><span class="chevron text-ed-purple">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q1: Why rules + ML hybrid?</summary>
+      <p class="text-sm text-gray-800 mt-2">Rules are fast (10ms), explainable, and catch known patterns. ML is slower (30ms), catches subtle patterns, but is harder to explain. Hybrid: rules handle 90% instantly, ML handles the 10% that rules flag as borderline.</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q2: How do you compute velocity in real time?</summary>
+      <p class="text-sm text-gray-800 mt-2">Redis Sorted Sets keyed by card_id, scored by timestamp. Count entries with score &gt; (now - window). O(log n) per update. For amount velocity, store (timestamp, amount) and sum amounts in the window.</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q3: How do you handle model updates?</summary>
+      <p class="text-sm text-gray-800 mt-2">MLflow model registry. Champion vs challenger A/B testing. Hot-swap models in the scoring service. Monitor precision/recall. Roll back if performance degrades. Daily retraining on new labeled data.</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q4: What is the feedback loop?</summary>
+      <p class="text-sm text-gray-800 mt-2">Analyst reviews borderline transactions. Confirmed fraud and legitimate cases are labeled. Labels feed into daily model retraining. The model learns from its mistakes. This is how the system adapts to new fraud patterns.</p>
+    </details>
+    <details class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-ed-purple">Q5: How do you ensure explainability?</summary>
+      <p class="text-sm text-gray-800 mt-2">SHAP values for every ML decision: top 5 features that contributed to the score. Analysts see "declined because: high amount, unusual merchant, high velocity." This is actionable and builds trust. Regulatory requirement for credit decisions.</p>
+    </details>
+  </div>
+  </details>
+</section>
+
+<!-- 14. Where It Is Used (Real World) -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">14. Where It Is Used (Real World)</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <div class="bg-amber-100 border border-amber-300 text-amber-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Capital One</p>
+      <p class="text-gray-800">Uses ML-based fraud detection on every transaction. Their "Second Look" system reviews borderline transactions. They publish papers on feature engineering and model fairness for credit card fraud.</p>
+    </div>
+    <div class="bg-gray-100 border border-gray-300 text-gray-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Stripe (Stripe Radar)</p>
+      <p class="text-gray-800">Rules + ML hybrid. Radar scores every transaction in real time. Merchants can add custom rules. Their blog covers the architecture: feature store, model serving, feedback loop.</p>
+    </div>
+    <div class="bg-rose-100 border border-rose-300 text-rose-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">PayPal</p>
+      <p class="text-gray-800">Processes fraud scoring at scale. Uses deep learning models alongside rules. Their engineering blog describes the evolution from rules-only to hybrid ML + rules.</p>
+    </div>
+    <div class="bg-indigo-100 border border-indigo-300 text-indigo-700 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Sift Science</p>
+      <p class="text-gray-800">Fraud detection as a service. Uses ML on network graphs to detect fraud rings. Their architecture is a reference for graph-based fraud detection.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 15. Common Mistakes -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">15. Common Mistakes</h2><span class="chevron text-ed-orange">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-orange/5 border border-ed-orange/15 rounded-lg p-4">
+    <ul class="text-sm space-y-2">
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>ML only, no rules.</strong> Slower, harder to explain, harder to update. Rules handle the obvious cases fast.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Computing velocity from raw events.</strong> Too slow. Pre-aggregate in Redis sliding windows.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>No feedback loop.</strong> Model never improves. Analyst decisions must feed back into training.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>No explainability.</strong> "The model said decline" is not actionable. Use SHAP values. Analysts need to understand decisions.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Ignoring false positives.</strong> Declining a legitimate transaction loses customers. Tune for precision. Review queue for borderline.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>No model monitoring.</strong> Concept drift degrades the model silently. Monitor precision/recall. Alert on degradation.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>No A/B testing for model updates.</strong> Blindly deploying a new model is risky. A/B test against the champion. Data-driven promotion.</li>
+      <li>&bull; <span class="bg-ed-orange inline-block w-2 h-2 rounded-full"></span> <strong>Ignoring aggregate-level fraud.</strong> Individual transactions look normal, but the pattern across cards is fraud. Graph-based detection catches fraud rings.</li>
+    </ul>
+  </div>
+  </details>
+</section>
+
+<!-- 16. Interview Tips -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">16. Interview Tips</h2><span class="chevron text-ed-purple">&#9654;</span></summary>
+  <div class="mt-3 bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-4">
+    <ul class="text-sm space-y-2">
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Start with the 50ms budget.</strong> "I have 50ms. Rules take 10ms, ML takes 30ms. I will use rules first, ML only for borderline."</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Explain the two-tier design.</strong> Rules for known patterns, ML for subtle patterns. 90% handled by rules. Shows architectural thinking.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Discuss Redis for velocity.</strong> Sorted sets, sliding windows. This is the key data structure for real-time velocity.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Mention the feedback loop.</strong> Analyst labels, daily retraining, A/B testing. This is how the system adapts. Senior signal.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Discuss false positives.</strong> They are worse than false negatives. Review queue for borderline. Tune for precision. Customer trust.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Mention explainability.</strong> SHAP values. Analysts need to understand decisions. Regulatory requirement.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Discuss failure modes.</strong> Fail open vs fail closed. Circuit breakers. Post-transaction review. This is production thinking.</li>
+      <li>&bull; <span class="bg-ed-purple inline-block w-2 h-2 rounded-full"></span> <strong>Mention graph-based fraud.</strong> Fraud rings, coordinated attacks. Individual transactions look normal but the network is suspicious. Advanced signal.</li>
+    </ul>
+  </div>
+  </details>
+</section>
+
+<!-- 17. Related System Design Problems -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">17. Related System Design Problems</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Real-Time Anomaly Detection</strong> &mdash; generic pattern for any domain</span>
+      <span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-bold">CORE</span>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Feature Store Design</strong> &mdash; online/offline feature serving</span>
+      <span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-bold">CORE</span>
+    </div>
+    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>ML Model Serving</strong> &mdash; versioning, A/B testing, hot-swap</span>
+      <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-bold">SIMILAR</span>
+    </div>
+    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Spam Detection</strong> &mdash; rules + ML hybrid for email/messages</span>
+      <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-bold">SIMILAR</span>
+    </div>
+    <div class="bg-rose-50 border border-rose-200 rounded-lg p-3 text-sm flex items-center justify-between">
+      <span><strong>Graph-Based Fraud Detection</strong> &mdash; fraud rings, network analysis</span>
+      <span class="bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-xs font-bold">ADVANCED</span>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 18. Key Technologies -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">18. Key Technologies</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 grid md:grid-cols-2 gap-2 text-sm">
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Redis</strong> &mdash; velocity counters, blocklists, sliding windows</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>XGBoost / LightGBM</strong> &mdash; gradient boosted trees for scoring</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Feast / Tecton</strong> &mdash; feature store for online/offline serving</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>MLflow</strong> &mdash; model registry, versioning, A/B testing</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Kafka</strong> &mdash; event backbone for feedback loop</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>SHAP / LIME</strong> &mdash; model explainability</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Flink</strong> &mdash; streaming aggregation for real-time features</div>
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3"><strong>Neo4j / GraphX</strong> &mdash; graph-based fraud ring detection</div>
+  </div>
+  </details>
+</section>
+
+<!-- 19. Trade-Offs -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">19. Trade-Offs</h2><span class="chevron text-indigo-600">&#9654;</span></summary>
+  <div class="mt-3 bg-indigo-50 border border-indigo-200 rounded-lg p-4 text-indigo-700 text-sm space-y-3">
+    <div>
+      <p class="font-semibold mb-1">Rules vs ML</p>
+      <p class="text-gray-800">Rules: fast, explainable, easy to update, but miss subtle patterns. ML: catches subtle patterns, but slower, harder to explain, harder to update. Hybrid gets the best of both at the cost of complexity.</p>
+    </div>
+    <div>
+      <p class="font-semibold mb-1">False Positives vs False Negatives</p>
+      <p class="text-gray-800">False positive (declining legitimate tx) loses customer trust. False negative (missing fraud) loses money. For Capital One, customer trust is paramount. Tune for low false positives. Review queue for borderline.</p>
+    </div>
+    <div>
+      <p class="font-semibold mb-1">Latency vs Model Complexity</p>
+      <p class="text-gray-800">A deep neural network might be more accurate but takes 100ms. XGBoost takes 20ms and is nearly as accurate. For the 50ms budget, XGBoost is the right choice. Deep learning for offline analysis.</p>
+    </div>
+    <div>
+      <p class="font-semibold mb-1">Real-time vs Batch Features</p>
+      <p class="text-gray-800">Real-time features (velocity) are fresh but expensive to compute. Batch features (30-day aggregates) are cheap but stale. Use both: real-time for short windows, batch for long windows. Feature store bridges them.</p>
+    </div>
+    <div>
+      <p class="font-semibold mb-1">Fail Open vs Fail Closed</p>
+      <p class="text-gray-800">Fail open: approve on service failure (customer experience). Fail closed: decline on failure (security). Business decision. Capital One: fail open for low-risk, fail closed for high-risk. Post-transaction review for fail-open.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 20. Monitoring & Observability -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">20. Monitoring & Observability</h2><span class="chevron text-ed-sky">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-sky mb-1">Model Performance Metrics</p>
+      <p class="text-gray-800">Precision, recall, F1, false positive rate, false negative rate. Tracked in real time. Alert if recall &lt; 90% or false positive rate &gt; 1%. Dashboard for model health.</p>
+    </div>
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-sky mb-1">System Metrics</p>
+      <p class="text-gray-800">Scoring latency p99, throughput, error rate, Redis hit rate, feature store latency, model inference time. Alert on SLO breaches.</p>
+    </div>
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-sky mb-1">Business Metrics</p>
+      <p class="text-gray-800">Fraud loss rate ($ fraud / $ total), decline rate, customer complaints, chargeback rate. These are the ultimate KPIs. Tracked daily. Reported to executives.</p>
+    </div>
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-sky mb-1">Fairness Monitoring</p>
+      <p class="text-gray-800">Decline rate by demographic group. If one group has a significantly higher decline rate, investigate bias. Regulatory requirement. Regular fairness audits.</p>
+    </div>
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3 text-sm">
+      <p class="font-semibold text-ed-sky mb-1">A/B Test Monitoring</p>
+      <p class="text-gray-800">Champion vs challenger: precision, recall, latency. Statistical significance. Auto-promote if challenger is better. Auto-roll back if worse. No manual intervention.</p>
+    </div>
+  </div>
+  </details>
+</section>
+
+<!-- 21. Follow-Up Questions -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">21. Follow-Up Questions</h2><span class="chevron text-indigo-600">&#9654;</span></summary>
+  <div class="mt-3 space-y-2">
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How would you detect fraud rings (coordinated fraud)?</summary>
+      <p class="text-sm text-gray-800 mt-2">Graph-based detection. Build a graph: cards, merchants, IPs, devices as nodes. Edges: "card used at merchant," "card from IP." Fraud rings form dense subgraphs. Use community detection (Louvain) or graph neural networks. Neo4j or GraphX for processing.</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How would you handle real-time model updates (online learning)?</summary>
+      <p class="text-sm text-gray-800 mt-2">Online learning: update the model incrementally on each new label. XGBoost supports incremental training. Risk: model instability, no validation. Safer: micro-batch retraining every hour. Validate before promoting. Online learning is advanced and risky for production.</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How would you handle cross-channel fraud (card + ACH + wire)?</summary>
+      <p class="text-sm text-gray-800 mt-2">Unified customer view across channels. Velocity features span all channels. A customer with 10 card transactions and 5 ACH transfers in 1 hour is more suspicious than either alone. Feature store aggregates across channels.</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How would you handle model fairness and regulatory compliance?</summary>
+      <p class="text-sm text-gray-800 mt-2">Monitor decline rates by demographic. Ensure features do not proxy for protected classes (zip code can proxy for race). Regular fairness audits. Explainability for regulatory reviews. Model documentation for SR 11-7 (Federal Reserve model risk management).</p>
+    </details>
+    <details class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-3">
+      <summary class="text-sm font-semibold text-indigo-700">Q: How would you reduce false positives without increasing false negatives?</summary>
+      <p class="text-sm text-gray-800 mt-2">Better features: add user behavior features (spending patterns, preferred merchants). Better model: ensemble XGBoost with a neural network. Review queue: send borderline to analysts instead of declining. Customer notification: push notification "did you make this transaction?" instead of declining.</p>
+    </details>
+  </div>
+  </details>
+</section>
+
+<!-- 22. Quick Reference -->
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details open><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">22. Quick Reference</h2><span class="chevron text-gray-700">&#9654;</span></summary>
+  <div class="mt-3 grid md:grid-cols-2 gap-3">
+    <div class="bg-gray-100 border border-gray-300 rounded-lg p-3 text-sm">
+      <p class="font-semibold mb-1">Architecture</p>
+      <p class="text-gray-800">Two-tier: Rules (10ms) + ML (30ms). Redis for velocity. Feature store for aggregates.</p>
+    </div>
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-lg p-3 text-sm text-ed-teal">
+      <p class="font-semibold mb-1">Scale</p>
+      <p>12K tx/sec, p99 &lt; 50ms, 95%+ recall, &lt;1% false positive</p>
+    </div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-lg p-3 text-sm text-ed-purple">
+      <p class="font-semibold mb-1">Key Patterns</p>
+      <p class="text-gray-800">Rules + ML hybrid, sliding window velocity, feature store, model A/B testing, feedback loop</p>
+    </div>
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+      <p class="font-semibold mb-1">Data Stores</p>
+      <p class="text-gray-800">Redis (velocity, blocklists), Feature Store, MLflow, PostgreSQL (cases), S3 (training data)</p>
+    </div>
+    <div class="bg-ed-amber/5 border border-ed-amber/15 rounded-lg p-3 text-sm text-ed-amber">
+      <p class="font-semibold mb-1">Feedback Loop</p>
+      <p class="text-gray-800">Analyst labels &rarr; daily retrain &rarr; A/B test &rarr; promote. Model adapts to new fraud.</p>
+    </div>
+    <div class="bg-ed-pink/5 border border-ed-pink/15 rounded-lg p-3 text-sm text-ed-pink">
+      <p class="font-semibold mb-1">Senior Signal</p>
+      <p class="text-gray-800">Explainability (SHAP), fairness monitoring, graph-based fraud, false positive tradeoff</p>
+    </div>
+  </div>
+  <div class="mt-3 bg-gray-900 text-gray-100 rounded-lg p-3">
+    <p class="text-xs font-semibold text-gray-400 mb-1">Key decisions:</p>
+    <pre class="mono text-xs">1. Two-tier: rules (fast) + ML (accurate) for borderline
+2. Redis sliding windows for real-time velocity
+3. Feature store for pre-computed user aggregates
+4. MLflow for model versioning and A/B testing
+5. Feedback loop: analyst labels -> daily retrain
+6. SHAP for explainability (regulatory requirement)
+7. Fail open for low-risk, fail closed for high-risk
+8. Review queue for borderline (avoid false positives)</pre>
+  </div>
+  </details>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <details><summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">23. Reference Implementation (Java)</h2><span class="chevron text-ed-sky">&#9654;</span></summary>
+  <div class="mt-3 space-y-3">
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3">
+      <h3 class="font-bold text-ed-sky mb-2 text-sm">Rules Engine &mdash; Redis Sliding Window Velocity</h3>
+      <pre class="mono text-xs bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">import redis.clients.jedis.*;
+import java.util.*;
+
+public class RulesEngine {
+    private final JedisCluster redis;
+
+    public Verdict evaluate(Transaction tx) {
+        // Velocity: count tx for this card in last 1 hour
+        String key = "vel:" + tx.getCardId() + ":" + (System.currentTimeMillis() / 3600000);
+        long count = redis.incr(key);
+        redis.expire(key, 3600);
+
+        if (count &gt; 10) return Verdict.DECLINE;  // &gt;10 tx/hr
+
+        // Geo: check last known location
+        String lastGeo = redis.get("geo:" + tx.getCardId());
+        if (lastGeo != null &amp;&amp; !lastGeo.equals(tx.getGeo())) {
+            double dist = GeoUtils.distance(lastGeo, tx.getGeo());
+            if (dist &gt; 1000) return Verdict.REVIEW;  // impossible travel
+        }
+
+        // Blocklist check
+        if (redis.sismember("blocklist:merchant", tx.getMerchantId()))
+            return Verdict.DECLINE;
+
+        return Verdict.APPROVE;
+    }
+}</pre>
+    </div>
+    <div class="bg-ed-sky/5 border border-ed-sky/15 rounded-lg p-3">
+      <h3 class="font-bold text-ed-sky mb-2 text-sm">ML Scoring &mdash; Feature Fetch + XGBoost Inference</h3>
+      <pre class="mono text-xs bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">import ml.dmlc.xgboost4j.java.*;
+import java.util.*;
+
+public class MLScoringService {
+    private final Booster model;
+    private final FeatureStore featureStore;
+
+    public Score score(Transaction tx) throws Exception {
+        // Fetch 100 features (10ms)
+        float[] features = featureStore.getOnlineFeatures(tx.getUserId(), tx.getCardId());
+
+        // XGBoost inference (20ms)
+        float[][] input = {features};
+        float[][] predictions = model.predict(input);
+        float fraudProbability = predictions[0][0];
+
+        // SHAP explainability (top 5 factors)
+        List&lt;String&gt; topFactors = ShapExplainer.explain(model, features, 5);
+
+        return new Score(fraudProbability, topFactors);
+    }
+}</pre>
+    </div>
+  </div>
+  </details>
+</section>
+
+</main>
+</body>
+</html>

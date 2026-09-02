@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>11. Container With Most Water — Algorithm Study Guide</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = { theme: { extend: { colors: { 'ed-pink': '#db2777', 'ed-blue': '#2563eb', 'ed-teal': '#0d9488', 'ed-amber': '#d97706', 'ed-sky': '#0284c7', 'ed-purple': '#7c3aed', 'ed-orange': '#ea580c' }, fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] } } } };
+</script>
+<style>
+body{font-family:'Inter',sans-serif;-webkit-text-size-adjust:100%}
+.mono{font-family:'JetBrains Mono',monospace}
+details>summary{cursor:pointer;list-style:none;min-height:44px;display:flex;align-items:center}
+details>summary::-webkit-details-marker{display:none}
+details[open]>summary .chevron{transform:rotate(90deg)}
+.chevron{transition:transform .2s}
+pre,.overflow-x-auto,table{-webkit-overflow-scrolling:touch}
+.tok-kw{color:#c084fc}.tok-ty{color:#fbbf24}.tok-fn{color:#60a5fa}.tok-nm{color:#fb923c}.tok-str{color:#f472b6}.tok-cm{color:#94a3b8;font-style:italic}
+.legend-chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#94a3b8}
+.legend-dot{width:10px;height:10px;border-radius:2px}
+</style>
+</head>
+<body class="bg-gray-50 text-gray-850 antialiased">
+
+<header class="bg-gradient-to-br from-amber-50 via-white to-amber-50/40 border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-10">
+    <div class="flex items-center gap-2 md:gap-3 mb-4 flex-wrap">
+      <span class="mono text-sm text-gray-500">LeetCode 11</span>
+      <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">Medium</span>
+      <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200">Two Pointers / Greedy</span>
+    </div>
+    <h1 class="text-2xl md:text-4xl font-extrabold tracking-tight text-gray-900 mb-3">Container With Most Water</h1>
+    <div class="flex flex-wrap gap-2">
+      <span class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-amber-50 text-amber-700 border border-amber-200">Time: O(n)</span>
+      <span class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-amber-50 text-amber-700 border border-amber-200">Space: O(1)</span>
+      <span class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-pink-50 text-ed-pink border border-pink-200">Two Pointers</span>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-10 space-y-4 md:space-y-6">
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm">
+  <h2 class="text-xl md:text-2xl font-bold text-gray-900 mb-4">1. Problem Statement</h2>
+  <div class="text-gray-700 text-sm md:text-base space-y-3">
+    <p>You are given an integer array <span class="mono">height</span> of length <span class="mono">n</span>. There are <span class="mono">n</span> vertical lines drawn such that the two endpoints of the <span class="mono">i</span>-th line are <span class="mono">(i, 0)</span> and <span class="mono">(i, height[i])</span>. Find two lines that, together with the x-axis, form a container that holds the most water. Return the maximum amount of water a container can store.</p>
+    <p><strong>Constraints:</strong></p>
+    <ul class="list-disc list-inside space-y-1 ml-2">
+      <li><span class="mono">n &ge; 2</span></li>
+      <li><span class="mono">0 &le; height[i] &le; 10^4</span></li>
+    </ul>
+    <p><strong>Example:</strong> Input: <span class="mono">height = [1,8,6,2,5,4,8,3,7]</span> &rarr; Output: <span class="mono">49</span></p>
+    <p class="text-gray-600 text-xs">The container between index 1 (height 8) and index 8 (height 7) holds <span class="mono">min(8,7) * (8-1) = 7 * 7 = 49</span> units of water.</p>
+  </div>
+</section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details open>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">2. Pattern Recognition</h2><span class="chevron text-ed-pink text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-pink/5 border border-ed-pink/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p><strong class="text-ed-pink">Signal words:</strong> "maximum amount of water", "two lines", "container", "x-axis forms a container". Any problem asking for the max/min of a function over pairs with a geometric constraint (area = width &times; limiting height) is a two-pointer candidate.</p>
+    <p><strong class="text-ed-pink">When to reach for this pattern:</strong> Whenever you are optimizing over <em>pairs</em> of elements and the objective is a product of (distance between them) and (a min/max of their values). The two-pointer sweep works because moving the limiting pointer is the only way to potentially improve.</p>
+    <p><strong class="text-ed-pink">Key insight:</strong> The widest container (first and last line) is the best starting candidate by width. Moving the <em>taller</em> pointer inward can only shrink width without raising the water level, so it is never useful. Move the <em>shorter</em> pointer inward, because it is the bottleneck.</p>
+    <ul class="space-y-1 ml-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>Optimization over pairs (area = width &times; min height)</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>Greedy elimination: the shorter line can never do better</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-pink mt-2.5"></span><span>Two pointers from both ends, O(n) sweep</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">3. Pattern Blueprint</h2><span class="chevron text-ed-blue text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-blue-50 border border-blue-200 rounded-xl p-4 md:p-6">
+    <ul class="space-y-2 text-gray-700 text-sm">
+      <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">1</span><span>Place <span class="mono">left_index = 0</span>, <span class="mono">right_index = len(height) - 1</span> (widest container first)</span></li>
+      <li class="flex gap-3"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">2</span><span>While <span class="mono">left_index &lt; right_index</span>:</span></li>
+      <li class="flex gap-3 ml-6"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span><span>Compute <span class="mono">current_area = (right_index - left_index) * min(height[left_index], height[right_index])</span></span></li>
+      <li class="flex gap-3 ml-6"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span><span>Update <span class="mono">max_area = max(max_area, current_area)</span></span></li>
+      <li class="flex gap-3 ml-6"><span class="bg-blue-100 text-blue-700 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0">5</span><span>Move the pointer at the <em>shorter</em> line inward (the taller one cannot help)</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">4. How to Think About It</h2><span class="chevron text-ed-blue text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-blue/5 border border-gray-300 rounded-xl p-4 md:p-6 space-y-3 text-gray-700 text-sm">
+    <p>Area of a container is <span class="mono">width &times; min(left_height, right_height)</span>. The water level is capped by the <em>shorter</em> wall, because water spills over the shorter one.</p>
+    <p>Start with the widest container (first and last lines). It has the maximum possible width. To beat it, a narrower container would need a taller water level. The shorter of the two end lines <em>cannot</em> be part of a better container, because any narrower container using it has less width and the same (or lower) water-level cap. So the shorter line is safe to discard.</p>
+    <p>This is the greedy elimination: at each step, the shorter pointer is provably useless for any future better answer, so we move it inward. We never miss the optimal pair because we only discard lines that cannot be the bottleneck of a better container.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">5. Real-World Analogy</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p>Imagine a row of fences of different heights, and you want to trap rainwater between two fences. The water level is set by the shorter fence, and the volume is that level times the distance between the fences.</p>
+    <p>You start with the two outermost fences (max distance). To do better, you need a taller water level, but the shorter outer fence cannot help, no matter what you pair it with, because it always caps the water. So you walk that shorter fence inward, hoping to find a taller partner.</p>
+    <p><strong class="text-ed-teal">Mappings:</strong> fences = <span class="mono text-ed-teal">height[i]</span>, distance between fences = <span class="mono text-ed-teal">right_index - left_index</span>, water level = <span class="mono text-ed-teal">min(height[left_index], height[right_index])</span>, move = walk the shorter fence inward.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">6. Build Your Intuition</h2><span class="chevron text-ed-amber text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-amber/5 border border-ed-amber/15 rounded-xl p-4 md:p-5 text-gray-700 text-sm space-y-2">
+    <p>Trace by hand. Input: <span class="mono">[1,8,6,2,5,4,8,3,7]</span></p>
+    <p><strong>Step 1:</strong> <span class="mono">left=0 (h=1)</span>, <span class="mono">right=8 (h=7)</span> &rarr; area = <span class="mono">8 * min(1,7) = 8</span>, max=8. Move left (shorter).</p>
+    <p><strong>Step 2:</strong> <span class="mono">left=1 (h=8)</span>, <span class="mono">right=8 (h=7)</span> &rarr; area = <span class="mono">7 * min(8,7) = 49</span>, max=49. Move right (shorter).</p>
+    <p><strong>Step 3:</strong> <span class="mono">left=1 (h=8)</span>, <span class="mono">right=7 (h=3)</span> &rarr; area = <span class="mono">6 * 3 = 18</span>, max=49. Move right.</p>
+    <p class="text-gray-600 text-xs mt-2">Notice: we never move the taller pointer, because narrowing width while keeping the same cap cannot beat the current max.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details open>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">7. Interactive Visualization</h2><span class="chevron text-ed-pink text-xl">&#9654;</span></summary>
+  <div class="mt-5 space-y-4">
+    <p class="text-gray-700 text-sm">Watch the two pointers sweep. Bars show the heights; the active container is outlined. The water level (dashed line) is capped by the shorter bar. The shorter pointer moves inward each step.</p>
+    <div class="bg-gray-900 rounded-xl p-4">
+      <div id="cwmw-canvas" class="min-h-[140px] flex items-end gap-1"></div>
+      <div class="flex gap-4 mt-3 text-xs text-gray-300 items-center flex-wrap">
+        <span>step: <span id="cwmw-step-num" class="mono text-gray-200 font-bold">0</span></span>
+        <span>status: <span id="cwmw-status" class="text-white font-semibold">ready</span></span>
+        <span>left: <span id="cwmw-left" class="mono text-blue-400 font-bold">0</span></span>
+        <span>right: <span id="cwmw-right" class="mono text-pink-400 font-bold">8</span></span>
+        <span>max_area: <span id="cwmw-max" class="mono text-emerald-400 font-bold">0</span></span>
+      </div>
+    </div>
+    <div class="flex gap-2 flex-wrap">
+      <button id="cwmw-play" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold min-h-[44px]">Play</button>
+      <button id="cwmw-pause" class="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm font-semibold min-h-[44px]">Pause</button>
+      <button id="cwmw-step-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold min-h-[44px]">Step</button>
+      <button id="cwmw-reset" class="px-4 py-2 bg-gray-400 text-gray-900 rounded-lg text-sm font-semibold min-h-[44px]">Reset</button>
+    </div>
+    <div class="flex gap-2 items-center flex-wrap">
+      <label class="text-sm text-gray-700 font-semibold">Input heights:</label>
+      <input id="cwmw-input" type="text" value="[1,8,6,2,5,4,8,3,7]" class="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded-lg text-sm mono" />
+    </div>
+    <div id="cwmw-log" class="bg-gray-900 text-gray-300 text-xs mono rounded-lg p-3 h-32 overflow-y-auto"></div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">8. How It Works (Step by Step)</h2><span class="chevron text-ed-sky text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-sky/5 border border-ed-sky/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-2">
+    <ul class="space-y-2">
+      <li class="flex gap-3"><span class="bg-ed-sky/15 text-ed-sky rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold flex-shrink-0">1</span><span>Initialize <span class="mono">left_index = 0</span>, <span class="mono">right_index = len(height) - 1</span>, <span class="mono">max_area = 0</span></span></li>
+      <li class="flex gap-3"><span class="bg-ed-sky/15 text-ed-sky rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold flex-shrink-0">2</span><span>Compute <span class="mono">width = right_index - left_index</span> and <span class="mono">water_level = min(height[left_index], height[right_index])</span></span></li>
+      <li class="flex gap-3"><span class="bg-ed-sky/15 text-ed-sky rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold flex-shrink-0">3</span><span><span class="mono">current_area = width * water_level</span>; update <span class="mono">max_area</span></span></li>
+      <li class="flex gap-3"><span class="bg-ed-sky/15 text-ed-sky rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold flex-shrink-0">4</span><span>If <span class="mono">height[left_index] &lt; height[right_index]</span>: <span class="mono">left_index += 1</span> else <span class="mono">right_index -= 1</span></span></li>
+      <li class="flex gap-3"><span class="bg-ed-sky/15 text-ed-sky rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold flex-shrink-0">5</span><span>Repeat until <span class="mono">left_index &ge; right_index</span>; return <span class="mono">max_area</span></span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">9. Dry Run</h2><span class="chevron text-ed-amber text-xl">&#9654;</span></summary>
+  <div class="mt-5 overflow-x-auto">
+    <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+      <thead class="bg-amber-50 text-amber-700"><tr>
+        <th class="text-left px-3 py-2 font-semibold">Step</th>
+        <th class="text-left px-3 py-2 font-semibold">left</th>
+        <th class="text-left px-3 py-2 font-semibold">right</th>
+        <th class="text-left px-3 py-2 font-semibold">width</th>
+        <th class="text-left px-3 py-2 font-semibold">min h</th>
+        <th class="text-left px-3 py-2 font-semibold">area</th>
+        <th class="text-left px-3 py-2 font-semibold">max</th>
+        <th class="text-left px-3 py-2 font-semibold">move</th>
+      </tr></thead>
+      <tbody class="text-gray-700">
+        <tr class="border-t"><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">0 (1)</td><td class="px-3 py-2 mono">8 (7)</td><td class="px-3 py-2 mono">8</td><td class="px-3 py-2 mono">1</td><td class="px-3 py-2 mono">8</td><td class="px-3 py-2 mono">8</td><td class="px-3 py-2">left++</td></tr>
+        <tr class="border-t bg-gray-50"><td class="px-3 py-2 mono">2</td><td class="px-3 py-2 mono">1 (8)</td><td class="px-3 py-2 mono">8 (7)</td><td class="px-3 py-2 mono">7</td><td class="px-3 py-2 mono">7</td><td class="px-3 py-2 mono">49</td><td class="px-3 py-2 mono">49</td><td class="px-3 py-2">right--</td></tr>
+        <tr class="border-t"><td class="px-3 py-2 mono">3</td><td class="px-3 py-2 mono">1 (8)</td><td class="px-3 py-2 mono">7 (3)</td><td class="px-3 py-2 mono">6</td><td class="px-3 py-2 mono">3</td><td class="px-3 py-2 mono">18</td><td class="px-3 py-2 mono">49</td><td class="px-3 py-2">right--</td></tr>
+        <tr class="border-t bg-gray-50"><td class="px-3 py-2 mono">4</td><td class="px-3 py-2 mono">1 (8)</td><td class="px-3 py-2 mono">6 (8)</td><td class="px-3 py-2 mono">5</td><td class="px-3 py-2 mono">8</td><td class="px-3 py-2 mono">40</td><td class="px-3 py-2 mono">49</td><td class="px-3 py-2">right--</td></tr>
+        <tr class="border-t"><td class="px-3 py-2 mono">...</td><td class="px-3 py-2" colspan="7">sweeps until left &ge; right, max stays 49</td></tr>
+        <tr class="border-t bg-emerald-50"><td class="px-3 py-2">final</td><td class="px-3 py-2">—</td><td class="px-3 py-2">—</td><td class="px-3 py-2">—</td><td class="px-3 py-2">—</td><td class="px-3 py-2">—</td><td class="px-3 py-2 text-emerald-700 font-semibold">49</td><td class="px-3 py-2">return 49</td></tr>
+      </tbody>
+    </table>
+  </div>
+</details></section>
+
+</main>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details open>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">10. From Brute Force to Optimal &mdash; Every Decision &amp; Why</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+  <div class="mt-5 space-y-5">
+    <div class="bg-red-500/5 border border-red-500/15 rounded-xl p-4 md:p-5">
+      <h3 class="font-bold text-red-500 mb-2 text-sm md:text-base">v0 &mdash; Brute Force: check every pair</h3>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def maxArea(self, height: List[int]) -&gt; int:
+    max_area = 0
+    for left_index in range(len(height)):
+        for right_index in range(left_index + 1, len(height)):
+            current_area = (right_index - left_index) * min(height[left_index], height[right_index])
+            max_area = max(max_area, current_area)
+    return max_area</pre>
+      <p class="text-gray-700 text-sm mt-2"><strong class="text-red-500">Fails on:</strong> Large inputs. <span class="mono">n = 10^5</span> &rarr; <span class="mono">10^10</span> pairs &rarr; TLE. Time <span class="mono">O(n&sup2;)</span>, Space <span class="mono">O(1)</span>.</p>
+    </div>
+    <div class="bg-amber-50 border border-amber-300 rounded-xl p-4 md:p-5">
+      <h3 class="font-bold text-amber-700 mb-2 text-sm md:text-base">v1 &mdash; Two pointers from ends (move shorter)</h3>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def maxArea(self, height: List[int]) -&gt; int:
+    max_area = 0
+    left_index, right_index = 0, len(height) - 1
+    while left_index &lt; right_index:
+        current_area = (right_index - left_index) * min(height[left_index], height[right_index])
+        max_area = max(max_area, current_area)
+        if height[left_index] &gt; height[right_index]:
+            right_index -= 1
+        else:
+            left_index += 1
+    return max_area</pre>
+      <p class="text-gray-700 text-sm mt-2"><strong class="text-amber-700">Enhancement:</strong> Start widest, move the shorter pointer inward. Provably never misses the optimal pair because the shorter line cannot be the bottleneck of a better container. Time <span class="mono">O(n)</span>, Space <span class="mono">O(1)</span>.</p>
+      <p class="text-gray-700 text-sm mt-1"><strong class="text-amber-700">Edge case handled:</strong> All inputs (including <span class="mono">n = 2</span>, all-equal heights, strictly increasing/decreasing). The loop invariant <span class="mono">left_index &lt; right_index</span> guarantees termination.</p>
+    </div>
+    <div class="bg-emerald-50 border border-emerald-300 rounded-xl p-4 md:p-5">
+      <h3 class="font-bold text-emerald-700 mb-2 text-sm md:text-base">v_final &mdash; Optimal (same as v1, self-explanatory names)</h3>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def maxArea(self, height: List[int]) -&gt; int:
+    max_area = 0
+    left_index, right_index = 0, len(height) - 1
+    while left_index &lt; right_index:
+        width = right_index - left_index
+        water_level = min(height[left_index], height[right_index])
+        current_area = width * water_level
+        max_area = max(max_area, current_area)
+        if height[left_index] &lt; height[right_index]:
+            left_index += 1
+        else:
+            right_index -= 1
+    return max_area</pre>
+      <p class="text-gray-700 text-sm mt-2"><strong class="text-emerald-700">Why final:</strong> <span class="mono">O(n)</span> time, <span class="mono">O(1)</span> space, handles every edge case. Extracted <span class="mono">width</span> and <span class="mono">water_level</span> as named intermediates for readability. This is the version used in Section 20.</p>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs md:text-sm border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-gray-100 text-gray-700"><tr>
+          <th class="text-left px-3 py-2 font-semibold">Version</th>
+          <th class="text-left px-3 py-2 font-semibold">Edge case that forced it</th>
+          <th class="text-left px-3 py-2 font-semibold">Enhancement added</th>
+        </tr></thead>
+        <tbody class="text-gray-700">
+          <tr class="border-t"><td class="px-3 py-2 mono">v0</td><td class="px-3 py-2">n = 10^5 &rarr; 10^10 pairs &rarr; TLE</td><td class="px-3 py-2">Start with brute force to establish correctness</td></tr>
+          <tr class="border-t"><td class="px-3 py-2 mono">v1</td><td class="px-3 py-2">Need O(n) instead of O(n&sup2;)</td><td class="px-3 py-2">Two pointers from ends, move shorter inward (greedy elimination)</td></tr>
+          <tr class="border-t bg-emerald-50"><td class="px-3 py-2 mono">v_final</td><td class="px-3 py-2">Readability of inline arithmetic</td><td class="px-3 py-2">Named intermediates <span class="mono">width</span>, <span class="mono">water_level</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-indigo-700 text-sm">
+      <strong>Principle:</strong> Every line of complexity was earned by a specific input the previous version failed on. If you can't name the edge case that forced a line, you don't understand why it's there.
+    </div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">11. Complexity Deep Dive</h2><span class="chevron text-ed-teal text-xl">&#9654;</span></summary>
+  <div class="mt-5 grid md:grid-cols-2 gap-4">
+    <div class="bg-ed-teal/5 border border-ed-teal/15 rounded-xl p-4">
+      <h3 class="font-bold text-ed-teal mb-2 text-sm">Time: O(n)</h3>
+      <p class="text-gray-700 text-sm">Each step moves either <span class="mono">left_index</span> or <span class="mono">right_index</span> inward by one. The pointers start <span class="mono">n-1</span> apart and meet after at most <span class="mono">n-1</span> steps. Constant work per step (min, multiply, compare). Total: <span class="mono">O(n)</span>.</p>
+    </div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4">
+      <h3 class="font-bold text-ed-purple mb-2 text-sm">Space: O(1)</h3>
+      <p class="text-gray-700 text-sm">Only three scalar variables: <span class="mono">max_area</span>, <span class="mono">left_index</span>, <span class="mono">right_index</span> (plus <span class="mono">width</span>/<span class="mono">water_level</span> in v_final). No extra arrays or data structures.</p>
+    </div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">12. Edge Cases &amp; Gotchas</h2><span class="chevron text-ed-orange text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-orange/5 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <div><strong class="text-ed-orange">Two lines only (n = 2):</strong> Loop runs once, returns <span class="mono">min(h0, h1) * 1</span>. Correct.</div>
+    <div><strong class="text-ed-orange">All equal heights:</strong> Every step moves left (or right, depending on tie-break). Still <span class="mono">O(n)</span>, max area = <span class="mono">h * (n-1)</span>. Correct.</div>
+    <div><strong class="text-ed-orange">Strictly increasing:</strong> <span class="mono">[1,2,3,4,5]</span>. Left always shorter, left sweeps right. Correct.</div>
+    <div><strong class="text-ed-orange">Zero heights:</strong> <span class="mono">[0,0,0]</span>. Every area is 0, max stays 0. Correct (container holds nothing).</div>
+    <div><strong class="text-ed-orange">Width vs count bug:</strong> Width is <span class="mono">right_index - left_index</span>, NOT <span class="mono">right_index - left_index + 1</span>. The +1 counts lines, not distance on the x-axis.</div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">13. Common Mistakes</h2><span class="chevron text-ed-orange text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-orange/5 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-2">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span>Using <span class="mono">right - left + 1</span> for width (off-by-one, counts lines not distance)</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span>Moving the <em>taller</em> pointer inward (loses the only chance to raise the water level)</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span>Using <span class="mono">max(height[l], height[r])</span> instead of <span class="mono">min</span> (water spills over the shorter wall)</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span>Starting both pointers at 0 (not the widest container, loses the greedy invariant)</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-orange mt-2.5"></span><span>Forgetting to update <span class="mono">max_area</span> before moving pointers</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">14. Flashcards</h2><span class="chevron text-ed-purple text-xl">&#9654;</span></summary>
+  <div class="mt-5 space-y-3">
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4"><p class="font-semibold text-ed-purple text-sm">Q: Why move the shorter pointer, not the taller one?</p><p class="text-gray-700 text-sm mt-2">A: The water level is capped by the shorter wall. Moving the taller wall inward only reduces width without raising the cap, so it can never improve the area. The shorter wall is provably useless for any better container.</p></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4"><p class="font-semibold text-ed-purple text-sm">Q: What is the width formula?</p><p class="text-gray-700 text-sm mt-2">A: <span class="mono">width = right_index - left_index</span>. Not <span class="mono">+1</span>, because we measure distance on the x-axis, not count of lines.</p></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4"><p class="font-semibold text-ed-purple text-sm">Q: Time and space complexity?</p><p class="text-gray-700 text-sm mt-2">A: <span class="mono">O(n)</span> time (each pointer moves at most n steps), <span class="mono">O(1)</span> space (three scalars).</p></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4"><p class="font-semibold text-ed-purple text-sm">Q: Why is the two-pointer approach correct (no missed optimal)?</p><p class="text-gray-700 text-sm mt-2">A: Greedy elimination: the shorter line at any step cannot be part of a better container than the current widest, because any narrower pairing with it has less width and the same (or lower) cap. So discarding it never removes the optimal pair.</p></div>
+    <div class="bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4"><p class="font-semibold text-ed-purple text-sm">Q: How do you handle the tie when both heights are equal?</p><p class="text-gray-700 text-sm mt-2">A: Either pointer can move. The condition <span class="mono">height[left] &lt; height[right]</span> moves left on a tie (else branch moves right). Both choices are correct; the area formula is symmetric.</p></div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">15. Where It Is Used (Real World)</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 grid md:grid-cols-2 gap-3 text-sm">
+    <div class="bg-gray-100 border border-gray-300 rounded-xl p-4"><strong class="text-gray-700">Storage tank sizing:</strong> Picking two walls of a tank to maximize volume given varying wall heights.</div>
+    <div class="bg-amber-100 border border-amber-300 rounded-xl p-4 text-amber-700"><strong>Image cropping:</strong> Finding the bounding rectangle that maximizes usable area under a varying-height skyline.</div>
+    <div class="bg-rose-100 border border-rose-300 rounded-xl p-4 text-rose-700"><strong>Network throughput:</strong> Two endpoints with bandwidth caps; throughput is min(bandwidth) &times; distance in hops.</div>
+    <div class="bg-indigo-100 border border-indigo-300 rounded-xl p-4 text-indigo-700"><strong>Stock spread:</strong> Max profit = max(min(volume_i, volume_j) &times; (j - i)) over two trading days.</div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">16. Interview Tips</h2><span class="chevron text-ed-purple text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-ed-purple/5 border border-ed-purple/15 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-2">
+    <ul class="space-y-2">
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-purple mt-2.5"></span><span>Start by stating the brute force <span class="mono">O(n&sup2;)</span> to show you know the baseline, then optimize.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-purple mt-2.5"></span><span>Draw the bars on the whiteboard first. Visualizing the container makes the greedy argument obvious.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-purple mt-2.5"></span><span>Explain the greedy invariant aloud: "the shorter line cannot be part of a better container, so we discard it." This is the key insight interviewers want to hear.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-purple mt-2.5"></span><span>Write the width formula as <span class="mono">right - left</span>, not <span class="mono">right - left + 1</span>. Say "distance, not count" to preempt the off-by-one.</span></li>
+      <li class="flex gap-2"><span class="w-1.5 h-1.5 rounded-full bg-ed-purple mt-2.5"></span><span>If asked to prove correctness: use the greedy elimination argument (shorter line is provably useless for any better answer).</span></li>
+    </ul>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">17. Similar Problems to Practice</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 grid md:grid-cols-2 gap-3 text-sm">
+    <div class="bg-gray-100 border border-gray-300 rounded-xl p-4"><strong>42. Trapping Rain Water</strong> <span class="ml-2 px-2 py-0.5 rounded text-xs bg-rose-100 text-rose-700">Hard</span><p class="text-gray-600 text-xs mt-1">Same two-pointer sweep, but accumulate water between bars.</p></div>
+    <div class="bg-gray-100 border border-gray-300 rounded-xl p-4"><strong>15. 3Sum</strong> <span class="ml-2 px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-700">Medium</span><p class="text-gray-600 text-xs mt-1">Two pointers on a sorted array to find triplets summing to zero.</p></div>
+    <div class="bg-emerald-100 border border-emerald-300 rounded-xl p-4"><strong>977. Squares of a Sorted Array</strong> <span class="ml-2 px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-700">Easy</span><p class="text-gray-600 text-xs mt-1">Two pointers from ends, place larger square first.</p></div>
+    <div class="bg-amber-100 border border-amber-300 rounded-xl p-4"><strong>167. Two Sum II</strong> <span class="ml-2 px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-700">Medium</span><p class="text-gray-600 text-xs mt-1">Two pointers on sorted array to find target sum.</p></div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">18. Related Algorithms</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 grid md:grid-cols-3 gap-3 text-sm">
+    <div class="bg-gray-100 border border-gray-300 rounded-xl p-4"><strong>Two Pointers (opposite ends)</strong><p class="text-gray-600 text-xs mt-1">The pattern used here. Start at both ends, move based on a greedy rule.</p></div>
+    <div class="bg-gray-100 border border-gray-300 rounded-xl p-4"><strong>Greedy Elimination</strong><p class="text-gray-600 text-xs mt-1">Discard elements that provably cannot be part of the optimal solution.</p></div>
+    <div class="bg-gray-100 border border-gray-300 rounded-xl p-4"><strong>Sliding Window</strong><p class="text-gray-600 text-xs mt-1">Cousin pattern: both pointers move in the same direction with a dynamic window.</p></div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">19. Where This Pattern Meets System Design</h2><span class="chevron text-indigo-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-indigo-50 border border-indigo-200 rounded-xl p-4 md:p-6 text-indigo-700 text-sm space-y-3">
+    <p><strong>Load balancer bandwidth selection:</strong> Pick two endpoints to maximize throughput = min(bandwidth) &times; distance. The two-pointer greedy mirrors how a CDN picks the best edge pair for a user.</p>
+    <p><strong>Storage capacity planning:</strong> Given servers with varying disk sizes at different rack positions, pick two racks to maximize usable volume = min(disk) &times; rack_distance. Same greedy elimination applies.</p>
+    <p><strong>Distributed cache sharding:</strong> Choose two cache nodes to maximize effective capacity given network-distance penalties. The shorter-cap node is the bottleneck, so move it inward.</p>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">20. Code Solutions</h2><span class="chevron text-ed-sky text-xl">&#9654;</span></summary>
+  <div class="mt-5 space-y-4">
+    <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 flex flex-wrap gap-3">
+      <span class="legend-chip"><span class="legend-dot" style="background:#c084fc"></span>keyword</span>
+      <span class="legend-chip"><span class="legend-dot" style="background:#fbbf24"></span>type</span>
+      <span class="legend-chip"><span class="legend-dot" style="background:#60a5fa"></span>function</span>
+      <span class="legend-chip"><span class="legend-dot" style="background:#fb923c"></span>number</span>
+      <span class="legend-chip"><span class="legend-dot" style="background:#f472b6"></span>string</span>
+      <span class="legend-chip"><span class="legend-dot" style="background:#94a3b8"></span>comment</span>
+    </div>
+    <div>
+      <h3 class="font-bold text-ed-sky mb-2 text-sm">Python (v_final)</h3>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">def maxArea(self, height: List[int]) -&gt; int:
+    max_area = 0
+    left_index, right_index = 0, len(height) - 1
+    while left_index &lt; right_index:
+        width = right_index - left_index
+        water_level = min(height[left_index], height[right_index])
+        current_area = width * water_level
+        max_area = max(max_area, current_area)
+        if height[left_index] &lt; height[right_index]:
+            left_index += 1
+        else:
+            right_index -= 1
+    return max_area</pre>
+    </div>
+    <div>
+      <h3 class="font-bold text-ed-sky mb-2 text-sm">Java</h3>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">public int maxArea(int[] height) {
+    int maxArea = 0;
+    int leftIndex = 0, rightIndex = height.length - 1;
+    while (leftIndex &lt; rightIndex) {
+        int width = rightIndex - leftIndex;
+        int waterLevel = Math.min(height[leftIndex], height[rightIndex]);
+        int currentArea = width * waterLevel;
+        maxArea = Math.max(maxArea, currentArea);
+        if (height[leftIndex] &lt; height[rightIndex]) {
+            leftIndex++;
+        } else {
+            rightIndex--;
+        }
+    }
+    return maxArea;
+}</pre>
+    </div>
+    <div>
+      <h3 class="font-bold text-ed-sky mb-2 text-sm">C++</h3>
+      <pre class="mono text-xs md:text-sm bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">int maxArea(vector&lt;int&gt;&amp; height) {
+    int maxArea = 0;
+    int leftIndex = 0, rightIndex = height.size() - 1;
+    while (leftIndex &lt; rightIndex) {
+        int width = rightIndex - leftIndex;
+        int waterLevel = min(height[leftIndex], height[rightIndex]);
+        int currentArea = width * waterLevel;
+        maxArea = max(maxArea, currentArea);
+        if (height[leftIndex] &lt; height[rightIndex]) {
+            leftIndex++;
+        } else {
+            rightIndex--;
+        }
+    }
+    return maxArea;
+}</pre>
+    </div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">21. Follow-Up Questions</h2><span class="chevron text-indigo-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-indigo-50/60 border border-indigo-200 rounded-xl p-4 md:p-6 text-indigo-700 text-sm space-y-3">
+    <div><strong>Q1:</strong> What if the container can be tilted (not axis-aligned)? <span class="text-gray-600">(Geometry problem, O(n&sup2;) in general.)</span></div>
+    <div><strong>Q2:</strong> What if heights can be negative? <span class="text-gray-600">(Constraint says &ge; 0; if negative, the problem is ill-defined for "water".)</span></div>
+    <div><strong>Q3:</strong> Return the indices of the optimal container, not just the area? <span class="text-gray-600">(Track <span class="mono">best_left</span>, <span class="mono">best_right</span> alongside <span class="mono">max_area</span>.)</span></div>
+    <div><strong>Q4:</strong> What if you need the top-k containers by area? <span class="text-gray-600">(Min-heap of size k during the sweep.)</span></div>
+    <div><strong>Q5:</strong> Prove the two-pointer approach never misses the optimal pair. <span class="text-gray-600">(Greedy elimination: the shorter line at each step cannot be part of a better container.)</span></div>
+  </div>
+</details></section>
+
+<section class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 shadow-sm"><details>
+  <summary class="flex items-center justify-between"><h2 class="text-xl md:text-2xl font-bold text-gray-900">22. Quick Reference</h2><span class="chevron text-gray-500 text-xl">&#9654;</span></summary>
+  <div class="mt-5 bg-gray-100 border border-gray-300 rounded-xl p-4 md:p-6 text-gray-700 text-sm space-y-3">
+    <p>Two pointers from ends. Area = <span class="mono">width &times; min(left_height, right_height)</span>. Move the shorter pointer inward (greedy elimination: the shorter line cannot be part of a better container). <span class="mono">O(n)</span> time, <span class="mono">O(1)</span> space.</p>
+    <div class="bg-gray-900 text-gray-100 rounded-lg p-3 mono text-xs md:text-sm overflow-x-auto">
+      <span class="tok-kw">def</span> <span class="tok-fn">maxArea</span>(self, height: <span class="tok-ty">List</span>[<span class="tok-ty">int</span>]) -&gt; <span class="tok-ty">int</span>:
+    max_area = <span class="tok-nm">0</span>
+    left_index, right_index = <span class="tok-nm">0</span>, <span class="tok-fn">len</span>(height) - <span class="tok-nm">1</span>
+    <span class="tok-kw">while</span> left_index &lt; right_index:
+        width = right_index - left_index
+        water_level = <span class="tok-fn">min</span>(height[left_index], height[right_index])
+        max_area = <span class="tok-fn">max</span>(max_area, width * water_level)
+        <span class="tok-kw">if</span> height[left_index] &lt; height[right_index]: left_index += <span class="tok-nm">1</span>
+        <span class="tok-kw">else</span>: right_index -= <span class="tok-nm">1</span>
+    <span class="tok-kw">return</span> max_area
+    </div>
+  </div>
+</details></section>
+
+<footer class="bg-gray-900 text-gray-400 text-center text-xs py-6 mt-8">
+  Generated by dsa-generator skill (mega merged) &middot; Container With Most Water &middot; LeetCode 11
+</footer>
+
+<script>
+(function(){
+  const canvas=document.getElementById('cwmw-canvas');
+  const stepEl=document.getElementById('cwmw-step-num');
+  const statusEl=document.getElementById('cwmw-status');
+  const leftEl=document.getElementById('cwmw-left');
+  const rightEl=document.getElementById('cwmw-right');
+  const maxEl=document.getElementById('cwmw-max');
+  const logEl=document.getElementById('cwmw-log');
+  const input=document.getElementById('cwmw-input');
+  const playBtn=document.getElementById('cwmw-play');
+  const pauseBtn=document.getElementById('cwmw-pause');
+  const stepBtn=document.getElementById('cwmw-step-btn');
+  const resetBtn=document.getElementById('cwmw-reset');
+  let heights=[],leftIndex=0,rightIndex=0,maxArea=0,stepNum=0,playing=false,timer=null,done=false;
+  function parseInput(t){try{const a=JSON.parse(t);if(Array.isArray(a)&&a.every(v=>typeof v==='number'))return a;}catch(e){}return [1,8,6,2,5,4,8,3,7];}
+  function render(){
+    canvas.innerHTML='';
+    const maxH=Math.max(...heights,1);
+    const containerH=120;
+    heights.forEach((h,i)=>{
+      const bar=document.createElement('div');
+      bar.style.flex='1';
+      bar.style.minWidth='20px';
+      bar.style.height=Math.max(4,(h/maxH)*containerH)+'px';
+      bar.style.borderRadius='4px 4px 0 0';
+      let bg='bg-gray-600';
+      let ring='';
+      if(i===leftIndex&&i===rightIndex){bg='bg-amber-500';ring='ring-2 ring-amber-300';}
+      else if(i===leftIndex){bg='bg-blue-500';ring='ring-2 ring-blue-300';}
+      else if(i===rightIndex){bg='bg-pink-500';ring='ring-2 ring-pink-300';}
+      bar.className=bg+' '+ring;
+      const lbl=document.createElement('div');
+      lbl.className='text-[10px] text-center text-gray-400 mt-1';
+      lbl.textContent=h;
+      const wrap=document.createElement('div');
+      wrap.style.display='flex';
+      wrap.style.flexDirection='column';
+      wrap.style.alignItems='center';
+      wrap.appendChild(bar);
+      wrap.appendChild(lbl);
+      canvas.appendChild(wrap);
+    });
+    stepEl.textContent=stepNum;leftEl.textContent=leftIndex;rightEl.textContent=rightIndex;maxEl.textContent=maxArea;
+  }
+  function log(m){const l=document.createElement('div');l.textContent='['+stepNum+'] '+m;logEl.appendChild(l);logEl.scrollTop=logEl.scrollHeight;}
+  function setStatus(t,c){statusEl.textContent=t;statusEl.className='font-semibold '+(c||'text-white');}
+  function reset(){
+    heights=parseInput(input.value);
+    leftIndex=0;rightIndex=heights.length-1;maxArea=0;stepNum=0;done=false;playing=false;
+    if(timer){clearInterval(timer);timer=null;}
+    logEl.innerHTML='';setStatus('ready','text-white');
+    log('init: left=0, right='+rightIndex);
+    render();
+  }
+  function step(){
+    if(done||heights.length<2)return;
+    if(leftIndex>=rightIndex){setStatus('DONE \u2713','text-emerald-400');log('left >= right \u2192 stop. max_area='+maxArea);done=true;if(timer){clearInterval(timer);timer=null;playing=false;}return;}
+    stepNum++;
+    const w=rightIndex-leftIndex;
+    const lvl=Math.min(heights[leftIndex],heights[rightIndex]);
+    const area=w*lvl;
+    maxArea=Math.max(maxArea,area);
+    log('area='+area+' (w='+w+', lvl='+lvl+'), max='+maxArea);
+    if(heights[leftIndex]<heights[rightIndex]){log('height['+leftIndex+']='+heights[leftIndex]+' < height['+rightIndex+']='+heights[rightIndex]+' \u2192 left++');leftIndex++;}
+    else{log('height['+leftIndex+']='+heights[leftIndex]+' >= height['+rightIndex+']='+heights[rightIndex]+' \u2192 right--');rightIndex--;}
+    render();
+  }
+  function play(){if(done)reset();if(playing)return;playing=true;setStatus('running','text-emerald-400');timer=setInterval(()=>{if(done){clearInterval(timer);playing=false;return;}step();},700);}
+  function pause(){if(timer){clearInterval(timer);timer=null;}playing=false;setStatus('paused','text-amber-400');}
+  input.addEventListener('input',reset);
+  playBtn.addEventListener('click',play);
+  pauseBtn.addEventListener('click',pause);
+  stepBtn.addEventListener('click',function(){pause();step();});
+  resetBtn.addEventListener('click',reset);
+  reset();
+})();
+</script>
+
+<script>
+(function(){
+  const kw=/\b(def|class|return|if|else|while|for|in|not|and|or|is|None|True|False|lambda|import|from|as|public|private|int|void|vector|auto|const|let|var|function|new|this|self|static|struct|template|typename|namespace|using|break|continue|pass|elif|yield|with|try|except|finally|raise|assert|del|global|nonlocal|print|len|range|min|max|Math)\b/g;
+  const ty=/\b(List|int|str|bool|float|double|char|long|short|unsigned|signed|void|auto|string|vector|map|set|pair|tuple|Solution|List\[\w+\]|Optional|Dict|Set|self)\b/g;
+  const fn=/([A-Za-z_][A-Za-z_0-9]*)\s*(?=\()/g;
+  const nm=/\b\d+\b/g;
+  const str=/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g;
+  const cm=/#[^\n]*|\/\/[^\n]*/g;
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function highlight(pre){
+    if(pre.dataset.highlighted)return;
+    let code=pre.innerHTML;
+    const tokens=[];
+    code=code.replace(cm,m=>{tokens.push('<span class="tok-cm">'+esc(m)+'</span>');return'\x00'+(tokens.length-1)+'\x00';});
+    code=code.replace(str,m=>{tokens.push('<span class="tok-str">'+esc(m)+'</span>');return'\x00'+(tokens.length-1)+'\x00';});
+    code=esc(code);
+    code=code.replace(kw,m=>'<span class="tok-kw">'+m+'</span>');
+    code=code.replace(ty,m=>'<span class="tok-ty">'+m+'</span>');
+    code=code.replace(nm,m=>'<span class="tok-nm">'+m+'</span>');
+    code=code.replace(fn,m=>'<span class="tok-fn">'+m+'</span>');
+    code=code.replace(/\x00(\d+)\x00/g,(_,i)=>tokens[+i]);
+    pre.innerHTML=code;
+    pre.dataset.highlighted='1';
+  }
+  document.querySelectorAll('pre.mono').forEach(highlight);
+})();
+</script>
+
+</body>
+</html>
