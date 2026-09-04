@@ -85,7 +85,33 @@ For a news feed system, divide the design into:
 - **Summarize Design:** Recap major design decisions and trade-offs.
 - **Propose Enhancements:**
   - How to scale from 1 million to 10 million users.
-  - Error handling for server failures or network issues.
+---
+
+## The 7-Layer Production Mental Model (Avoiding "Random Boxes & Arrows")
+
+To ensure your high-level design and deep dive do not degenerate into superficial buzzwords or disjointed diagrams, structure your architecture systematically across **7 distinct layers**:
+
+1. **[1] Network Layer:** How does traffic reach your system?  
+   - Anycast DNS, GeoDNS, Cloudflare/Fastly CDN, L4 (NLB) vs. L7 (ALB/Envoy) Load Balancers, Cloud Multi-Region routing. Start here before drawing databases.
+2. **[2] Storage Layer:** Where does data live and what is its access pattern?  
+   - Relational SQL (ACID, B+ Trees) vs. NoSQL Document/Wide-Column (LSM-Trees) vs. Redis In-Memory KV vs. Object Storage (S3 blobs).
+3. **[3] Compute Layer:** Where does work happen?  
+   - Stateless servers, containerized Kubernetes pods, Serverless (Lambda cold-starts), and decoupled asynchronous queue-based workers.
+4. **[4] Communication Layer:** How do components talk?  
+   - Synchronous (REST, gRPC over HTTP/2) vs. Asynchronous (Kafka partitioned event streams, SQS task queues, WebSockets, SSE).
+5. **[5] Application Layer:** How is business logic structured?  
+   - API Gateways, JWT authentication, distributed token-bucket rate limiting, idempotency keys, and domain service boundaries.
+6. **[6] Reliability Layer:** What happens when components break?  
+   - Circuit breakers, exponential backoff with jitter, dead-letter queues (DLQ), OpenTelemetry distributed tracing, and automated canary analysis.
+7. **[7] AI & Automation Layer:** How does the system become smarter?  
+   - Semantic vector caching, real-time anomaly/fraud detection, and intelligent telemetry remediation. Build layers 1–6 solidly first!
+
+### The Senior Defense Invariant
+In every design decision, never merely list tools. Articulate:
+- **Why** you chose the component.
+- **What trade-off** you accepted.
+- **Where** the system breaks under stress.
+- **How** you scale it to **10x volume**.
 
 ---
 

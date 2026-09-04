@@ -152,3 +152,6 @@ Each of the 27 building blocks maps directly to the in-depth reference chapters 
 | **25** | Geospatial & Ride Matching | [16. Proximity Service](../16.%20Proximity%20Service/README.md) · [18. Google Maps](../18.%20Google%20Maps/README.md) · [17. Nearby Friends](../17.%20Nearby%20Friends/README.md) |
 | **26** | Financial Ledgers & Payments | [26. Payment System](../26.%20Payment%20System/README.md) · [27. Digital Wallet](../27.%20%20Digital%20Wallet/README.md) · [payment-processing-billion-scale.md](../payment-processing-billion-scale.md) |
 | **27** | Large-Scale Multi-Tier Architecture | [28. Stock Exchange](../28.%20Stock%20Exchange/README.md) · [29. Git at Scale](../29.%20Git%20at%20Scale%20-%20Cursor%20Origin%20&%20Continuity/README.md) |
+| **28** | Production Loops & Scenarios | [36. Netflix 8-Round Interview Loop Mastery](../36.%20Netflix%208-Round%20Interview%20Loop%20Mastery/README.md) |
+| **29** | The 7 Layers of Production System Design | [37. The 7 Layers of Production System Design](../37.%20The%207%20Layers%20of%20Production%20System%20Design/README.md) |
+
