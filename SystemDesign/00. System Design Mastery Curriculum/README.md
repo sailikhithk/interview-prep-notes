@@ -154,4 +154,50 @@ Each of the 27 building blocks maps directly to the in-depth reference chapters 
 | **27** | Large-Scale Multi-Tier Architecture | [28. Stock Exchange](../28.%20Stock%20Exchange/README.md) · [29. Git at Scale](../29.%20Git%20at%20Scale%20-%20Cursor%20Origin%20&%20Continuity/README.md) |
 | **28** | Production Loops & Scenarios | [36. Netflix 8-Round Interview Loop Mastery](../36.%20Netflix%208-Round%20Interview%20Loop%20Mastery/README.md) |
 | **29** | The 7 Layers of Production System Design | [37. The 7 Layers of Production System Design](../37.%20The%207%20Layers%20of%20Production%20System%20Design/README.md) |
+| **30** | Product & Engineering Metrics Rubric | [38. The Product & Engineering Metrics Rubric](../38.%20The%20Product%20%26%20Engineering%20Metrics%20Rubric/README.md) |
+
+---
+
+## 🎯 The 26 Canonical System Design Problems: Fundamental Revision Blueprint
+
+To crack Senior/Staff interviews at **Meta, Google, Microsoft, and Netflix**, revise your fundamentals across these **26 canonical system design problems** divided into **6 functional categories**. Every production interview problem is an architectural composite of these 26 foundations:
+
+### Category 1: Foundations & Distributed Systems
+1. **Scale From Zero To Millions Of Users:** [01. Scaling](../01.%20Scaling/README.md) — Multi-tier caching, stateless microservices, read-replica replication, geosharding.
+2. **Back-of-the-envelope Estimation:** [02. Back Of the Envelope Estimation](../02.%20Back%20Of%20the%20Envelope%20Estimation/README.md) — QPS calculations, latency numbers every programmer should know, memory vs disk IOPS sizing.
+3. **A Framework For System Design Interviews:** [03. System Design Framework](../03.%20System%20Design%20Framework/README.md) — The 4-step 45m interview loop pacing, 7-layer production mental model.
+4. **Design A Rate Limiter:** [04. Rate Limiter](../04.%20Rate%20Limiter/README.md) — Token bucket, sliding window logs, Redis atomic Lua scripts, multi-region rate synchronization.
+5. **Design Consistent Hashing:** [05. Consistent Hashing](../05.%20Consistent%20Hashing/README.md) — Ketama hash ring, virtual nodes for hotspot prevention, zero-downtime cluster rebalancing.
+6. **Design A Unique ID Generator In Distributed Systems:** [07. Unique-Id Generator](../07.%20Unique-Id%20Generator/README.md) — Twitter Snowflake, clock drift mitigation, 64-bit sequence partitioning.
+
+### Category 2: Storage & Data Systems
+7. **Design A Key-Value Store:** [06. Key-Value Store](../06.%20Key-Value%20Store/README.md) — LSM-Tree (MemTable, WAL, SSTable, Compaction) vs B+ Tree, Quorum consensus ($R+W>N$).
+8. **Design Google Drive:** [15. Google Drive](../15.%20Google%20Drive/README.md) — 4MB block chunking, SHA-256 content deduplication, delta sync, S3 + metadata SQL database.
+9. **S3-like Object Storage:** [24. S3-like Object Storage](../24.%20S3-like%20Object%20Storage/README.md) — Blob storage nodes, metadata service, Reed-Solomon erasure coding, garbage collection.
+10. **Distributed Message Queue:** [19. Distributed Message Queue](../19.%20Distributed%20Message%20Queue/README.md) — Partitioned commit logs, zero-copy `sendfile()`, consumer group offset rebalancing.
+11. **Metrics Monitoring and Alerting System:** [20. Metrics Monitoring and Alerting System](../20.%20Metrics%20Monitoring%20and%20Alerting%20System/README.md) — Timeseries DB (Gorilla compression), pull vs push telemetry, anomaly detection.
+12. **Ad Click Event Aggregation:** [21. Ad Click Event Aggregation](../21.%20Ad%20Click%20Event%20Aggregation/README.md) — Lambda/Kappa stream architecture, Flink tumbling/sliding windows, watermark handling, idempotent aggregation.
+
+### Category 3: Search & Discovery Systems
+13. **Design A URL Shortener:** [08. URL Shortener](../08.%20URL%20Shortener/README.md) — Base62 encoding, pre-generated sequence ranges, 99:1 read:write caching.
+14. **Design A Web Crawler:** [09. Web Crawler](../09.%20Web%20Crawler/README.md) — Frontier priority/politeness queues, robots.txt caching, Bloom filter duplicate URL checks.
+15. **Design A Search Autocomplete System:** [13. Search Autocomplete](../13.%20Search%20Autocomplete/README.md) — In-memory Trie structure, cached top-K query nodes, offline MapReduce build pipelines.
+
+### Category 4: Communication & Social Systems
+16. **Design A Notification System:** [10. Notification System](../10.%20Notification%20System/README.md) — Multi-channel fan-out (APNS, FCM, SES), user opt-out/rate limits, priority queues.
+17. **Design A News Feed System:** [11. News Feed System](../11.%20News%20Feed%20System/README.md) — Push (fan-out on write) vs Pull (fan-out on read) for celebrities, timeline Redis caches.
+18. **Design A Chat System:** [12. Chat System](../12.%20Chat%20System/README.md) — WebSocket connection managers, presence servers, Cassandra message history, Raft/ZK synchronization.
+19. **Distributed Email Service:** [23. Distributed Email Service](../23.%20Distributed%20Email%20Service/README.md) — SMTP/IMAP protocol gateways, distributed maildir storage, spam classification DAGs.
+
+### Category 5: Geo-Spatial Systems
+20. **Proximity Service:** [16. Proximity Service](../16.%20Proximity%20Service/README.md) — Geohash vs Quadtree vs Google S2 spatial indexing, 2D geospatial search.
+21. **Nearby Friends:** [17. Nearby Friends](../17.%20Nearby%20Friends/README.md) — Ephemeral location updates, Redis Pub/Sub, geohash grid channel multiplexing.
+22. **Design Google Maps:** [18. Google Maps](../18.%20Google%20Maps/README.md) — Map tile slicing by zoom level, road graph partitioning, Dijkstra/A* routing engine.
+
+### Category 6: Large-Scale Applications & Financial Systems
+23. **Design YouTube:** [14. Youtube](../14.%20Youtube/README.md) — Video chunk ingestion, asynchronous transcoding DAGs (H.264/AV1), CDN edge caches, adaptive bitrate (DASH/HLS).
+24. **Hotel Reservation System:** [22. Hotel Reservation System](../22.%20Hotel%20Reservation%20System/README.md) — Relational ACID booking transactions, optimistic locking with version checks, 2-phase room hold.
+25. **Real-time Gaming Leaderboard:** [25. Real-time Gaming Leaderboard](../25.%20Real-time%20Gaming%20Leaderboard/README.md) — Redis Sorted Sets (`ZADD`, `ZRANK`), distributed sharding by score ranges.
+26. **Payment System & Stock Exchange:** [26. Payment System](../26.%20Payment%20System/README.md) · [27. Digital Wallet](../27.%20%20Digital%20Wallet/README.md) · [28. Stock Exchange](../28.%20Stock%20Exchange/README.md) — Idempotency keys, double-entry ledgers, 2PC/Sagas, LMAX Disruptor order matching engine.
+
 
