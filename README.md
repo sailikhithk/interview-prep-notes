@@ -70,6 +70,9 @@ Every single system design module is fully self-contained with its dedicated **M
 | **33** | **Real-Time Fraud Detection System** | [README.md](SystemDesign/33.%20Real-Time%20Fraud%20Detection%20System/README.md) | [index.html](SystemDesign/33.%20Real-Time%20Fraud%20Detection%20System/index.html) |
 | **34** | **Personal Brain Knowledge Graph** | [README.md](SystemDesign/34.%20Personal%20Brain%20Knowledge%20Graph/README.md) | [index.html](SystemDesign/34.%20Personal%20Brain%20Knowledge%20Graph/index.html) |
 | **35** | **Gang of Four Design Patterns (LLD)** | [README.md](SystemDesign/35.%20Gang%20of%20Four%20Design%20Patterns%20%28LLD%29/README.md) | [index.html](SystemDesign/35.%20Gang%20of%20Four%20Design%20Patterns%20%28LLD%29/index.html) |
+| **36** | **Netflix 8-Round Interview Loop Mastery** | [README.md](SystemDesign/36.%20Netflix%208-Round%20Interview%20Loop%20Mastery/README.md) | [index.html](SystemDesign/36.%20Netflix%208-Round%20Interview%20Loop%20Mastery/index.html) |
+| **37** | **The 7 Layers of Production System Design** | [README.md](SystemDesign/37.%20The%207%20Layers%20of%20Production%20System%20Design/README.md) | [index.html](SystemDesign/37.%20The%207%20Layers%20of%20Production%20System%20Design/index.html) |
+| **38** | **The Product & Engineering Metrics Rubric** | [README.md](SystemDesign/38.%20The%20Product%20%26%20Engineering%20Metrics%20Rubric/README.md) | [index.html](SystemDesign/38.%20The%20Product%20%26%20Engineering%20Metrics%20Rubric/index.html) |
 
 ## DSA Reference Library
 

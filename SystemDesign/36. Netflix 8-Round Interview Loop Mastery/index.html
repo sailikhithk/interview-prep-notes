@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: Netflix 8-Round Interview Loop Mastery — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] hero-glow pointer-events-none"></div>
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">SD</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">Netflix 8-Round Interview Loop Mastery</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">System Design Workbook</span>
+      </div>
+    </div>
+    <a href="../README.md" class="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">&larr; Back to System Design Hub</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Architectural Study Guide</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">High Scale &bull; Distributed Systems</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+      <span class="gradient-text">Netflix 8-Round Interview Loop Mastery</span>
+    </h1>
+    <p class="text-gray-600 text-base max-w-3xl leading-relaxed">
+      Comprehensive architectural deep-dive covering high-level data flow, data models, edge case failure modes, scaling strategies, and interview trade-off defenses.
+    </p>
+  </div>
+</div>
+
+<!-- CONTENT MAIN -->
+<main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+  <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm prose prose-blue max-w-none space-y-6">
+    <h1 class="text-2xl font-black text-gray-900 border-b border-gray-200 pb-3 mb-4 mt-6">Netflix Senior / Principal Engineering Interview Loop: 8-Round Master Playbook</h1>
+<div class="bg-blue-50/70 border-l-4 border-blue-500 p-3 rounded-r-lg my-3 text-xs text-blue-950 italic">**Complete End-to-End Guide across all 8 Netflix Interview Loop Rounds.**</div>
+<div class="bg-blue-50/70 border-l-4 border-blue-500 p-3 rounded-r-lg my-3 text-xs text-blue-950 italic">Target Level: **Senior Software Engineer (L5) / Staff / Principal Engineer (L6+)**</div>
+<div class="bg-blue-50/70 border-l-4 border-blue-500 p-3 rounded-r-lg my-3 text-xs text-blue-950 italic">Candidate: **Sai Likhith Kanuparthi (7+ YOE, Airbnb, Eli Lilly, Southwest Airlines)**</div>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Executive Summary & Netflix Interview Philosophy</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Netflix operates unlike almost any other Big Tech firm. Their hiring model is founded on three pillars:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Talent Density & High Candor:</strong> Netflix hires exclusively senior, fully autonomous practitioners who thrive under the <strong class="text-gray-900 font-bold">Freedom & Responsibility</strong> memo. There are no junior training wheels or micromanagement layers.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Context, Not Control:</strong> Engineers make platform-wide architectural decisions without bureaucratic gatekeeping. You are expected to justify architectural trade-offs using first-principles systems thinking, production failure modes, and operational simplicity.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Top of Market Compensation:</strong> Netflix evaluates candidates against an absolute high bar of technical competence, architectural taste, and proactive ownership.</p>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Round 1: Culture & Behavioral (The Culture Memo & "Keeper Test")</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">What Interviewers Look For</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Netflix behavioral rounds are not generic HR discussions. They are rigorous peer evaluations testing whether you can operate as a high-density, autonomous IC under the <strong class="text-gray-900 font-bold">Netflix Culture Memo</strong>:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Freedom & Responsibility:</strong> How do you make decisions when requirements are ambiguous and no manager tells you what to do?</li>
+<li><strong class="text-gray-900 font-bold">Context, Not Control:</strong> How do you establish guardrails, observability, and contracts so dependent teams move fast without centralized coordination?</li>
+<li><strong class="text-gray-900 font-bold">The "Keeper Test" & High Candor:</strong> How do you deliver constructive feedback? How do you accept criticism without defensiveness? How do you handle underperforming projects or blameless postmortems?</li>
+<li><strong class="text-gray-900 font-bold">Disagree and Commit:</strong> How do you argue your technical point with data, and execute cleanly once a direction is decided?</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Key Scenario Questions & Senior Response Blueprint</h3>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Q1: "Tell me about a time you took a calculated technical risk without managerial approval."</h4>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Situation:</strong> At Airbnb, internal analytical teams were bottlenecked by slow, manual data synthesis across dozens of model endpoints.</li>
+<li><strong class="text-gray-900 font-bold">Action (Context, Not Control):</strong> Rather than writing a 30-page proposal, I built a working prototype of the <strong class="text-gray-900 font-bold">BPI Virtual Analyst</strong>, integrating LangGraph multi-agent orchestration and Redis semantic caching. I set strict token budgets, fallback rules, and OpenTelemetry instrumentation to bound blast radius.</li>
+<li><strong class="text-gray-900 font-bold">Outcome:</strong> Validated that repeat query latency plummeted from 1.8s to 240ms, saving 8,000 engineering hours/month. Presented running metrics to leadership to secure full organizational rollout.</li>
+</ul>
+<h4 class="text-sm font-bold text-gray-800 mb-1 mt-3">Q2: "How do you handle a strong technical disagreement with another senior engineer?"</h4>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Philosophy:</strong> Treat debates as collaborative searches for truth, not competitions. Lock down the interface contract and operational constraints (latency budget, throughput, cost, failure modes). If a debate stalls on assumptions, deploy a minimal, measurable prototype or A/B benchmark to let running code and telemetry decide.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Round 2: Coding & Low-Level Design — In-Memory Key-Value Store</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Problem Statement</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Design and implement a thread-safe, high-concurrency <strong class="text-gray-900 font-bold">In-Memory Key-Value Store</strong> supporting:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">put(key, value, ttl_ms)</code></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">get(key)</code></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">delete(key)</code></p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. Expiration: Active expiration (background sweeper) and Passive expiration (lazy eviction on access).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">5. Concurrency: High read concurrency with minimal write lock contention.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">6. Optional extension: Transactional support (<code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">begin</code>, <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">put</code>, <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">commit</code>, <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">rollback</code>) or eviction policies (LRU / LFU).</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Senior Architectural Approach</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Concurrency Architecture:</strong> Avoid a single global mutex (which chokes read throughput). Use <strong class="text-gray-900 font-bold">Lock Striping</strong> (e.g., 16 or 32 partitioned buckets/segments, similar to <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">ConcurrentHashMap</code>) or <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">std::shared_mutex</code> / <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">ReentrantReadWriteLock</code> per segment.</li>
+<li><strong class="text-gray-900 font-bold">TTL Expiration Strategy:</strong></li>
+<li><strong class="text-gray-900 font-bold">Lazy Expiration (Passive):</strong> On <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">get(key)</code>, check if <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">current_time > expiry_time</code>. If expired, delete the key and return <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">null</code>. Prevents serving stale data.</li>
+<li><strong class="text-gray-900 font-bold">Active Expiration (Background Sweeper):</strong> A background thread runs periodic probabilistic sampling (e.g., sample 20 keys per bucket every 100ms; if >25% are expired, repeat immediately) to prevent memory leaks from unread expired keys.</li>
+<li><strong class="text-gray-900 font-bold">Memory Overhead Awareness:</strong> Use compact node headers, pooled object allocators, and avoid unnecessary string copies.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Python / Pseudocode Implementation Blueprint</h3>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>import time
+import threading
+from typing import Any, Optional, Dict
+
+class KeyValueNode:
+    __slots__ = ('value', 'expires_at')
+    def __init__(self, value: Any, ttl_ms: Optional[int] = None):
+        self.value = value
+        self.expires_at = (time.time() + (ttl_ms / 1000.0)) if ttl_ms else None
+
+    def is_expired(self, now: float) -> bool:
+        return self.expires_at is not None and now > self.expires_at
+
+class StripedKVStore:
+    def __init__(self, num_stripes: int = 16):
+        self.num_stripes = num_stripes
+        self.stores: list[Dict[str, KeyValueNode]] = [{} for _ in range(num_stripes)]
+        self.locks: list[threading.RLock] = [threading.RLock() for _ in range(num_stripes)]
+
+    def _get_stripe(self, key: str) -> int:
+        return hash(key) % self.num_stripes
+
+    def put(self, key: str, value: Any, ttl_ms: Optional[int] = None) -> None:
+        stripe = self._get_stripe(key)
+        node = KeyValueNode(value, ttl_ms)
+        with self.locks[stripe]:
+            self.stores[stripe][key] = node
+
+    def get(self, key: str) -> Optional[Any]:
+        stripe = self._get_stripe(key)
+        now = time.time()
+        with self.locks[stripe]:
+            node = self.stores[stripe].get(key)
+            if not node:
+                return None
+            if node.is_expired(now):
+                del self.stores[stripe][key]  # Passive lazy eviction
+                return None
+            return node.value
+
+    def delete(self, key: str) -> bool:
+        stripe = self._get_stripe(key)
+        with self.locks[stripe]:
+            return self.stores[stripe].pop(key, None) is not None</code></pre></div>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Follow-Up Defense Matrix</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Follow-up:</strong> "How do you handle transactional isolation (<code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">begin</code>, <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">commit</code>, <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">rollback</code>)?"</li>
+<li><strong class="text-gray-900 font-bold">Answer:</strong> Implement a thread-local write-ahead buffer (<code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">ThreadLocal[TransactionContext]</code>). In <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">begin()</code>, allocate a staging dictionary. Subsequent writes go to the staging dictionary. On <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">commit()</code>, sort the required stripe locks to prevent deadlocks, acquire locks, apply diffs atomically, and release. On <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">rollback()</code>, simply discard the staging dictionary.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Round 3: Coding & Concurrency — Distributed Job Scheduler</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Problem Statement</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Design an in-process or distributed <strong class="text-gray-900 font-bold">Job Scheduler</strong> that schedules tasks with:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. Specific execution timestamps (delayed tasks) or periodic cron intervals.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. Task priorities (High, Medium, Low).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. Concurrent worker thread execution with graceful shutdown.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. Handling worker crashes, leases, and retry backoffs.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Senior Architectural Approach</h3>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Data Structure:</strong> A <strong class="text-gray-900 font-bold">Thread-Safe Min-Heap / Priority Queue</strong> ordered by <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">(execute_at, priority, task_id)</code>.</li>
+<li><strong class="text-gray-900 font-bold">Condition Variable Coordination:</strong> Workers must not busy-spin (wasting CPU). Use a Condition Variable (<code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">cv.wait_until(heap.peek().execute_at)</code>). If a new task arrives earlier than the current head, notify the condition variable to wake up a worker thread immediately.</li>
+<li><strong class="text-gray-900 font-bold">Worker Lease & Heartbeats:</strong> In a distributed setting, a worker leases a task for $N$ seconds. If the worker does not renew the lease (heartbeat), the scheduler re-queues the task for another worker.</li>
+<li><strong class="text-gray-900 font-bold">Idempotency Token:</strong> Every scheduled task carries an <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">idempotency_key</code> so network timeouts and retries do not trigger duplicate processing.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Round 4: AI Engineering — Recommendation Assistant</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Problem Statement</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Architect a conversational <strong class="text-gray-900 font-bold">Recommendation Assistant</strong> for Netflix that allows members to search naturally ("Show me a dark, atmospheric detective thriller with rain set in Europe, similar to Dark or The Killing").</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Architecture & Data Flow</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Query Understanding & Intent Extraction:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>LLM extracts structured intent: Genre (<code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">Crime/Thriller</code>), Mood (<code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">Dark</code>, <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">Atmospheric</code>), Setting (<code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">Europe</code>), Similar Titles (<code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">Dark</code>, <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">The Killing</code>).</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Two-Stage Retrieval & Ranking:</strong></p>
+<li><strong class="text-gray-900 font-bold">Stage 1 (Candidate Generation):</strong> Multi-modal vector search over title embeddings (synopsis, tags, reviews, visual aesthetics) using FAISS/Milvus/Qdrant. Filters by catalog rights and maturity rating. Retrieves top 1,000 candidates in <20ms.</li>
+<li><strong class="text-gray-900 font-bold">Stage 2 (Heavy Re-Ranking):</strong> Cross-encoder model scores candidates incorporating real-time context: member watch history, completion rate, device type, language preference, and novelty balance. Produces top 20 titles.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Two-Tier Semantic Caching:</strong></p>
+<li>Exact hash cache (Redis) for frequent queries.</li>
+<li>Vector similarity cache for semantic matches (cosine similarity > 0.96) to cut LLM token costs by 40% and response latency from 1.5s to 200ms.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">LLM Presentation Synthesis:</strong></p>
+<li>LLM generates personalized 2-sentence rationale ("Because you loved Dark, this Danish thriller features complex time mysteries and Nordic noir cinematography...").</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Round 5: System Design — Playback Progress Service (Bookmarks)</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Problem Statement</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Design the service that tracks where 250M+ global Netflix members paused their videos across TVs, phones, tablets, and browsers:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li><strong class="text-gray-900 font-bold">Scale:</strong> 250M+ active members. Up to 50M concurrent video streams.</li>
+<li><strong class="text-gray-900 font-bold">Beacon Rate:</strong> Client devices emit a heartbeat progress beacon every <strong class="text-gray-900 font-bold">10 seconds</strong> during playback.</li>
+<li><strong class="text-gray-900 font-bold">QPS:</strong> Peak write traffic: $50\text{M} / 10\text{s} = 5,000,000\text{ QPS}$.</li>
+<li><strong class="text-gray-900 font-bold">Latency SLA:</strong> Read on playback resume: sub-50ms p99. Write beacon ingestion: sub-100ms p99.</li>
+<li><strong class="text-gray-900 font-bold">Correctness:</strong> Within 1-2 seconds of actual playback; smooth multi-device handoff.</li>
+</ul>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Architectural Breakdown</h3>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>[TV / Mobile / Web Clients]
+             |
+             | Heartbeat Beacon (user_id, video_id, position_sec, client_ts)
+             v
+   [API Gateway / Zuul] (TLS Termination, Token Validation, Rate Limiting)
+             |
+             v
+  [Kafka / Event Streams] (Partitioned by user_id)
+             |
+             +------------------------------+
+             |                              |
+             v                              v
+[Fast In-Memory Write Buffer]    [Async Batch Persistence Consumer]
+ (Redis Cluster / Memcached)                    |
+  - Key: user:{uid}:video:{vid}                 v
+  - Read Path: sub-10ms lookup   [Cassandra / ScyllaDB Time-Series Cluster]
+                                  - Partition Key: user_id
+                                  - Clustering Key: video_id
+                                  - Compaction: TimeWindowCompactionStrategy</code></pre></div>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Key Trade-Offs & Senior Defense</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Why not write directly to the database on every beacon?</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>5M writes/sec directly to persistent storage would overwhelm disk I/O and trigger massive write amplification. Instead, buffer latest positions in a Redis cluster and flush aggregated deltas to Cassandra asynchronously.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Device Race Conditions & Out-of-Order Packets:</strong></p>
+<li>Mobile network drops and reconnection bursts cause packets to arrive out of order. Every beacon payload includes an authoritative monotonic <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">client_event_timestamp</code>. The service enforces a <strong class="text-gray-900 font-bold">Last-Write-Wins (LWW) check on timestamp</strong>: only update if <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">incoming_ts > stored_ts</code>.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Read Path on Playback Start:</strong></p>
+<li>Client sends <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">GET /progress?user_id=X&video_id=Y</code>. Service checks Redis primary first; if cache miss, queries Cassandra and hydrates Redis. Return position in <15ms.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Round 6: Low-Level Design (LLD) — Video Encoding Pipeline</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Problem Statement</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">When a studio uploads a raw high-resolution master file (<strong class="text-gray-900 font-bold">Mezzanine file</strong>, e.g., 4K ProRes at 200GB+), Netflix must transcode it into hundreds of delivery formats (H.264, HEVC, AV1, VP9 at multiple resolutions from 240p to 4K, varying bitrates, spatial audio, and mobile-optimized profiles).</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Core Components & Design Patterns</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Asset Chunking & Scene Detection:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Rather than encoding a 2-hour video as a single monolithic job, split it into 3-5 minute GOP (Group of Pictures) or scene-boundary chunks. Enables massive horizontal parallelism.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">DAG Workflow Orchestrator:</strong></p>
+<li>Transcoding workflow represented as a Directed Acyclic Graph (DAG):</li>
+<li><code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">Ingest -> Validate -> Scene Splitting -> Parallel Encoding Tasks -> Quality Metric Check (VMAF) -> Package Manifests (HLS/DASH) -> CDN Distribution</code>.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Worker Lease & Fault Tolerance:</strong></p>
+<li>Worker nodes claim chunk encoding tasks from a priority queue with a lease time (e.g., 5 minutes). If a spot-instance worker is reclaimed by AWS or crashes, the lease expires and another worker immediately resumes the chunk.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">VMAF Quality Gate:</strong></p>
+<li>Video Multi-Method Assessment Fusion (VMAF) score calculated automatically per chunk. If VMAF < 93, dynamically trigger higher bitrate encoding for that specific chunk before stitching.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">7. Round 7: Distributed Systems — Netflix Subtitle & Localization Service</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Problem Statement</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Deliver subtitles and closed captions across 30+ languages for every title globally, ensuring frame-accurate timing synchronization with video streams while withstanding regional outages.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Architectural Breakdown</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Asset Storage & Standardization:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Raw subtitle sources (SRT, WebVTT, TTML) normalized into standard IMSC1 / TTML timed text format and versioned in object storage.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Open Connect Appliance (OCA) Caching:</strong></p>
+<li>Subtitle assets are static immutable files. Once generated, they are pushed to Netflix's <strong class="text-gray-900 font-bold">Open Connect CDN appliances</strong> placed directly inside Internet Service Provider (ISP) networks worldwide.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Edge Manifest Composition:</strong></p>
+<li>Streaming clients receive an HLS/DASH playback manifest referencing language-specific subtitle tracks served directly from the nearest ISP edge node, yielding sub-10ms subtitle payload delivery.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Fault Tolerance / Degradation Policy:</strong></p>
+<li>If subtitle fetching fails or times out, client video playback continues uninterrupted with a non-blocking retry indicator.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">8. Round 8: Production Engineering, SRE & Resilience</h2>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">The Netflix Production Philosophy</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Netflix runs on AWS public cloud while serving petabytes of video data from its proprietary Open Connect CDN. Core resilience principles:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Chaos Engineering (Chaos Monkey & Simian Army):</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Intentionally and continuously terminating production instances and simulating network partition degradations during business hours to ensure systems heal automatically without human intervention.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Automated Canary Analysis (Kayenta):</strong></p>
+<li>Deploying updates to a 1% canary cohort and 1% baseline cohort. Automated statistical analysis compares hundreds of metrics (p99 latency, 5xx errors, CPU, GC pauses, business conversion metrics). If the canary score drops below threshold, deployment is aborted and rolled back instantly.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Multi-Region Active-Active Evacuation:</strong></p>
+<li>Netflix operates across three AWS regions (<code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">us-east-1</code>, <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">us-west-2</code>, <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">eu-west-1</code>). If an entire AWS region experiences a data center failure, global DNS and edge routers (Zuul) evacuate 100% of traffic to the remaining two regions within 7 minutes.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Stateless App Tier & Microservice Decoupling:</strong></p>
+<li>All ephemeral state lives in distributed caches (EVCache / Redis) or multi-region replicated databases (Cassandra), allowing compute pods to be terminated without data loss.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Comprehensive Preparation Checklist</h2>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>[x] <strong class="text-gray-900 font-bold">Round 1:</strong> Review the Netflix Culture Memo; prepare 4 STAR+R stories highlighting high agency, candor, and blameless failure analysis.</li>
+<li>[x] <strong class="text-gray-900 font-bold">Round 2:</strong> Master Striped Key-Value store with ReadWriteLocks, passive/active TTL sweeps, and transaction contexts.</li>
+<li>[x] <strong class="text-gray-900 font-bold">Round 3:</strong> Implement priority queues with condition variable sleeping, worker lease heartbeats, and idempotency tokens.</li>
+<li>[x] <strong class="text-gray-900 font-bold">Round 4:</strong> Design two-stage vector recommendation pipelines with Redis semantic caching and LLM re-ranking.</li>
+<li>[x] <strong class="text-gray-900 font-bold">Round 5:</strong> Defend Playback Progress Service at 5M QPS using Redis write-buffers, Kafka partitioning, and Cassandra LWW timestamps.</li>
+<li>[x] <strong class="text-gray-900 font-bold">Round 6:</strong> Architect parallel video transcoding DAGs with GOP chunking, spot worker leasing, and VMAF quality scoring.</li>
+<li>[x] <strong class="text-gray-900 font-bold">Round 7:</strong> Structure global subtitle delivery with Open Connect edge caching and manifest composition.</li>
+<li>[x] <strong class="text-gray-900 font-bold">Round 8:</strong> Master Chaos Monkey failure injection, Kayenta canary analysis, and active-active multi-region evacuation drills.</li>
+</ul>
+  </div>
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>System Design Interactive Study Suite &bull; AntiGravity IDE</p>
+</footer>
+</body>
+</html>

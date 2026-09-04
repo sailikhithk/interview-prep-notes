@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design: The 7 Layers of Production System Design — Study Workbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mermaid.js for Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'neutral',
+  themeVariables: {
+    background: '#ffffff',
+    primaryColor: '#f3f4f6',
+    primaryTextColor: '#1f2937',
+    lineColor: '#2563eb',
+    primaryBorderColor: '#e5e7eb',
+    nodeBorder: '#d1d5db',
+    actorBorder: '#d1d5db',
+    actorBkg: '#f9fafb',
+    signalColor: '#2563eb',
+    signalTextColor: '#1e3a8a'
+  }
+});
+</script>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family:'Inter',sans-serif; }
+.code { font-family:'JetBrains Mono',monospace; }
+.gradient-text { background:linear-gradient(135deg,#2563eb,#7c3aed,#db2777); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-glow { background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(37,99,235,0.08) 0%,transparent 100%); }
+details > summary { list-style:none; cursor:pointer; }
+details > summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen relative overflow-x-hidden">
+
+<!-- Ambient Glow -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] hero-glow pointer-events-none"></div>
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">SD</div>
+      <div>
+        <span class="font-extrabold text-gray-900 tracking-tight text-base">The 7 Layers of Production System Design</span>
+        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">System Design Workbook</span>
+      </div>
+    </div>
+    <a href="../README.md" class="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">&larr; Back to System Design Hub</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="border-b border-gray-200 bg-white hero-glow relative">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Architectural Study Guide</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">High Scale &bull; Distributed Systems</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+      <span class="gradient-text">The 7 Layers of Production System Design</span>
+    </h1>
+    <p class="text-gray-600 text-base max-w-3xl leading-relaxed">
+      Comprehensive architectural deep-dive covering high-level data flow, data models, edge case failure modes, scaling strategies, and interview trade-off defenses.
+    </p>
+  </div>
+</div>
+
+<!-- CONTENT MAIN -->
+<main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+  <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm prose prose-blue max-w-none space-y-6">
+    <h1 class="text-2xl font-black text-gray-900 border-b border-gray-200 pb-3 mb-4 mt-6">Chapter 37: The 7 Layers of Production System Design</h1>
+<div class="bg-blue-50/70 border-l-4 border-blue-500 p-3 rounded-r-lg my-3 text-xs text-blue-950 italic">*"One candidate interviewing for an L4/L5 role got rejected by Meta. Another candidate at the same level ended up with offers from Google, Microsoft, and Meta.*</div>
+<div class="bg-blue-50/70 border-l-4 border-blue-500 p-3 rounded-r-lg my-3 text-xs text-blue-950 italic">*Same interview level. Very different understanding of system design fundamentals.*</div>
+<div class="bg-blue-50/70 border-l-4 border-blue-500 p-3 rounded-r-lg my-3 text-xs text-blue-950 italic">*If system design still feels like random boxes and arrows, you must learn it in these 7 layers."*</div>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Executive Thesis: Why Random Boxes & Arrows Fail</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The most common failure pattern in FAANG system design interviews is <strong class="text-gray-900 font-bold">"Buzzword Bingo"</strong>: dropping names like Kafka, Cassandra, Redis, and Kubernetes without justifying:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">WHY</strong> you chose that specific technology.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">WHAT TRADE-OFF</strong> you accepted (e.g., eventual consistency vs. latency, write amplification vs. read speed).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">WHERE</strong> the system breaks under stress (e.g., partition hot-spots, network splits, connection limits).</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">HOW</strong> you scale and operate it at <strong class="text-gray-900 font-bold">10x volume</strong>.</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">By decomposing every system design into the <strong class="text-gray-900 font-bold">7 Fundamental Layers</strong>, your architecture becomes structured, intentional, and defensible from the first client packet to automated failovers.</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>       [ Client Applications (Mobile / Web / IoT) ]
+                            │
+┌───────────────────────────┴───────────────────────────┐
+│ Layer 1: Network (Anycast DNS, CDN Edge, L4/L7 LB)     │
+└───────────────────────────┬───────────────────────────┘
+                            │
+┌───────────────────────────┴───────────────────────────┐
+│ Layer 5: Application & API Gateway (Auth, Rate Limit) │
+└───────────────┬───────────────────────────┬───────────┘
+                │                           │
+┌───────────────┴───────────────┐ ┌─────────┴───────────┐
+│ Layer 4: Communication (Sync) │ │ (Async Streaming)   │
+│ gRPC / REST / WebSockets      │ │ Kafka / Event Hubs  │
+└───────────────┬───────────────┘ └─────────┬───────────┘
+                │                           │
+┌───────────────┴───────────────────────────┴───────────┐
+│ Layer 3: Compute (Kubernetes Pods, Stateless Workers) │
+└───────────────────────────┬───────────────────────────┘
+                            │
+┌───────────────────────────┴───────────────────────────┐
+│ Layer 2: Storage & Caching (SQL, NoSQL, Redis, S3)    │
+└───────────────────────────┬───────────────────────────┘
+                            │
+┌───────────────────────────┴───────────────────────────┐
+│ Layer 6: Reliability & SRE (OTel, Metrics, Canaries)  │
+└───────────────────────────┬───────────────────────────┘
+                            │
+┌───────────────────────────┴───────────────────────────┐
+│ Layer 7: AI & Automation (Anomaly Detection, Agents)   │
+└───────────────────────────────────────────────────────┘</code></pre></div>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Layer 1: Network — How Traffic Reaches Your System</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Before drawing a single database or application service, define how client packets navigate the internet to reach your infrastructure.</p>
+<div class="text-xs text-gray-700 font-mono py-0.5">| Component | Function in System Design | Trade-offs & Failure Modes | Senior Defense Example |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| :--- | :--- | :--- | :--- |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **Anycast DNS / GeoDNS** | Resolves domain to the topologically nearest edge point of presence (PoP). | DNS TTL caching means IP updates take minutes/hours to propagate; DNS hijack / poisoning risks. | Route 53 / Cloudflare Anycast routing client to closest edge datacenter. |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **CDN (Edge Points)** | Caches static assets (images, JS, video chunks) and terminates TLS close to user. | Cache invalidation latency; cache stampede on viral asset release. | Cloudflare / Fastly / Netflix Open Connect serving 95%+ of video/static bytes at ISP edge. |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **L4 Load Balancer** | Transport layer (TCP/UDP) IP+Port routing (e.g., AWS NLB, Linux IPVS). | No HTTP inspection; blind to URL paths, headers, or cookies. Extreme throughput (>1M QPS). | Distribute raw TCP connections across L7 reverse proxies with direct server return (DSR). |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **L7 Load Balancer** | Application layer (HTTP/HTTPS/gRPC) routing (e.g., Envoy, NGINX, AWS ALB). | Higher CPU overhead for TLS termination and header parsing; connection pooling exhaustion. | Path-based routing (`/api/v1/checkout` vs `/api/v1/search`), gRPC stream multiplexing. |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **Multi-Region Routing** | Active-Active or Active-Passive datacenter distribution across geography. | Cross-region replication lag, split-brain on partition, data sovereignty (GDPR). | Route 100% of regional traffic away from degraded AWS region within 7 minutes. |</div>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Layer 2: Storage — Where Does the Data Live?</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">The core skill is matching the <strong class="text-gray-900 font-bold">access pattern</strong> to the underlying storage engine's physical data structure.</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>Access Pattern Matrix:
+├── Strong Invariants & Multi-Table Joins? ──> Relational SQL (Postgres / MySQL / Aurora)
+├── Key-Lookup or High-Volume Document?    ──> Document / NoSQL (MongoDB / DynamoDB)
+├── Massive Append-Only Writes / Wide-Row? ──> Columnar / LSM-Tree (Cassandra / ScyllaDB)
+├── Sub-Millisecond Reads & Sliding Window? ──> In-Memory KV (Redis / Memcached)
+└── Unstructured Video / Audio / Parquet?  ──> Distributed Object Storage (S3 / GCS / Ceph)</code></pre></div>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Storage Engines & Trade-Off Comparison</h3>
+<div class="text-xs text-gray-700 font-mono py-0.5">| Storage Category | Technology | Primary Access Pattern | Internal Data Structure | Trade-off Accepted |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| :--- | :--- | :--- | :--- | :--- |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **Relational (ACID)** | PostgreSQL, MySQL, CockroachDB | Complex filtering, foreign keys, strict invariants. | B+ Tree on disk | Scalability ceiling; cross-shard joins are prohibitively expensive. |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **Distributed NoSQL** | DynamoDB, Cassandra, ScyllaDB | High-velocity key-value or time-series lookups. | LSM-Trees + SSTables | Eventual consistency; limited query flexibility (no arbitrary joins). |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **In-Memory Cache** | Redis, Dragonfly, Memcached | Session state, rate-limiting counters, hot caching. | Hash Tables, SkipLists, Radix Trees | Volatile memory; expensive RAM footprint compared to NVMe SSD. |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **Search / Vector** | Elasticsearch, OpenSearch, FAISS | Full-text token search, cosine similarity retrieval. | Inverted Indexes, HNSW (Hierarchical Navigable Small World) | Eventual indexing lag; heavy memory requirements for dense vectors. |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **Object Storage** | AWS S3, Google Cloud Storage, MinIO | Immutable blobs, video chunks, data lakehouse files. | Distributed metadata + erasure-coded block slabs | High initial latency (50-100ms TTFB); write-once read-many semantics. |</div>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Layer 3: Compute — Where Does the Actual Work Happen?</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Compute design balances <strong class="text-gray-900 font-bold">execution model</strong>, <strong class="text-gray-900 font-bold">cost</strong>, and <strong class="text-gray-900 font-bold">scaling responsiveness</strong>.</p>
+<div class="text-xs text-gray-700 font-mono py-0.5">| Compute Paradigm | Best Use Case | Scaling Latency | Trade-off Accepted |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| :--- | :--- | :--- | :--- |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **Kubernetes (EKS/GKE)** | Core microservices, long-running stateful agents, complex networking. | **10s – 2min** (HPA pod spin-up, cluster autoscaler node spin-up). | Operational complexity; cluster management overhead. |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **Stateless Virtual Machines** | Stable baseline workloads with predictable CPU/Memory requirements. | **3 – 5 min** (AMI boot time, warm pool pre-provisioning). | Rigid capacity; under-utilized during sudden traffic lulls. |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **Serverless (Lambda/Cloud Run)** | Event-driven spikes, webhook receivers, sporadic batch triggers. | **100ms – 1s** (Cold-start latency on language runtime initialization). | High cost at sustained high QPS; strict execution time limits. |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **Asynchronous Workers** | Heavy CPU/GPU jobs (video transcoding, ML batch inference, PDF exports). | Decoupled via queue depth metrics (KEDA queue-based autoscaling). | Non-interactive response; requires polling, SSE, or WebSockets to notify client. |</div>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Layer 4: Communication — How Do Components Talk?</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Choose synchronous vs. asynchronous protocols strictly based on client interaction requirements.</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>Synchronous (Blocking / Waiting):
+├── External Public Client ──────> REST (HTTP/JSON) or GraphQL (Flexible queries)
+└── Internal Microservices ──────> gRPC / Protobuf (Binary serialization, multiplexing)
+
+Asynchronous (Event-Driven / Decoupled):
+├── High-Throughput Event Stream ─> Apache Kafka / AWS Kinesis (Partitioned log order)
+├── Point-to-Point Task Queue ────> RabbitMQ / AWS SQS (Message acknowledge & DLQ)
+└── Real-Time Client Push ────────> WebSockets (Bidirectional) or SSE (Server-Sent Events)</code></pre></div>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Protocol Comparison Matrix</h3>
+<div class="text-xs text-gray-700 font-mono py-0.5">| Protocol | Transport | Serialization | Best For | Failure Mode |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| :--- | :--- | :--- | :--- | :--- |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **REST (HTTP/1.1 or 2)** | TCP | JSON / Text | Public developer APIs, third-party integrations. | Verbose payload size; head-of-line blocking on HTTP/1.1. |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **gRPC (HTTP/2)** | TCP | Binary Protobuf | Inter-service East-West microservice communication. | Difficult browser debugging; requires strict Protobuf schema registry. |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **WebSockets** | Full-duplex TCP | Any (JSON/Binary) | Live chat, collaborative editing, gaming. | Stateful connections; load balancer connection draining complexity. |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **Server-Sent Events (SSE)**| Unidirectional HTTP | Text stream | LLM token streaming, live sports scores, progress bars. | Unidirectional only; proxy buffering can delay chunk delivery. |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **Apache Kafka** | TCP | Binary / Avro | Event sourcing, clickstream analytics, activity feeds. | Consumer lag on slow processing; partition rebalance pauses. |</div>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Layer 5: Application — How Is Business Logic Organised?</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Keep the first design clean and modular. Only introduce distributed patterns when business constraints force you to.</p>
+<h3 class="text-base font-bold text-gray-800 mb-2 mt-4 text-blue-900">Essential Application Layer Patterns</h3>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">API Gateway (Edge Facade):</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Centralized authentication (JWT validation), TLS offloading, global rate limiting, and request routing. Prevents internal microservices from handling boilerplate edge security.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Rate Limiting & Abuse Prevention:</strong></p>
+<li><strong class="text-gray-900 font-bold">Sliding Window Log / Token Bucket in Redis:</strong> Protects backend services against DDoS and runaway client loops.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Idempotency Engine:</strong></p>
+<li>Client sends an <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">Idempotency-Key</code> header with write requests (e.g., payments, reservations). Gateway checks Redis for atomic lock before executing. Prevents duplicate charges on network timeouts.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">4. <strong class="text-gray-900 font-bold">Domain-Driven Service Boundaries:</strong></p>
+<li>Decouple services by business capabilities (e.g., <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">OrderService</code>, <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">PaymentService</code>, <code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-[11px]">InventoryService</code>), each owning its private datastore (Database-per-Service pattern).</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Layer 6: Reliability — What Happens When Something Breaks?</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">Every serious system design interview inevitably turns to failure modes. A Senior/Staff candidate shines by proactively demonstrating how the architecture survives partial degradation.</p>
+<div class="text-xs text-gray-700 font-mono py-0.5">| Reliability Mechanism | Problem Solved | Implementation Detail |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| :--- | :--- | :--- |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **Circuit Breakers (Resilience4j/Envoy)** | Prevents cascading failures when a downstream dependency is timing out. | Trip circuit from Closed to Open after 50% error rate; fail fast immediately with fallback cache. |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **Exponential Backoff with Jitter** | Prevents the "Thundering Herd" problem when thousands of clients retry at once. | Retry interval: $t = \min(t_{\max}, t_{\text{base}} \times 2^{\text{attempt}}) + \text{random\_jitter}$. |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **Dead-Letter Queues (DLQ)** | Prevents malformed "poison pill" messages from blocking an entire event partition. | Route failed messages to DLQ after 3 retries; trigger alerting and automated inspection tools. |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **OpenTelemetry & Distributed Tracing**| Isolates latency bottlenecks across 15+ microservice hops. | Propagate `traceparent` headers across HTTP/gRPC boundaries; trace p99 latency regressions. |</div>
+<div class="text-xs text-gray-700 font-mono py-0.5">| **Automated Canary Analysis** | Prevents shipping faulty code to 100% of production users. | Route 1% of traffic to canary; monitor 5xx error rate and p99 latency; roll back automatically. |</div>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Layer 7: AI + Automation — How Can the System Become Smarter?</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">*Build Layers 1 through 6 properly before trying to make everything "AI-powered."* When AI is introduced, it must enhance the existing operational layers:</p>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">1. <strong class="text-gray-900 font-bold">Semantic Vector Caching:</strong></p>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>Cache expensive LLM inference results using embedding similarity (e.g., FAISS + Redis). Repeated natural language queries return in <20ms at zero token cost.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">2. <strong class="text-gray-900 font-bold">Real-Time Anomaly & Fraud Detection:</strong></p>
+<li>Nearline streaming models (Flink / Spark Streaming) evaluating click beacons or payment transactions against rolling feature stores to flag fraud before payout.</li>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">3. <strong class="text-gray-900 font-bold">Automated Operational Remediation:</strong></p>
+<li>Intelligent alerting agents that correlate logs, metrics, and traces during incidents to suggest precise root causes and trigger automated container restarts or circuit trips.</li>
+</ul>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">The 4-Step Senior Articulation Framework</h2>
+<p class="text-xs sm:text-sm text-gray-700 leading-relaxed my-2">When defending your design in the interview room, apply this repeatable template on every major architectural choice:</p>
+<div class="my-4 bg-gray-900 text-gray-100 rounded-xl p-4 text-xs font-mono overflow-x-auto"><pre><code>┌────────────────────────────────────────────────────────────────────────┐
+│ 1. THE CHOICE:     "I chose [X] (e.g., Cassandra over PostgreSQL)..."  │
+│ 2. THE JUSTIFICATION: "...because our access pattern is write-heavy    │
+│    (5M QPS) append-only timeseries with simple key lookups."           │
+│ 3. THE TRADE-OFF:  "...I accept eventual consistency and the loss of   │
+│    multi-table relational ACID transactions."                          │
+│ 4. THE BREAKING POINT & 10x SCALE: "...at 10x volume, disk compactions │
+│    will spike I/O, so I would shard by (user_id % N) and tier hot data │
+│    in Redis with cold archival to S3 Parquet."                         │
+└────────────────────────────────────────────────────────────────────────┘</code></pre></div>
+<hr class="border-gray-200 my-6">
+<h2 class="text-xl font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-6 text-indigo-900">Summary Checklist for FAANG System Design Interviews</h2>
+<ul class="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-gray-700 my-2">
+<li>[x] <strong class="text-gray-900 font-bold">Layer 1 (Network):</strong> Clarify Anycast DNS, CDN edge caching, and L4 vs L7 load balancers before discussing databases.</li>
+<li>[x] <strong class="text-gray-900 font-bold">Layer 2 (Storage):</strong> Justify database choice strictly by access pattern (SQL vs NoSQL vs In-Memory vs Object Storage).</li>
+<li>[x] <strong class="text-gray-900 font-bold">Layer 3 (Compute):</strong> Balance stateless Kubernetes autoscaling, serverless cold starts, and asynchronous worker pools.</li>
+<li>[x] <strong class="text-gray-900 font-bold">Layer 4 (Communication):</strong> Distinguish synchronous request-response (gRPC/REST) from decoupled streaming (Kafka).</li>
+<li>[x] <strong class="text-gray-900 font-bold">Layer 5 (Application):</strong> Enforce API gateways, token bucket rate limiters, and idempotency keys.</li>
+<li>[x] <strong class="text-gray-900 font-bold">Layer 6 (Reliability):</strong> Defend against cascading failures with circuit breakers, exponential backoff with jitter, and canary analysis.</li>
+<li>[x] <strong class="text-gray-900 font-bold">Layer 7 (AI & Automation):</strong> Incorporate AI safely through semantic caching, anomaly detection, and automated remediation.</li>
+<li>[x] <strong class="text-gray-900 font-bold">The Golden Rule:</strong> Never merely list technologies; always state the <strong class="text-gray-900 font-bold">Why</strong>, the <strong class="text-gray-900 font-bold">Trade-Off</strong>, the <strong class="text-gray-900 font-bold">Breaking Point</strong>, and the <strong class="text-gray-900 font-bold">10x Scale Evolution</strong>.</li>
+</ul>
+  </div>
+</main>
+
+<footer class="border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-500">
+  <p>System Design Interactive Study Suite &bull; AntiGravity IDE</p>
+</footer>
+</body>
+</html>
