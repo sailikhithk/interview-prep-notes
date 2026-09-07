@@ -132,3 +132,4 @@ project_root/
 | [03_WORK_SIMULATION_SCENARIOS_AND_LPS.md](03_WORK_SIMULATION_SCENARIOS_AND_LPS.md) | Real scenario questions, email decisions, and trade-off formulas | Section 3 (Work Sim) |
 | [04_WORK_STYLE_SURVEY_FORCED_CHOICE_STRATEGY.md](04_WORK_STYLE_SURVEY_FORCED_CHOICE_STRATEGY.md) | Ipsative survey pair breakdown & consistency matrices | Section 4 (Survey) |
 | [05_HACKERRANK_ENVIRONMENT_AND_PROCTORING_FAQ.md](05_HACKERRANK_ENVIRONMENT_AND_PROCTORING_FAQ.md) | Environment gotchas, single-monitor setup, language rules | Test Day Rules |
+| [06_AWS_INFRA_WORK_STYLE_AND_LP_MATRIX.md](06_AWS_INFRA_WORK_STYLE_AND_LP_MATRIX.md) | **AWS Infrastructure SDE / Workshop Studio LP Matrix** | Section 3 & 4 (Customized to AWS Multi-Account Fleet, AI Agents & Distributed Platforms) |
