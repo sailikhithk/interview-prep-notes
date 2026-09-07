@@ -125,8 +125,7 @@ project_root/
 
 ## 5. Study Guide Artifacts in this Repository
 
-| Guide | Description | Target Section |
-| :--- | :--- | :--- |
+| [00_MASTER_SYSTEM_INSTRUCTIONS_AMAZON_OA.md](00_MASTER_SYSTEM_INSTRUCTIONS_AMAZON_OA.md) | **Master Operating Instructions & Real-Time Strategy** | Complete Copilot Architecture, Repo Protocol & Rules of Engagement |
 | [01_AMAZON_CODING_PATTERNS_AND_ALGORITHMS.md](01_AMAZON_CODING_PATTERNS_AND_ALGORITHMS.md) | Top Amazon OA DSA patterns with clean Python 3 templates | Section 1 (DSA) |
 | [02_CODE_REPOSITORY_AND_AI_ASSISTANT_PLAYBOOK.md](02_CODE_REPOSITORY_AND_AI_ASSISTANT_PLAYBOOK.md) | How to navigate multi-file codebases & prompt the AI assistant | Section 2 (Code Repo) |
 | [03_WORK_SIMULATION_SCENARIOS_AND_LPS.md](03_WORK_SIMULATION_SCENARIOS_AND_LPS.md) | Real scenario questions, email decisions, and trade-off formulas | Section 3 (Work Sim) |
