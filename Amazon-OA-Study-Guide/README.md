@@ -133,3 +133,4 @@ project_root/
 | [05_HACKERRANK_ENVIRONMENT_AND_PROCTORING_FAQ.md](05_HACKERRANK_ENVIRONMENT_AND_PROCTORING_FAQ.md) | Environment gotchas, single-monitor setup, language rules | Test Day Rules |
 | [06_AWS_INFRA_WORK_STYLE_AND_LP_MATRIX.md](06_AWS_INFRA_WORK_STYLE_AND_LP_MATRIX.md) | **AWS Infrastructure SDE / Workshop Studio LP Matrix** | Section 3 & 4 (Customized to AWS Multi-Account Fleet, AI Agents & Distributed Platforms) |
 | [07_DJANGO_SPRINGBOOT_NODEJS_REPO_PLAYBOOK.md](07_DJANGO_SPRINGBOOT_NODEJS_REPO_PLAYBOOK.md) | **Django, Spring Boot & Node.js Repo Playbook** | Section 2 (Deep Dive into Web Frameworks, File Topologies & Planted Bugs) |
+| [08_PYTHON_REPO_CASE_STUDY_AND_SAMPLES.md](08_PYTHON_REPO_CASE_STUDY_AND_SAMPLES.md) | **Python Repo Case Study & Runnable Sample Project** | Section 2 (Hands-on Runnable Codebase in `sample_repo_django/` with Pytest Suite) |
