@@ -7,6 +7,7 @@ This repository contains structured, high-density study guides, code blueprints,
 | Path | Topic | Focus Areas |
 |---|---|---|
 | [README.md](README.md) | Hub & Study Index | Navigation, study plans, core checklist |
+| [Amazon-OA-Study-Guide/README.md](Amazon-OA-Study-Guide/README.md) | **Amazon SDE Online Assessment (OA) 2026** | 100m Coding (DSA + AI Code Repo), 15m Work Simulation, 10m Work Style Survey |
 | [DomainKnowledge/dms-developer-interview-guide.md](DomainKnowledge/dms-developer-interview-guide.md) | Original DMS Guide | Reference guide from Dose Management System |
 | [DomainKnowledge/Java/java-spring-boot.md](DomainKnowledge/Java/java-spring-boot.md) | Spring Boot & Java Depth | DI, JPA/Hibernate LAZY vs EAGER, Transactions, AOP, custom annotations |
 | [DomainKnowledge/PostgreSQL/database-postgres.md](DomainKnowledge/PostgreSQL/database-postgres.md) | Database, Indexing & Migrations | PostgreSQL, Flyway safety, triggers, auditing patterns |
