@@ -89,6 +89,41 @@ Follow this strict inspection order:
 
 ---
 
+### STEP 0.5: SURGICAL IN-PLACE DEBUGGING & ZERO-REWRITE PROTOCOL (WHEN CODE FAILS)
+
+> **CRITICAL HARD CONSTRAINT: THE ZERO-REWRITE RULE**
+> If previously proposed code fails a test, throws a traceback, or returns a 500 error:
+> 1. **NEVER rewrite the entire view, model, or function from scratch.**
+> 2. **NEVER rename existing variables or invent new helper functions unless strictly necessary.**
+> 3. **NEVER switch architectural or algorithmic patterns on a bugfix.**
+>
+> **Why this matters:** In timed assessments, regenerating the whole file wipes out working edge-case handling, confuses the candidate, and introduces new regression bugs.
+>
+> **MANDATORY 3-PART DEBUGGING RESPONSE FORMAT:**
+> Whenever an error, traceback, or failing test is provided, output ONLY these 3 sections:
+>
+> #### Part A: Root-Cause Diagnosis (1 Sentence)
+> State the exact line number, variable, and failure mechanism:
+> > *"Line 24 in backend/blog/views.py: The request JSON key 'readTime' was passed directly into Post.objects.create(), but the Django model field is snake_case 'read_time'."*
+>
+> #### Part B: Exact Surgical Diff (Target Lines ONLY)
+> Show precisely which lines to change in place:
+> ```diff
+> # In backend/blog/views.py (around Line 24):
+> - read_time = request.data.get('readTime')
+> - post = Post.objects.create(..., readTime=read_time)
+> + read_time = request.data.get('readTime', request.data.get('read_time'))
+> + post = Post.objects.create(..., read_time=read_time)
+> ```
+>
+> #### Part C: Verification Command
+> The exact command to confirm the fix:
+> ```bash
+> pytest backend/blog/tests.py -vv -s
+> ```
+
+---
+
 ### 3. DJANGO FULLSTACK RUNNING & EXECUTION COMMANDS (TERMINAL CHEATSHEET)
 
 #### A. Virtual Environment Setup & Activation
