@@ -89,6 +89,101 @@ Follow this strict inspection order:
 
 ---
 
+### 3. DJANGO FULLSTACK RUNNING & EXECUTION COMMANDS (TERMINAL CHEATSHEET)
+
+#### A. Virtual Environment Setup & Activation
+In assessment containers or local environments, always ensure the dedicated virtualenv is active:
+```bash
+# 1. Activate existing virtual environment (check root or hidden directories):
+source venv/bin/activate
+# Or if named .venv:
+source .venv/bin/activate
+# Or if named env:
+source env/bin/activate
+
+# 2. Verify active Python interpreter and pip:
+which python
+python --version
+
+# 3. If no virtual environment exists or dependencies are missing:
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+#### B. Running Pytest & Test Discovery Commands
+Always establish your baseline failure count before modifying any code:
+```bash
+# 1. Standard Pytest run from repository root:
+pytest -q
+
+# 2. Run with stdout unbuffered / output capture disabled (shows print statements):
+pytest -q -s
+
+# 3. If pytest reports 'no tests ran' (discovery path issue), target test file explicitly:
+pytest backend/blog/tests.py -q -s
+# Or:
+pytest backend/tests.py -q -s
+
+# 4. Run a single specific test function with maximum verbosity:
+pytest backend/blog/tests.py::test_create_post_with_expected_response_structure_and_values -vv -s
+
+# 5. Native Django test runner fallback (if pytest is not configured):
+python manage.py test
+# Or target specific app/test:
+python manage.py test blog.tests
+```
+
+#### C. Running the Django Backend Server
+```bash
+# 1. Apply database migrations (SQLite or PostgreSQL):
+python manage.py makemigrations
+python manage.py migrate
+
+# 2. Seed mock test data (if provided by assessment setup script):
+python manage.py seed_data
+# Or execute setup script:
+bash setup.sh
+
+# 3. Start the Django development server:
+python manage.py runserver
+# Or specify host/port (accessible inside Docker/cloud containers):
+python manage.py runserver 0.0.0.0:8000
+
+# 4. Test the API endpoint directly via curl from another terminal tab:
+curl -i -X POST http://127.0.0.1:8000/api/posts/ \
+  -H "Content-Type: application/json" \
+  -H "x-user-id: 1" \
+  -d '{
+    "title": "EC2 AI Infrastructure Deep Dive",
+    "content": "Analyzing Trainium UltraServer networking, NeuronCore allocation, and high-throughput model serving.",
+    "category": "Engineering"
+  }'
+```
+
+#### D. Running the Frontend (React / Vite / Webpack)
+```bash
+# 1. Navigate into frontend directory:
+cd frontend
+
+# 2. Install dependencies (if node_modules is absent):
+npm install
+# Or:
+yarn install
+
+# 3. Start development server:
+npm start
+# Or for Vite applications:
+npm run dev
+
+# 4. Run frontend tests in non-interactive / CI mode:
+npm test -- --watchAll=false
+# Or:
+npx jest
+```
+
+---
+
 ## Phase Map
 
 | Phase | Content | Time |
